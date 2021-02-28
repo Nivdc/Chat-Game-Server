@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh">
+    <head>
+        <meta charset="utf-8">
+        <title>testPage</title>
+        <link href="lib/font-awesome-4.7.0/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+        <link href="index.css" rel="stylesheet" type="text/css">
+        <script src="lib/jquery-3.5.1.js"></script>
+        <script src="index.js"></script>
+    </head>
+
+    <body>
+        <div id="loginForm" class="form">
+            <button type="button">游客登录</button>
+        </div>
+
+        <div id="lobbyForm" class="form">
+            <div id="roomForm">
+                <div id="roomList" class="form">
+                    <table>
+                        <tr>
+                            <th>房间名</th>
+                            <th>模式</th>
+                            <th><i class="fa fa-users" aria-hidden="true"></i></th>
+                            <th>房主</th>
+                        </tr>
+                        <tr>
+                            <td>测试房间</td>
+                            <td>测试房间</td>
+                            <td>1/1</td>
+                            <td>测试房主</td>
+                        </tr>
+                        <tr>
+                            <td>测试房间</td>
+                            <td>测试房间</td>
+                            <td>1/1</td>
+                            <td>测试房主</td>
+                        </tr>
+                    </table>
+                </div>
+                <button type="button"><i class="fa fa-sign-in" aria-hidden="true"></i>加入房间</button>
+                <button type="button"><i class="fa fa-plus" aria-hidden="true"></i>创建房间</button>
+            </div>
+            <div id="infoBar">
+                <div id="gameInfo" class="form">
+                </div>
+                <div id="roomInfo" class="form">
+                </div>
+            </div>
+        </div>
+
+        <div id="chatForm">
+            <div id="messageForm">
+                <div id="messageList"class="form">
+                    <table>
+                        <tr>
+                            <td>测试用户:</td>
+                            <td>测试消息1</td>
+                        </tr>
+                        <tr>
+                            <td>测试用户:</td>
+                            <td>测试消息2</td>
+                        </tr>
+                    </table>
+                </div>
+                <div id="userList"class="form">
+                    <table>
+                        <tr>
+                            <td>测试用户</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+            <form id="msg">
+                <input type="text"></input>
+            </form>
+        </div>
+    </body>
+</html>

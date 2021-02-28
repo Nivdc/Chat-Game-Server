@@ -1,20 +1,22 @@
-const events = require('events')
-const net = require('net')
-const Lobby = require('./lib/lobby')
-const User = require('./lib/user')
+const http = require('http')
+const router = require('./router').router
+//const Lobby = require('./lib/lobby')
 
-const server = net.createServer(client => {
-    client.write(`welcome`)
-    testChat.channel.emit('join', user)
-    client.on('data',data => {
-        console.log(testChat.userList)
-        data = data.toString()
-        testChat.channel.emit('broadcast', user.id, data)
-    })
-    client.on('close',data => {
-        testChat.channel.emit('leave', user)
-    })
-
+const server = http.createServer((req,res) => {
+    router(req,res)
 })
 
-server.listen(8888)
+server.listen(3000,'192.168.1.9',()=>{
+    console.log('Server running at http://192.168.1.9:3000')
+})
+
+
+function getGameList(){
+    let gameList = []
+    let files = fs.readdirSync("../gameMode")
+    files.forEach((current)=>{
+        gameList.push({name:current,path:`../gameMode/${current}/main.js`})
+    })
+
+    return gameList
+}

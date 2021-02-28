@@ -1,4 +1,4 @@
-const Chat = require('../lib/chat')
+const Chat = require('../../lib/chat')
 //决不能按照数组顺序标识玩家位置
 function start(gamers){
     this.playerList = init(gamers)
@@ -48,3 +48,9 @@ function init(gamers){
 
     return playerList
 }
+
+function test(){
+    console.log("hello")
+}
+
+exports.test = test

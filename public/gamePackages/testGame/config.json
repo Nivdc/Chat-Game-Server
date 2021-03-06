@@ -2,17 +2,12 @@
     "customizable":true,
     "options":[
         {
-            "allowOtherChat":false,
             "modeName":"默认游戏模式",
             "maxPlayers":"1"
         },
         {
-            "allowOtherChat":false,
             "modeName":"测试模式",
             "maxPlayer":null
         }
-    ],
-    "settingName":[
-        "最大游戏人数"
     ]
 }

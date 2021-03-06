@@ -98,12 +98,12 @@ function init(){
                 }
             })
             if(currentRoomID == room.id){
-                changeRoomSetting(room.name,room.gameID,room.gameModeNum)
-                updateRoomUserList()
+                changeRoomSetting(room.name,room.gameInfo.gameID,room.gameModeNum)
+                updateRoomUserList(room.userNames,room.hostName)
             }
         }
         else if(room.status === 'close'){
-            roomList.forEach((roomInfo,index,list)=>{
+            roomsInfo.forEach((roomInfo,index,list)=>{
                 if(roomInfo.id === room.id){
                     list.splice(index,1)
                 }
@@ -121,18 +121,20 @@ function addButtomClick(){
                 let roomID=parseInt($('#roomList .choose').children(':last-child').text())
                 $.each(roomsInfo,(index,room)=>{
                     if(room.id === roomID){
-                        if(room.userNames.length < room.gameInfo.maxPlayer || !room.gameInfo.maxPlayer){
+                        if(room.userNames.length < room.gameInfo.maxPlayers || !room.gameInfo.maxPlayers){
+                            currentRoomID=room.id
                             $.get(`room/${room.id}`,(data,status)=>{
                                 if(status === 'success'){
-                                    changeRoomSetting(room.name,room.gameID,room.gameModeNum)
+                                    changeRoomSetting(room.name,room.gameInfo.gameID,room.gameModeNum)
                                     $('#roomSettingForm :input').prop("disabled",true)
                                     $('#roomSettingForm button').hide()
                                     $('#roomUserListForm button:eq(0)').hide()
                                     $("#lobbyForm").hide()
                                     $("#roomForm").css('display','flex')
-                                    updateRoomUserList(room.userNames,room.hostName)
-                                    currentRoomID=room.id
-                                 }
+                                }
+                                else{
+                                    currentRoomID = null
+                                }
                             })
                         }
                     }
@@ -207,17 +209,14 @@ function addButtomClick(){
             break
 
             case "修改":
-                //todo
                 let roomData={
                     name:$('#roomSettingData input').val(),
-                    roomStatus:'open',
+                    status:'open',
                     gameID:parseInt($('#roomSettingData .chooseGame select').val()),
                     gameModeNum:parseInt($('#roomSettingData .chooseGameMode select').val()),
                     customOption:null,
                 }
                 $.post(`room/${currentRoomID}`,JSON.stringify(roomData),(data,textStatus)=>{
-                    if(textStatus === 'success'){
-                    }
                 })
             break
             

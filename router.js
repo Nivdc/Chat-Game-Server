@@ -6,14 +6,13 @@ function router(req,res){
     let url = new URL(req.url,`http://${req.headers.host}`)
     let path = url.pathname
     let tempCache = null
+    let cookieID = null
+
     if(req.headers.cookie !== undefined){
-        let cookieID = req.headers.cookie.split('=')[1]
-    }
-    else{
-        let cookieID = null
+        cookieID = req.headers.cookie.split('=')[1]
     }
 
-    console.log(`${path}`);
+    console.log(`${req.method}->${path}`);
     switch(path){
         case '/':
             fs.readFile(__dirname+"/public/index.html")
@@ -26,7 +25,7 @@ function router(req,res){
         case '/session':
             if(req.method === "GET"){
                 userManager.createSSEconnection(cookieID,res)
-            }//fixme:if someone post but never get, he will stay at userList for ever
+            }//fixme:if someone post but never get, he will stay at tempUserList for ever
             else if(req.method === "POST"){
                 req.on("data",data=>{
                     tempCache = JSON.parse(data.toString())//fixme:if data is huge, this will not be work
@@ -47,12 +46,13 @@ function router(req,res){
         break
         case '/lobby':
             if(req.method === "GET"){
-                if(tempCache = lobby.sentRoomList(cookieID)){
+                if(tempCache = lobby.sentLobbyInitInfo(cookieID)){
                     res.statusCode = 200
                     res.setHeader('Content-Type','application/json')
                     res.end(JSON.stringify(tempCache))
                 }
                 else{
+                    console.log(tempCache)
                     res.statusCode = 401
                     res.end()
                 }
@@ -61,7 +61,7 @@ function router(req,res){
         case '/lobby/message':
             if(req.method === "POST"){
                 req.on("data",data=>{
-                    tempCache = JSON.parse(data.toString())
+                    tempCache = JSON.parse(data.toString())//fixme:if data is huge, this will not be work
                 })
                 req.on("end",()=>{
                     if(lobby.sentChatMessage(tempCache.message,cookieID)){
@@ -75,17 +75,89 @@ function router(req,res){
                 })
             }
         break
-        case '/rooms':
-            if(req.method === "GET"){
-                userJoinRoom(cookieID)
-            }
-            else if(req.method === "POST"){
-                userCreateRoom()
+        case '/room':
+            if(req.method === "POST"){
+                req.on("data",data=>{
+                    tempCache = JSON.parse(data.toString())//fixme:if data is huge, this will not be work
+                })
+                req.on("end",()=>{
+                    if(tempCache = lobby.userCreateRoom(tempCache,cookieID)){
+                        res.statusCode = 200
+                        res.setHeader('Content-Type','application/json')
+                        res.end(JSON.stringify(tempCache))
+                    }
+                    else{
+                        res.statusCode = 401
+                        res.end()
+                    }
+                })
+
             }
         break
 
         default:
-            sentStaticResource(path,res)
+            if(path.split('/')[1] === "room"){//xxx:这里的逻辑很不自然，switch功能太弱了...稍后改正
+                if(path.split('/')[2]){
+                    if(path.split('/')[3] === "message"){
+                        if(req.method === "POST"){
+                            req.on("data",data=>{
+                                tempCache = JSON.parse(data.toString())//fixme:if data is huge, this will not be work
+                            })
+                            req.on("end",()=>{
+                                if(lobby.sentRoomChatMessage(tempCache.message,cookieID,parseInt(path.split('/')[2]))){
+                                    res.statusCode = 200
+                                    res.end()
+                                }
+                                else{
+                                    res.statusCode = 401
+                                    res.end()
+                                }
+                            })
+                        }
+                    }
+                    else if(path.split('/')[3] === "quit"){
+                        if(lobby.userQuitRoom(cookieID,parseInt(path.split('/')[2]))){
+                            res.statusCode = 200
+                            res.end()
+                        }
+                        else{
+                            res.statusCode = 401
+                            res.end()
+                        }
+                    }
+                    else{
+                        if(req.method === "GET"){
+                            if(lobby.userJoinRoom(cookieID,parseInt(path.split('/')[2]))){
+                                res.statusCode = 200
+                                res.end()
+                            }
+                            else{
+                                res.statusCode = 401
+                                res.end()
+                            }
+                        }
+                        else if(req.method === "POST"){
+                            req.on("data",data=>{
+                                tempCache = JSON.parse(data.toString())//fixme:if data is huge, this will not be work
+                            })
+                            req.on("end",()=>{
+                                if(tempCache = lobby.userSetRoom(tempCache,cookieID,parseInt(path.split('/')[2]))){
+                                    res.statusCode = 200
+                                    res.setHeader('Content-Type','application/json')
+                                    res.end(JSON.stringify(tempCache))
+                                }
+                                else{
+                                    res.statusCode = 401
+                                    res.end()
+                                }
+                            })
+                        }
+                    }
+                }
+            }
+            else{
+                sentStaticResource(path,res)
+            }
     }
  }
 

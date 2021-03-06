@@ -1,0 +1,8 @@
+{
+    "name":"testGame",
+    "main":"main.js",
+    "config":"config.json",
+    "version":"0.1.0",
+    "description":"testGame for Server",
+    "author":"Nivdc"
+}

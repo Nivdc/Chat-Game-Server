@@ -226,7 +226,6 @@ function addButtomClick(){
     })
 }
 
-
 function changeRoomSetting(roomName,gameID,gameModeNum){
     $('#roomSettingData input').val(roomName)
     $('#roomSettingData .chooseGame select').val(gameID)

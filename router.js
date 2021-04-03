@@ -1,8 +1,37 @@
 const fs = require('fs/promises')
 const userManager = require('./lib/user_manager')
 const lobby = require('./lib/lobby')
+const gamesFilePath = __dirname+"/public/gamePackages"
 
 function router(req,res){
+    let url = new URL(req.url,`http://${req.headers.host}`)
+    let path = url.pathname  
+    console.log(`${req.method}->${path}`)
+
+    tryService(req,res).then(()=>{
+        if(res.writableEnded === false && req.method === 'GET' && path.split('/')[1] !== 'session'){
+            // fuck nodejs, fuck async, fuck eventEmitter
+            // 这里的问题在于nodejs中所有函数都是异步执行的，
+            // 使用class Promise确实可以让它同步执行，
+            // 但是同步执行涉及到事件监听器的时候只是往事件监听器里面添加了一个处理函数，并没有等这个函数执行完毕，
+            // 至于这个处理函数什么时候会执行完毕，我们不知道哇，也就是说这个事件处理函数依然是异步的。
+            // 这个地方要达到的效果是分流http请求，分成三种：服务器服务、服务器资源、游戏服务。
+            trySentStaticResource(path,res)
+        }
+    })
+}
+
+function tryService(req,res){
+    return new Promise(function (resolve, reject) {
+        serverService(req,res)
+        resolve()
+    })
+    // if(res.writableEnded === false){
+    //     lobby.tryGameService(path,cookie,res)
+    // }
+}
+
+function serverService(req,res){
     let url = new URL(req.url,`http://${req.headers.host}`)
     let path = url.pathname
     let tempCache = null
@@ -12,9 +41,9 @@ function router(req,res){
         cookieID = req.headers.cookie.split('=')[1]
     }
 
-    console.log(`${req.method}->${path}`);
+
     switch(path.split('/')[1]){
-       case 'session':
+    case 'session':
             if(req.method === "GET"){
                 userManager.createSSEconnection(cookieID,res)
             }//fixme:if someone post but never get, he will stay at tempUserList forever
@@ -36,6 +65,7 @@ function router(req,res){
                 })
             }
         break
+
         case 'lobby':
             if(typeof(path.split('/')[2]) === 'undefined'){
                 if(req.method === "GET"){
@@ -45,7 +75,6 @@ function router(req,res){
                         res.end(JSON.stringify(tempCache))
                     }
                     else{
-                        console.log(tempCache)
                         res.statusCode = 401
                         res.end()
                     }
@@ -69,6 +98,7 @@ function router(req,res){
                 }
             }
         break
+
         case 'room':
             if(typeof(path.split('/')[2]) === 'undefined'){//example url:/room
                 if(req.method === "POST"){
@@ -88,7 +118,7 @@ function router(req,res){
                     })
                 }
             }
-            else if(typeof(path.split('/')[3]) === 'undefined'){//example url:/room/xxx
+            else if(typeof(path.split('/')[3]) === 'undefined'){//example url:/room/0
                 if(req.method === "GET"){
                     if(lobby.userJoinRoom(cookieID,parseInt(path.split('/')[2]))){
                         res.statusCode = 200
@@ -143,15 +173,26 @@ function router(req,res){
                     res.end()
                 }
             }
+            else if(path.split('/')[3] === "game"){
+                if(req.method === "POST"){
+                    // if(lobby.startGame(cookieID)){
+                        res.statusCode = 200
+                        res.end()
+                    // }
+                    // else{
+                    //     res.statusCode = 401
+                    //     res.end()
+                    // }
+                }
+            }
         break
 
         default:
-            sentStaticResource(path,res)
         break
     }
- }
+}
 
-function sentStaticResource(path,res){
+function trySentStaticResource(path,res){
     path = "/public"+path
     let fileSuffix = null
     //这地方有个大bug，浏览器自动生成的请求头可能不对
@@ -170,7 +211,7 @@ function sentStaticResource(path,res){
         switch(fileSuffix){
             case 'html':
             case 'css':
-                fs.readFile(__dirname + `${path}`,'utf8')
+                fs.readFile(__dirname + path,'utf8')
                 .then(contents => {
                     res.statusCode = 200
                     res.setHeader('Content-Type',('text/' + fileSuffix))
@@ -180,7 +221,7 @@ function sentStaticResource(path,res){
 
             case 'js':
             case 'json':
-                fs.readFile(__dirname + `${path}`,'utf8')
+                fs.readFile(__dirname + path,'utf8')
                 .then(contents => {
                     res.statusCode = 200
                     res.setHeader('Content-Type',('application/' + (fileSuffix === 'js' ? 'x-javascript' : 'json')))
@@ -190,7 +231,7 @@ function sentStaticResource(path,res){
 
             case 'jpg':
             case 'png':
-                fs.readFile(__dirname + `${path}`,'binary')
+                fs.readFile(__dirname + path,'binary')
                 .then(contents => {
                     res.statusCode = 200
                     res.setHeader('Content-Type',('image/' + (fileSuffix === 'png' ? 'png' : 'jpeg')))
@@ -202,7 +243,7 @@ function sentStaticResource(path,res){
             case 'ttf':
             case 'woff':
             case 'woff2':
-                fs.readFile(__dirname + `${path}`,'binary')
+                fs.readFile(__dirname + path,'binary')
                 .then(contents => {
                     res.statusCode = 200
                     res.setHeader('Content-Type',('font/' + fileSuffix))

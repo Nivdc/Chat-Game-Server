@@ -72,8 +72,8 @@ function login(userName,password){
 }
 
 function init(){
-    getLobbyInitInfo()
     addButtomClick()
+    addLobbyInitInfoListener()
     SSEconnection.addEventListener('chatMessage',(event)=>{
         let data = JSON.parse(event.data)
         let html=$('#messageList table').html()+`
@@ -89,7 +89,7 @@ function init(){
         roomsInfo.push(room)
         updateRoomsInfo()
     })
-    SSEconnection.addEventListener('changeRoom',(event)=>{
+    SSEconnection.addEventListener('RoomInfoUpd',(event)=>{
         let room = JSON.parse(event.data)
         if(room.status === 'open'){
             $.each(roomsInfo,(index,roomInfo)=>{
@@ -110,6 +110,10 @@ function init(){
             })
         }
         updateRoomsInfo()
+    })
+    SSEconnection.addEventListener('lobbyChatUserListUpd',(event)=>{
+        let data = JSON.parse(event.data)
+        updateLobbyChatUserList(data)
     })
 }
 
@@ -234,13 +238,12 @@ function changeRoomSetting(roomName,gameID,gameModeNum){
     $('#roomSettingData .chooseGameMode select').change()
 }
 
-function getLobbyInitInfo(){
-    $.get('lobby',(data)=>{
+function addLobbyInitInfoListener(){
+    SSEconnection.addEventListener('lobbyInit',(event)=>{
+        let data = JSON.parse(event.data)
         roomsInfo = data.roomsInfo
         gamesInfo = data.gamesInfo
-        lobbyChatInfo = data.lobbyChatInfo
         updateRoomsInfo()
-        updateChatInfo(lobbyChatInfo)
         $.each(gamesInfo,(index,game)=>{
             $('.roomDataForm .chooseGame select').append(
             `
@@ -343,9 +346,9 @@ function updateRoomsInfo(){
     })
 }
 
-function updateChatInfo(chatInfo){
+function updateLobbyChatUserList(userList){
     $('#userList table').html('')
-    $.each(chatInfo,(index,userName)=>{
+    $.each(userList,(index,userName)=>{
         $('#userList table').append(
         `
         <tr>

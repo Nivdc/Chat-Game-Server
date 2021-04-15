@@ -1,1 +1,7 @@
-There will be an English version of README later, please read the [Chinese version](https://github.com/Nivdc/Web-Chat-Game-Server/blob/master/README-CN.md) for now.
+# Chat-Game-Server
+这个项目的目标是基于nodejs创建一个简单、易于使用的H5在线游戏平台。  
+为了让减少学习成本，该项目没有使用任何软件包，也就是说，造了一些轮子。
+
+### 已知问题
+node.js 12.x.x以下的版本运行此平台的时候，SSE可能无法保持连接。
+在非chrome浏览器下，大厅的显示效果可能会有问题。以后有空再解决吧，咕了。

@@ -10,12 +10,12 @@ function router(req,res){
 
     tryService(req,res).then(()=>{
         if(res.writableEnded === false && req.method === 'GET' && path.split('/')[1] !== 'session'){
+            // 这个地方要达到的效果是分流http请求，分成三种：服务器服务、服务器资源、游戏服务。
             // fuck nodejs, fuck async, fuck eventEmitter
             // 这里的问题在于nodejs中所有函数都是异步执行的，
             // 使用class Promise确实可以让它同步执行，
             // 但是同步执行涉及到事件监听器的时候只是往事件监听器里面添加了一个处理函数，并没有等这个函数执行完毕，
-            // 至于这个处理函数什么时候会执行完毕，我们不知道哇，也就是说这个事件处理函数依然是异步的。
-            // 这个地方要达到的效果是分流http请求，分成三种：服务器服务、服务器资源、游戏服务。
+            // 至于这个处理函数什么时候会执行完毕，我们不知道，也就是说这个事件处理函数依然是异步的。
             trySentStaticResource(path,res)
         }
     })

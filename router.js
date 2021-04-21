@@ -16,7 +16,9 @@ function router(req,res){
             // 使用class Promise确实可以让它同步执行，
             // 但是同步执行涉及到事件监听器的时候只是往事件监听器里面添加了一个处理函数，并没有等这个函数执行完毕，
             // 至于这个处理函数什么时候会执行完毕，我们不知道，也就是说这个事件处理函数依然是异步的。
-            trySentStaticResource(path,res)
+            // 解决办法就是在上面多加了几个判定条件...暂时糊弄过去了。
+            // 这个函数叫做try...似乎在暗示我们应该使用错误处理来完成同步操作，可以这样吗？以后再试试吧。
+            sentStaticResource(path,res)
         }
     })
 }
@@ -41,7 +43,7 @@ function serverService(req,res){
         cookieID = req.headers.cookie.split('=')[1]
     }
 
-
+    //xxx:下面这段代码看着真的怪。。。
     switch(path.split('/')[1]){
     case 'session':
             if(req.method === "GET"){
@@ -175,7 +177,8 @@ function serverService(req,res){
             }
             else if(path.split('/')[3] === "game"){
                 if(req.method === "POST"){
-                    // if(lobby.startGame(cookieID)){
+                    // let roomID = path.split('/')[2]
+                    // if(lobby.startGame(roomID,cookieID)){
                         res.statusCode = 200
                         res.end()
                     // }
@@ -192,7 +195,7 @@ function serverService(req,res){
     }
 }
 
-function trySentStaticResource(path,res){
+function sentStaticResource(path,res){
     path = "/public"+path
     let fileSuffix = null
     //这地方有个大bug，浏览器自动生成的请求头可能不对

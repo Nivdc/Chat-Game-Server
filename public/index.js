@@ -189,8 +189,8 @@ function addButtomClick(){
     })
     $("#roomForm button").click(event=>{
         switch($(event.currentTarget).text()){
-            case "开始游戏":
-                //todo
+            case "开始游戏"://todo
+                $.post(`room/${room.id}/game`)
             break
 
             case "退出房间":

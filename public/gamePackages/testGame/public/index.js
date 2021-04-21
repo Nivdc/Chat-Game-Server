@@ -4,7 +4,7 @@ $(document).ready(()=>{
   $('#msg').submit(event => {
         event.preventDefault()
         let message = {message:`${$('#msg input').val()}`}
-        $.post(`room/${currentRoom}/game/message`,JSON.stringify(message))
+        $.post(`game`,JSON.stringify(message))
         $('#msg input').val("")
     })
 })

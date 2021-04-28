@@ -1,7 +1,6 @@
 const fs = require('fs/promises')
 const userManager = require('./lib/user_manager')
 const lobby = require('./lib/lobby')
-const gamesFilePath = __dirname+"/public/gamePackages"
 
 function router(req,res){
     let url = new URL(req.url,`http://${req.headers.host}`)
@@ -18,7 +17,7 @@ function router(req,res){
             // 至于这个处理函数什么时候会执行完毕，我们不知道，也就是说这个事件处理函数依然是异步的。
             // 解决办法就是在上面多加了几个判定条件...暂时糊弄过去了。
             // 这个函数叫做try...似乎在暗示我们应该使用错误处理来完成同步操作，可以这样吗？以后再试试吧。
-            sentStaticResource(path,res)
+            sendStaticResource(path,res)
         }
     })
 }
@@ -71,7 +70,7 @@ function serverService(req,res){
         case 'lobby':
             if(typeof(path.split('/')[2]) === 'undefined'){
                 if(req.method === "GET"){
-                    if(tempCache = lobby.sentLobbyInitInfo(cookieID)){
+                    if(tempCache = lobby.sendLobbyInitInfo(cookieID)){
                         res.statusCode = 200
                         res.setHeader('Content-Type','application/json')
                         res.end(JSON.stringify(tempCache))
@@ -88,7 +87,7 @@ function serverService(req,res){
                         tempCache = JSON.parse(data.toString())//fixme:if data is huge, this will not be work
                     })
                     req.on("end",()=>{
-                        if(lobby.sentChatMessage(tempCache.message,cookieID)){
+                        if(lobby.sendChatMessage(tempCache.message,cookieID)){
                             res.statusCode = 200
                             res.end()
                         }
@@ -154,7 +153,7 @@ function serverService(req,res){
                         tempCache = JSON.parse(data.toString())//fixme:if data is huge, this will not be work
                     })
                     req.on("end",()=>{
-                        if(lobby.sentRoomChatMessage(tempCache.message,cookieID,parseInt(path.split('/')[2]))){
+                        if(lobby.sendRoomChatMessage(tempCache.message,cookieID,parseInt(path.split('/')[2]))){
                             res.statusCode = 200
                             res.end()
                         }
@@ -177,15 +176,26 @@ function serverService(req,res){
             }
             else if(path.split('/')[3] === "game"){
                 if(req.method === "POST"){
-                    // let roomID = path.split('/')[2]
-                    // if(lobby.startGame(roomID,cookieID)){
+                    let roomID = path.split('/')[2]
+                    if(lobby.startGame(roomID,cookieID)){
                         res.statusCode = 200
                         res.end()
-                    // }
-                    // else{
-                    //     res.statusCode = 401
-                    //     res.end()
-                    // }
+                    }
+                    else{
+                        res.statusCode = 401
+                        res.end()
+                    }
+                }
+                else if(req.method === "GET"){//todo
+                    let roomID = path.split('/')[2]
+                    if(lobby.convertPath(roomID,cookieID)){
+                        res.statusCode = 200
+                        res.end()
+                    }
+                    else{
+                        res.statusCode = 401
+                        res.end()
+                    }
                 }
             }
         break
@@ -195,71 +205,69 @@ function serverService(req,res){
     }
 }
 
-function sentStaticResource(path,res){
-    path = "/public"+path
-    let fileSuffix = null
-    //这地方有个大bug，浏览器自动生成的请求头可能不对
-    //没有考虑到文件不存在的情况
-    if(path === '/public/'){
-        fs.readFile(__dirname+"/public/index.html")
-        .then(contents => {
-            res.statusCode = 200
-            res.setHeader('Content-Type','text/html')
-            res.end(contents)
-        })
+function sendStaticResource(path,res){
+    path = __dirname+"/public"+path
+    //fixme:没有考虑到文件不存在的情况,如果文件不存在，服务器会当场死亡。
+    if(path === __dirname+'/public/'){
+        sendFile(path + 'index.html',res)
     }
     else{
-        fileSuffix = path.match(/\.([a-z0-9]*)$/i)[1]
-    
-        switch(fileSuffix){
-            case 'html':
-            case 'css':
-                fs.readFile(__dirname + path,'utf8')
-                .then(contents => {
-                    res.statusCode = 200
-                    res.setHeader('Content-Type',('text/' + fileSuffix))
-                    res.end(contents)
-                })
-            break
+        sendFile(path,res)
+    }
+}
 
-            case 'js':
-            case 'json':
-                fs.readFile(__dirname + path,'utf8')
-                .then(contents => {
-                    res.statusCode = 200
-                    res.setHeader('Content-Type',('application/' + (fileSuffix === 'js' ? 'x-javascript' : 'json')))
-                    res.end(contents)
-                })
-            break
+function sendFile(filePath,res){//fixme:Windows上的路径定界符不正确，不过nodejs会自动修复这个问题，暂时先不管了。可以引入path模块修复这个错误。
+    let fileSuffix = null
+    fileSuffix = filePath.match(/\.([a-z0-9]*)$/i)[1]
 
-            case 'jpg':
-            case 'png':
-                fs.readFile(__dirname + path,'binary')
-                .then(contents => {
-                    res.statusCode = 200
-                    res.setHeader('Content-Type',('image/' + (fileSuffix === 'png' ? 'png' : 'jpeg')))
-                    res.write(contents,'binary')
-                    res.end()
-                })
-            break
+    switch(fileSuffix){
+        case 'html':
+        case 'css':
+            fs.readFile(filePath,'utf8')
+            .then(contents => {
+                res.statusCode = 200
+                res.setHeader('Content-Type',('text/' + fileSuffix))
+                res.end(contents)
+            })
+        break
 
-            case 'ttf':
-            case 'woff':
-            case 'woff2':
-                fs.readFile(__dirname + path,'binary')
-                .then(contents => {
-                    res.statusCode = 200
-                    res.setHeader('Content-Type',('font/' + fileSuffix))
-                    res.write(contents,'binary')
-                    res.end()
-                })
-            break
+        case 'js':
+        case 'json':
+            fs.readFile(filePath,'utf8')
+            .then(contents => {
+                res.statusCode = 200
+                res.setHeader('Content-Type',('application/' + (fileSuffix === 'js' ? 'x-javascript' : 'json')))
+                res.end(contents)
+            })
+        break
 
-            default:
-                res.statusCode = 404
+        case 'jpg':
+        case 'png':
+            fs.readFile(filePath,'binary')
+            .then(contents => {
+                res.statusCode = 200
+                res.setHeader('Content-Type',('image/' + (fileSuffix === 'png' ? 'png' : 'jpeg')))
+                res.write(contents,'binary')
                 res.end()
-            break
-        }
+            })
+        break
+
+        case 'ttf':
+        case 'woff':
+        case 'woff2':
+            fs.readFile(filePath,'binary')
+            .then(contents => {
+                res.statusCode = 200
+                res.setHeader('Content-Type',('font/' + fileSuffix))
+                res.write(contents,'binary')
+                res.end()
+            })
+        break
+
+        default:
+            res.statusCode = 404
+            res.end()
+        break
     }
 }
 

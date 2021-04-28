@@ -73,48 +73,7 @@ function login(userName,password){
 
 function init(){
     addButtomClick()
-    addLobbyInitInfoListener()
-    SSEconnection.addEventListener('chatMessage',(event)=>{
-        let data = JSON.parse(event.data)
-        let html=$('#messageList table').html()+`
-        <tr>
-            <td>[${data.chatName}]</td>
-            <td>${data.senderName}:</td>
-            <td>${data.message}</td>
-        </tr>`
-        $('#messageList table').html(html)
-    })
-    SSEconnection.addEventListener('createRoom',(event)=>{//Server will NOT sent this event to host
-        let room = JSON.parse(event.data)
-        roomsInfo.push(room)
-        updateRoomsInfo()
-    })
-    SSEconnection.addEventListener('RoomInfoUpd',(event)=>{
-        let room = JSON.parse(event.data)
-        if(room.status === 'open'){
-            $.each(roomsInfo,(index,roomInfo)=>{
-                if(roomInfo.id === room.id){
-                    roomInfo = room
-                }
-            })
-            if(currentRoomID == room.id){
-                changeRoomSetting(room.name,room.gameInfo.gameID,room.gameModeNum)
-                updateRoomUserList(room.userNames,room.hostName)
-            }
-        }
-        else if(room.status === 'close'){
-            roomsInfo.forEach((roomInfo,index,list)=>{
-                if(roomInfo.id === room.id){
-                    list.splice(index,1)
-                }
-            })
-        }
-        updateRoomsInfo()
-    })
-    SSEconnection.addEventListener('lobbyChatUserListUpd',(event)=>{
-        let data = JSON.parse(event.data)
-        updateLobbyChatUserList(data)
-    })
+    addEventListener()
 }
 
 function addButtomClick(){
@@ -238,7 +197,7 @@ function changeRoomSetting(roomName,gameID,gameModeNum){
     $('#roomSettingData .chooseGameMode select').change()
 }
 
-function addLobbyInitInfoListener(){
+function addEventListener(){
     SSEconnection.addEventListener('lobbyInit',(event)=>{
         let data = JSON.parse(event.data)
         roomsInfo = data.roomsInfo
@@ -277,6 +236,51 @@ function addLobbyInitInfoListener(){
             })
         })
         $('.roomDataForm .chooseGameMode select').change()
+    })
+    SSEconnection.addEventListener('chatMessage',(event)=>{
+        let data = JSON.parse(event.data)
+        let html=$('#messageList table').html()+`
+        <tr>
+            <td>[${data.chatName}]</td>
+            <td>${data.senderName}:</td>
+            <td>${data.message}</td>
+        </tr>`
+        $('#messageList table').html(html)
+    })
+    SSEconnection.addEventListener('createRoom',(event)=>{//Server will NOT sent this event to host
+        let room = JSON.parse(event.data)
+        roomsInfo.push(room)
+        updateRoomsInfo()
+    })
+    SSEconnection.addEventListener('RoomInfoUpd',(event)=>{
+        let room = JSON.parse(event.data)
+        if(room.status === 'open'){
+            $.each(roomsInfo,(index,roomInfo)=>{
+                if(roomInfo.id === room.id){
+                    roomInfo = room
+                }
+            })
+            if(currentRoomID == room.id){
+                changeRoomSetting(room.name,room.gameInfo.gameID,room.gameModeNum)
+                updateRoomUserList(room.userNames,room.hostName)
+            }
+        }
+        else if(room.status === 'close'){
+            roomsInfo.forEach((roomInfo,index,list)=>{
+                if(roomInfo.id === room.id){
+                    list.splice(index,1)
+                }
+            })
+        }
+        updateRoomsInfo()
+    })
+    SSEconnection.addEventListener('lobbyChatUserListUpd',(event)=>{
+        let data = JSON.parse(event.data)
+        updateLobbyChatUserList(data)
+    })
+    SSEconnection.addEventListener('gameStart',(event)=>{//todo
+    })
+    SSEconnection.addEventListener('gameOver',(event)=>{//todo
     })
 }
 

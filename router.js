@@ -7,9 +7,10 @@ function router(req,res){
     let path = url.pathname  
     console.log(`${req.method}->${path}`)
 
-    tryService(req,res).then(()=>{
-        if(res.writableEnded === false && req.method === 'GET' && path.split('/')[1] !== 'session'){
-            // 这个地方要达到的效果是分流http请求，分成三种：服务器服务、服务器资源、游戏服务。
+    tryService(req,res)
+    .then(()=>{
+        if(res.writableEnded === false && req.method === 'GET' && path.split('/')[1] !== 'session' && path.split('/')[3] !== 'game'){
+            // 这个地方要达到的效果是分流http请求，分成两种：服务器服务、服务器资源。
             // fuck nodejs, fuck async, fuck eventEmitter
             // 这里的问题在于nodejs中所有函数都是异步执行的，
             // 使用class Promise确实可以让它同步执行，
@@ -27,9 +28,6 @@ function tryService(req,res){
         serverService(req,res)
         resolve()
     })
-    // if(res.writableEnded === false){
-    //     lobby.tryGameService(path,cookie,res)
-    // }
 }
 
 function serverService(req,res){
@@ -176,7 +174,7 @@ function serverService(req,res){
             }
             else if(path.split('/')[3] === "game"){
                 if(req.method === "POST"){
-                    let roomID = path.split('/')[2]
+                    let roomID = parseInt(path.split('/')[2])
                     if(lobby.startGame(roomID,cookieID)){
                         res.statusCode = 200
                         res.end()
@@ -186,11 +184,10 @@ function serverService(req,res){
                         res.end()
                     }
                 }
-                else if(req.method === "GET"){//todo
-                    let roomID = path.split('/')[2]
-                    if(lobby.convertPath(roomID,cookieID)){
-                        res.statusCode = 200
-                        res.end()
+                else if(req.method === "GET"){
+                    let resourcePath = null
+                    if(resourcePath = lobby.convertPath(path)){
+                        sendFile(resourcePath,res)
                     }
                     else{
                         res.statusCode = 401
@@ -201,6 +198,29 @@ function serverService(req,res){
         break
 
         default:
+            if(cookieID !== null){
+                if(req.method === "GET"){
+                    tempCache = null
+                    if(lobby.tryGameService(req.method,path,cookieID,tempCache)){
+                        res.statusCode = 200
+                        res.end()
+                    }
+                }//fixme:if someone post but never get, he will stay at tempUserList forever
+                else if(req.method === "POST"){
+                    req.on("data",data=>{
+                        tempCache = JSON.parse(data.toString())//fixme:if data is huge, this will not be work
+                    })
+                    req.on("end",()=>{
+                        if(lobby.tryGameService(req.method,path,cookieID,tempCache)){
+                            res.statusCode = 200
+                            res.end()
+                        }else{
+                            res.statusCode = 401
+                            res.end()
+                        }
+                    })
+                }
+            }
         break
     }
 }

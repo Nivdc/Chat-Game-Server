@@ -1,6 +1,7 @@
 {
     "name":"testGame",
     "main":"main.js",
+    "staticResourcePath":"public",
 
     "config":"config.json",
     "version":"0.1.0", 

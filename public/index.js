@@ -3,7 +3,6 @@ let currentChannel = '大厅'
 let currentRoomID=null
 let roomsInfo = null
 let gamesInfo = null
-let lobbyChatInfo = null
 
 $(document).ready(()=>{
     $("#loginForm button").click(event=>{
@@ -32,7 +31,7 @@ $(document).ready(()=>{
         $('#msg select').change(function(){
         currentChannel=$(this).val()
     })
-    $('#msg').submit(event => {
+    $('#msg').submit(event => { 
         event.preventDefault()
         let message = {message:`${$('#msg input').val()}`}
         switch(currentChannel){
@@ -148,8 +147,8 @@ function addButtomClick(){
     })
     $("#roomForm button").click(event=>{
         switch($(event.currentTarget).text()){
-            case "开始游戏"://todo
-                $.post(`room/${room.id}/game`)
+            case "开始游戏":
+                $.post(`room/${currentRoomID}/game`)
             break
 
             case "退出房间":
@@ -278,9 +277,14 @@ function addEventListener(){
         let data = JSON.parse(event.data)
         updateLobbyChatUserList(data)
     })
-    SSEconnection.addEventListener('gameStart',(event)=>{//todo
+    let lobbyPageBackup = null
+    SSEconnection.addEventListener('gameStart',(event)=>{
+        lobbyPageBackup = $('body').html()
+        $('body').load(`room/${currentRoomID}/game`)
     })
-    SSEconnection.addEventListener('gameOver',(event)=>{//todo
+    SSEconnection.addEventListener('gameOver',(event)=>{//todoa
+        $('body').html(lobbyPageBackup)
+        addButtomClick()
     })
 }
 

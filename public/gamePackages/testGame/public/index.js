@@ -2,22 +2,21 @@ $(document).ready(()=>{
   $('#gameMsg').submit(event => {
         event.preventDefault()//阻止默认行为
         let message = {message:`${$('#gameMsg input').val()}`}
-        $.post(`game`,JSON.stringify(message))
+        $.post(`/game`,JSON.stringify(message))
         $('#gameMsg input').val("")
     })
-    init()
+    top.window.SSEconnection.addEventListener('gameChatMessage',updateMessageList.bind(event))
 })
 
-function init(){
-    SSEconnection.addEventListener('gameChatMessage',(event)=>{
-        let data = JSON.parse(event.data)
-        let html=$('#gameMessageList table').html()+`
-        <tr>
-            <td>${data.senderName}:</td>
-            <td>${data.message}</td>
-        </tr>`
-        $('#gameMessageList table').html(html)
-    })
+function updateMessageList(event){
+    let data = JSON.parse(event.data)
+    $("#gameMessageList table").append(
+    `
+    <tr>
+        <td>${data.senderName}:</td>
+        <td>${data.message}</td>
+    </tr>
+    `)
 }
 
 function updateChatInfo(chatInfo){

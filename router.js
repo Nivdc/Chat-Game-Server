@@ -173,7 +173,7 @@ function serverService(req,res){
                 }
             }
             else if(path.split('/')[3] === "game"){
-                if(req.method === "POST"){
+                if(req.method === "POST" && typeof(path.split('/')[4]) === 'undefined'){
                     let roomID = parseInt(path.split('/')[2])
                     if(lobby.startGame(roomID,cookieID)){
                         res.statusCode = 200

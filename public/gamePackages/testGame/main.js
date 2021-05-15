@@ -1,11 +1,12 @@
 const EventEmitter = new require('events')
-const gameListener = new EventEmitter()
+let gameListener = null
 
 function start(userList,options,room){
+    gameListener = new EventEmitter()
     gameListener.on('message',(data)=>{
         sentEventToAll(userList,"gameChatMessage",data)
     })
-    gameListener.on('gameOver',()=>{
+    gameListener.once('gameOver',()=>{
         room.gameOver()
         //好吧，这真的很奇怪，游戏实际上不存在，只有这个监听器存在着。。。
     })

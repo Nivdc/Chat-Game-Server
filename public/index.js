@@ -1,4 +1,4 @@
-let SSEconnection = null
+var SSEconnection = null//提升至全局变量，让游戏脚本可以添加自己的事件处理函数
 let currentChannel = '大厅'
 let currentRoomID=null
 let roomsInfo = null
@@ -155,7 +155,7 @@ function addButtomClick(){
                 $.each(roomsInfo,(index,room)=>{
                     if(room.id === currentRoomID){
                         $.get(`room/${room.id}/quit`,(data,status)=>{
-                            //xxx:在url中使用动词不符合restful风格，应该使用put，不过使用get会比较方便，暂时就先这样吧。
+                            //xxx:在url中使用动词不符合restful风格，不过使用get会比较方便，暂时就先这样吧。
                             if(status === 'success'){
                                 $('#roomSettingForm :input').prop("disabled",false)
                                 $('#roomSettingForm button').show()
@@ -277,14 +277,15 @@ function addEventListener(){
         let data = JSON.parse(event.data)
         updateLobbyChatUserList(data)
     })
-    let lobbyPageBackup = null
-    SSEconnection.addEventListener('gameStart',(event)=>{
-        lobbyPageBackup = $('body').html()
-        $('body').load(`room/${currentRoomID}/game`)
+    SSEconnection.addEventListener('gameStart',(event)=>{//todo
+        $('#roomForm').hide()
+        $('#chatForm').hide()
+        $('body').append(`<iframe id="game" height="100%" width="100%" src='room/${currentRoomID}/game/'></iframe>`)
     })
-    SSEconnection.addEventListener('gameOver',(event)=>{//todoa
-        $('body').html(lobbyPageBackup)
-        addButtomClick()
+    SSEconnection.addEventListener('gameOver',(event)=>{//todo
+        $('#roomForm').show()
+        $('#chatForm').show()
+        $('iframe').remove()
     })
 }
 

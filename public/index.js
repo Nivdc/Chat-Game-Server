@@ -48,7 +48,7 @@ $(document).ready(()=>{
         }
         $('#msg input').val("")
     })
-    $('#roomSettingForm').submit(event => {event.preventDefault()})//这两个表单的功能在下面用ajax实现了
+    $('#roomSettingForm').submit(event => {event.preventDefault()})//这两个表单的功能在下面用ajax实现了，此处阻止默认事件
     $('#createRoomForm').submit(event => {event.preventDefault()})
 })
 
@@ -236,17 +236,15 @@ function addEventListener(){
         })
         $('.roomDataForm .chooseGameMode select').change()
     })
-    SSEconnection.addEventListener('chatMessage',(event)=>{
+    SSEconnection.addEventListener('lobbyChatMessage',(event)=>{
         let data = JSON.parse(event.data)
-        let html=$('#messageList table').html()+`
-        <tr>
-            <td>[${data.chatName}]</td>
-            <td>${data.senderName}:</td>
-            <td>${data.message}</td>
-        </tr>`
-        $('#messageList table').html(html)
+        updateMessageList('大厅',data.senderName,data.message)
     })
-    SSEconnection.addEventListener('createRoom',(event)=>{//Server will NOT sent this event to host
+    SSEconnection.addEventListener('roomChatMessage',(event)=>{
+        let data = JSON.parse(event.data)
+        updateMessageList('房间',data.senderName,data.message)
+    })
+    SSEconnection.addEventListener('createRoom',(event)=>{//Server will NOT send this event to host
         let room = JSON.parse(event.data)
         roomsInfo.push(room)
         updateRoomsInfo()
@@ -277,16 +275,28 @@ function addEventListener(){
         let data = JSON.parse(event.data)
         updateLobbyChatUserList(data)
     })
-    SSEconnection.addEventListener('gameStart',(event)=>{//todo
+    SSEconnection.addEventListener('gameStart',(event)=>{
         $('#roomForm').hide()
         $('#chatForm').hide()
         $('body').append(`<iframe id="game" height="100%" width="100%" src='room/${currentRoomID}/game/'></iframe>`)
     })
-    SSEconnection.addEventListener('gameOver',(event)=>{//todo
+    SSEconnection.addEventListener('gameOver',(event)=>{
         $('#roomForm').show()
         $('#chatForm').show()
-        $('iframe').remove()
+        $('iframe').remove()//remove会去掉所有子页面加入的监听事件，工作得相当不错~
     })
+}
+
+function updateMessageList(channelName,senderName,message){
+    $('#messageList table').append(
+        `
+        <tr>
+            <td>[${channelName}]</td>
+            <td>${senderName}:</td>
+            <td>${message}</td>
+        </tr>
+        `
+    )
 }
 
 function updateRoomsInfo(){

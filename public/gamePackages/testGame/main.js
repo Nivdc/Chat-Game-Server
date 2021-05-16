@@ -4,7 +4,7 @@ let gameListener = null
 function start(userList,options,room){
     gameListener = new EventEmitter()
     gameListener.on('message',(data)=>{
-        sentEventToAll(userList,"gameChatMessage",data)
+        sendEventToAll(userList,"gameChatMessage",data)
     })
     gameListener.once('gameOver',()=>{
         room.gameOver()
@@ -29,7 +29,7 @@ function inputHandler(method,path,user,data){
     }
 }
 
-function sentEventToAll(userList,eventName,data){
+function sendEventToAll(userList,eventName,data){
     userList.forEach(user => {
         user.sendEvent(eventName,data)
     })

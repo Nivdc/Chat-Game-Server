@@ -1,32 +1,7 @@
 const EventEmitter = new require('events')
-let gameListener = null
 
 function start(userList,options,room){
-    gameListener = new EventEmitter()
-    gameListener.on('message',(data)=>{
-        sendEventToAll(userList,"gameChatMessage",data)
-    })
-    gameListener.once('gameOver',()=>{
-        room.gameOver()
-        //好吧，这真的很奇怪，游戏实际上不存在，只有这个监听器存在着。。。
-    })
-}
-
-//为什么？为什么不能在下面直接处理玩家的操作？因为这个函数没有玩家的数据，他也不是给主函数调用的。但是为什么会这样？这很奇怪，对我来说很奇怪...
-//虽然当代的游戏都能无阻塞地异步处理玩家的输入，但是还是我还是觉得这很奇怪。
-function inputHandler(method,path,user,data){
-    if(data === null){
-        return false
-    }
-    else if(data.message === ".end"){
-        gameListener.emit("gameOver")
-        return true
-    }
-    else{
-        data.senderName = user.name
-        gameListener.emit("message",data)
-        return true
-    }
+    return new Game(userList,options,room)
 }
 
 function sendEventToAll(userList,eventName,data){
@@ -35,6 +10,33 @@ function sendEventToAll(userList,eventName,data){
     })
 }
 
+class Game{
+    constructor(userList,options,room){
+        this.userList=userList
+        this.gameListener = new EventEmitter()
+        this.gameListener.on('message',(data)=>{
+            sendEventToAll(this.userList,"gameChatMessage",data)
+        })
+        this.gameListener.once('gameOver',()=>{
+            room.gameOver()
+        })
+    }
 
+    inputHandler(method,path,user,data){
+        if(data === null){
+            return false
+        }
+        else if(data.message === ".end"){
+            this.gameListener.emit("gameOver")
+            return true
+        }
+        else{
+            data.senderName = user.name
+            this.gameListener.emit("message",data)
+            return true
+        }
+    }
+}
+
+// module.exports = Game 
 exports.start = start
-exports.inputHandler = inputHandler

@@ -40,7 +40,7 @@ function serverService(req,res){
         cookieID = req.headers.cookie.split('=')[1]
     }
 
-    //xxx:下面这段代码看着真的怪。。。
+    //xxx:下面这段代码是为了分层解析路径，现在看着很怪。。。应该可以用某种方法递归的解析，不过暂时就先这样吧。。。能用。。。
     switch(path.split('/')[1]){
     case 'session':
             if(req.method === "GET"){

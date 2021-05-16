@@ -271,9 +271,9 @@ function addEventListener(){
         }
         updateRoomsInfo()
     })
-    SSEconnection.addEventListener('lobbyChatUserListUpd',(event)=>{
+    SSEconnection.addEventListener('lobbyUserListUpd',(event)=>{
         let data = JSON.parse(event.data)
-        updateLobbyChatUserList(data)
+        updateLobbyUserList(data)
     })
     SSEconnection.addEventListener('gameStart',(event)=>{
         $('#roomForm').hide()
@@ -365,7 +365,7 @@ function updateRoomsInfo(){
     })
 }
 
-function updateLobbyChatUserList(userList){
+function updateLobbyUserList(userList){
     $('#userList table').html('')
     $.each(userList,(index,userName)=>{
         $('#userList table').append(

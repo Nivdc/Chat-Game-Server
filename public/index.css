@@ -277,6 +277,12 @@ select:focus{
 #messageList table tr td{
     display:inline;
 }
+#messageList table tr td a:link{
+    color:#268bd2;
+}
+#messageList table tr td a:visited{
+    color:#268bd2;
+}
 
 #userList{
     display:flex;

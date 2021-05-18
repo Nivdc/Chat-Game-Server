@@ -12,10 +12,15 @@ function sendEventToAll(userList,eventName,data){
 
 class Game{
     constructor(userList,options,room){
-        this.userList=userList
+        this.playerList=userList//游戏内的user统一称为player，可能会在下一个游戏中采用player类包装user，以实现更多的功能
         this.gameListener = new EventEmitter()
+        this.gameListener.on('sendInitInfo',(user)=>{
+            user.sendEvent('gameInit',{
+                playersNames:this.playerList.map(player => player.name),
+            })
+        })
         this.gameListener.on('message',(data)=>{
-            sendEventToAll(this.userList,"gameChatMessage",data)
+            sendEventToAll(this.playerList,"gameChatMessage",data)
         })
         this.gameListener.once('gameOver',()=>{
             room.gameOver()
@@ -23,20 +28,41 @@ class Game{
     }
 
     inputHandler(method,path,user,data){
-        if(data === null){
-            return false
-        }
-        else if(data.message === ".end"){
-            this.gameListener.emit("gameOver")
-            return true
+        if(path.split('/')[1]==='game'){
+            switch(path.split('/')[2]){
+                case 'IAmReady':
+                    this.gameListener.emit("sendInitInfo",user)
+                    return true
+                break
+
+                case 'message':
+                    data.senderName = user.name
+                    this.gameListener.emit("message",data)
+                    return true
+                break
+
+                case 'order':
+                    switch(data.order){
+                        case 'endGame':
+                            this.gameListener.emit("gameOver")
+                            return true
+                        break
+
+                        default:
+                            return false
+                        break
+                    }
+                break
+
+                default:
+                    return false
+                break
+            }
         }
         else{
-            data.senderName = user.name
-            this.gameListener.emit("message",data)
-            return true
+            return false
         }
     }
 }
 
-// module.exports = Game 
 exports.start = start

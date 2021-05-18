@@ -10,8 +10,8 @@ function router(req,res){
     tryService(req,res)
     .then(()=>{
         if(res.writableEnded === false && req.method === 'GET' && path.split('/')[1] !== 'session' && path.split('/')[3] !== 'game'){
-            // 这个地方要达到的效果是分流http请求，分成两种：服务器服务、服务器资源。
-            // fuck nodejs, fuck async, fuck eventEmitter
+            // 这个地方要达到的效果是分流http请求，分成两种：服务器服务、服务器静态资源。
+            // F nodejs, F async, F eventEmitter
             // 这里的问题在于nodejs中所有函数都是异步执行的，
             // 使用class Promise确实可以让它同步执行，
             // 但是同步执行涉及到事件监听器的时候只是往事件监听器里面添加了一个处理函数，并没有等这个函数执行完毕，
@@ -40,9 +40,9 @@ function serverService(req,res){
         cookieID = req.headers.cookie.split('=')[1]
     }
 
-    //xxx:下面这段代码是为了分层解析路径，现在看着很怪。。。应该可以用某种方法递归的解析，不过暂时就先这样吧。。。能用。。。
+    //xxx:下面这段代码是为了分层解析路径，现在看着很怪。。。也许就该直接用正则表达式匹配，不过暂时就先这样吧。。。能用。。。
     switch(path.split('/')[1]){
-    case 'session':
+        case 'session':
             if(req.method === "GET"){
                 userManager.createSSEconnection(cookieID,res)
             }//fixme:if someone post but never get, he will stay at tempUserList forever
@@ -67,40 +67,46 @@ function serverService(req,res){
         break
 
         case 'lobby':
-            if(typeof(path.split('/')[2]) === 'undefined'){
-                if(req.method === "GET"){
-                    if(tempCache = lobby.sendLobbyInitInfo(cookieID)){
-                        res.statusCode = 200
-                        res.setHeader('Content-Type','application/json')
-                        res.end(JSON.stringify(tempCache))
-                    }
-                    else{
-                        res.statusCode = 401
-                        res.end()
-                    }
-                }
-            }
-            else if(path.split('/')[2] === 'message'){
-                if(req.method === "POST"){
-                    req.on("data",data=>{
-                        tempCache += data
-                    })
-                    req.on("end",()=>{
-                        tempCache = JSON.parse(tempCache.toString())
-                        if(lobby.sendChatMessage(tempCache.message,cookieID)){
+            switch(path.split('/')[2]){
+                case undefined:
+                    if(req.method === "GET"){
+                        if(tempCache = lobby.sendLobbyInitInfo(cookieID)){
                             res.statusCode = 200
-                            res.end()
+                            res.setHeader('Content-Type','application/json')
+                            res.end(JSON.stringify(tempCache))
                         }
                         else{
                             res.statusCode = 401
                             res.end()
                         }
-                    })
-                }
+                    }
+                break
+
+                case 'message':
+                    if(req.method === "POST"){
+                        req.on("data",data=>{
+                            tempCache += data
+                        })
+                        req.on("end",()=>{
+                            tempCache = JSON.parse(tempCache.toString())
+                            if(lobby.sendChatMessage(tempCache.message,cookieID)){
+                                res.statusCode = 200
+                                res.end()
+                            }
+                            else{
+                                res.statusCode = 401
+                                res.end()
+                            }
+                        })
+                    }
+                break
+
+                default:
+                break
             }
         break
 
-        case 'room':
+        case 'room'://下面是旧的写法，暂时还不知道怎么改良
             if(typeof(path.split('/')[2]) === 'undefined'){//example url:/room
                 if(req.method === "POST"){
                     req.on("data",data=>{
@@ -216,7 +222,10 @@ function serverService(req,res){
                         tempCache += data
                     })
                     req.on("end",()=>{
-                        tempCache = JSON.parse(tempCache.toString())
+                        try{
+                            tempCache = JSON.parse(tempCache.toString())
+                        }catch(error){tempCache = null}
+                        
                         if(lobby.tryGameService(req.method,path,cookieID,tempCache)){
                             res.statusCode = 200
                             res.end()
@@ -231,7 +240,7 @@ function serverService(req,res){
     }
 }
 
-function splitPath(path){
+function splitOnce(path){//未使用
     splitPath.count = 1
     if(typeof(path.split('/')[splitPath.count]) !== 'undefined'){
         splitPath.count = 0

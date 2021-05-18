@@ -1,3 +1,5 @@
+//这个文件已经废弃不用了，但是旧start函数有一些研究价值，所以暂时保留在此
+
 const EventEmitter = new require('events')
 let gameListener = null
 

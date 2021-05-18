@@ -161,8 +161,7 @@ function addButtomClick(){
                     gameModeNum:parseInt($('#roomSettingData .chooseGameMode select').val()),
                     customOption:null,
                 }
-                $.post(`room/${currentRoomID}`,JSON.stringify(roomData),(data,textStatus)=>{
-                })
+                $.post(`room/${currentRoomID}`,JSON.stringify(roomData),sendSystemMsg('提示','修改成功'))
             break
             
             default:
@@ -267,27 +266,27 @@ function addEventListener(){
         roomsInfo.push(room)
         updateRoomsInfo()
     })
-    SSEconnection.addEventListener('RoomInfoUpd',(event)=>{
-        let room = JSON.parse(event.data)
-        if(room.status === 'open'){
-            $.each(roomsInfo,(index,roomInfo)=>{
-                if(roomInfo.id === room.id){
-                    roomInfo = room
-                }
-            })
-            if(currentRoomID == room.id){
-                changeRoomSetting(room.name,room.gameInfo.gameID,room.gameModeNum)
-                updateRoomUserList(room.userNames,room.hostName)
+    SSEconnection.addEventListener('roomInfoUpd',(event)=>{
+        let newRoomInfo = JSON.parse(event.data)
+        $.each(roomsInfo,(index,roomInfo)=>{
+            if(roomInfo.id === newRoomInfo.id){
+                roomsInfo[index] = newRoomInfo
+                updateRoomsInfo()
+            }
+        })
+        if(newRoomInfo.status === 'open'){
+            if(currentRoomID == newRoomInfo.id){
+                changeRoomSetting(newRoomInfo.name,newRoomInfo.gameInfo.gameID,newRoomInfo.gameModeNum)
+                updateRoomUserList(newRoomInfo.userNames,newRoomInfo.hostName)
             }
         }
-        else if(room.status === 'close'){
+        else if(newRoomInfo.status === 'close'){
             roomsInfo.forEach((roomInfo,index,list)=>{
-                if(roomInfo.id === room.id){
+                if(roomInfo.id === newRoomInfo.id){
                     list.splice(index,1)
                 }
             })
         }
-        updateRoomsInfo()
     })
     SSEconnection.addEventListener('lobbyUserListUpd',(event)=>{
         let data = JSON.parse(event.data)
@@ -308,7 +307,8 @@ function addEventListener(){
 function welcome(){
     sendSystemMsg('欢迎',`欢迎使用，当前仍是早期技术测试版。
     您可能会遇到包括但不限于以下情况：页面失去响应、连接中断、无法点击到按钮、游戏结果错误、电脑爆炸、服务器当场去世。
-    事先声明本平台不对您的遭遇负任何责任。该平台使用的所有代码已在GitHub上开源，使用BSD3 Licences，<a href="https://github.com/Nivdc/Chat-Game-Server">访问项目主页</a>。`)
+    事先声明本平台不对您的遭遇负任何责任。该平台使用的所有代码已在GitHub上开源，使用BSD3 Licences，<a href="https://github.com/Nivdc/Chat-Game-Server">访问项目主页</a>。
+    <br/>已知主页面在非chrome浏览器下显示不正常。`)
 }
 
 function updateMessageList(channelName,senderName,message){

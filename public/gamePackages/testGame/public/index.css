@@ -87,6 +87,7 @@ button:focus{
     display:flex;
     background-color:rgba(7,54,66,1);
     height:20em;
+    width:calc(1.5rem*30);
 }
 
 #gameMessageList{
@@ -98,6 +99,7 @@ button:focus{
     padding:0.5em;
     flex:3;
     text-align:left;
+    overflow: auto;
 }
 #gameMessageList table tr td{
     display:inline;
@@ -124,7 +126,7 @@ button:focus{
 #gameMsg input{
     color:var(--primary-content);
     font-size:1.5em;
-    width:28em;
+    width:calc(1.5rem*30);
     border-style: solid;
     border-color: var(--secondary-content);
     background-color:var(--background-highlights);

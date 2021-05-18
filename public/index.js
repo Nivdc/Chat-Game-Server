@@ -5,6 +5,7 @@ let roomsInfo = null
 let gamesInfo = null
 
 $(document).ready(()=>{
+    login("","")//fixme:实现账户系统后应将此处移除。既然现在实际上没有账户系统，好像没必要每次访问都多点一次"游客登陆"。
     $("#loginForm button").click(event=>{
         switch($(event.currentTarget).text())
         {
@@ -73,6 +74,7 @@ function login(userName,password){
 function init(){
     addButtomClick()
     addEventListener()
+    welcome()
 }
 
 function addButtomClick(){
@@ -81,26 +83,7 @@ function addButtomClick(){
         {
             case "加入房间":
                 let roomID=parseInt($('#roomList .choose').children(':last-child').text())
-                $.each(roomsInfo,(index,room)=>{
-                    if(room.id === roomID){
-                        if(room.userNames.length < room.gameInfo.maxPlayers || !room.gameInfo.maxPlayers){
-                            currentRoomID=room.id
-                            $.get(`room/${room.id}`,(data,status)=>{
-                                if(status === 'success'){
-                                    changeRoomSetting(room.name,room.gameInfo.gameID,room.gameModeNum)
-                                    $('#roomSettingForm :input').prop("disabled",true)
-                                    $('#roomSettingForm button').hide()
-                                    $('#roomUserListForm button:eq(0)').hide()
-                                    $("#lobbyForm").hide()
-                                    $("#roomForm").css('display','flex')
-                                }
-                                else{
-                                    currentRoomID = null
-                                }
-                            })
-                        }
-                    }
-                })
+                joinRoom(roomID)
             break
             
             case "创建房间":
@@ -188,6 +171,32 @@ function addButtomClick(){
     })
 }
 
+function joinRoom(roomID){
+    $.each(roomsInfo,(index,room)=>{
+        if(room.id === roomID){
+            if(room.userNames.length < room.gameInfo.maxPlayers || !room.gameInfo.maxPlayers){
+                currentRoomID=room.id
+                $.get(`room/${room.id}`,(data,status)=>{
+                    if(status === 'success'){
+                        changeRoomSetting(room.name,room.gameInfo.gameID,room.gameModeNum)
+                        $('#roomSettingForm :input').prop("disabled",true)
+                        $('#roomSettingForm button').hide()
+                        $('#roomUserListForm button:eq(0)').hide()
+                        $("#lobbyForm").hide()
+                        $("#roomForm").css('display','flex')
+                    }
+                    else{
+                        currentRoomID = null
+                    }
+                })
+            }
+            else{
+                sendSystemMsg('提示','该房间已满')
+            }
+        }
+    })
+}
+
 function changeRoomSetting(roomName,gameID,gameModeNum){
     $('#roomSettingData input').val(roomName)
     $('#roomSettingData .chooseGame select').val(gameID)
@@ -228,6 +237,15 @@ function addEventListener(){
         $('.roomDataForm .chooseGameMode select').change(function(){
             $.each(gamesInfo,(index,game)=>{
                 if(game.id === parseInt($(this).parent().siblings('.chooseGame').children('select').val())){
+                    $(this).parent().siblings('.gameDescription').html('')//todo
+                    if(game.gamePkgInfo.description){
+                        $(this).parent().siblings('.gameDescription').html(`<p>游戏简介:</p>${game.gamePkgInfo.description}`)
+                    }
+                    else{
+                        html+=`<p>游戏简介:作者太懒了，什么都没有写。</p>`
+                        $(this).parent().siblings('.gameDescription').html(`<p>游戏简介:</p>作者太懒了，什么都没有写。`)
+                    }
+
                     $(this).parent().siblings('.setting').html('')
                     $(this).parent().siblings('.setting').html(`<p>设定:</p>${JSON.stringify(game.config.options[parseInt($(this).val())])}`)
                     //xxx:懒得搞了，选择json做配置文件的话选项的翻译好像非常难搞，这方面还需要斟酌一下，以后有时间在弄吧
@@ -287,6 +305,12 @@ function addEventListener(){
     })
 }
 
+function welcome(){
+    sendSystemMsg('欢迎',`欢迎使用，当前仍是早期技术测试版。
+    您可能会遇到包括但不限于以下情况：页面失去响应、连接中断、无法点击到按钮、游戏结果错误、电脑爆炸、服务器当场去世。
+    事先声明本平台不对您的遭遇负任何责任。该平台使用的所有代码已在GitHub上开源，使用BSD3 Licences，<a href="https://github.com/Nivdc/Chat-Game-Server">访问项目主页</a>。`)
+}
+
 function updateMessageList(channelName,senderName,message){
     $('#messageList table').append(
         `
@@ -297,6 +321,10 @@ function updateMessageList(channelName,senderName,message){
         </tr>
         `
     )
+}
+
+function sendSystemMsg(msgType,msg){
+    updateMessageList('系统消息',msgType,msg)
 }
 
 function updateRoomsInfo(){

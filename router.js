@@ -33,7 +33,7 @@ function tryService(req,res){
 function serverService(req,res){
     let url = new URL(req.url,`http://${req.headers.host}`)
     let path = url.pathname
-    let tempCache = null
+    let tempCache = ""
     let cookieID = null
 
     if(typeof(req.headers.cookie) !== 'undefined'){
@@ -48,9 +48,10 @@ function serverService(req,res){
             }//fixme:if someone post but never get, he will stay at tempUserList forever
             else if(req.method === "POST"){
                 req.on("data",data=>{
-                    tempCache = JSON.parse(data.toString())//fixme:if data is huge, this will not be work
+                    tempCache += data
                 })
                 req.on("end",()=>{
+                    tempCache = JSON.parse(tempCache.toString())
                     if(cookieID = userManager.validateLogin(tempCache.userName,tempCache.password)){
                         res.statusCode = 200
                         res.setHeader('Set-Cookie',`id=${cookieID}; SameSite=Strict; HttpOnly`)
@@ -82,9 +83,10 @@ function serverService(req,res){
             else if(path.split('/')[2] === 'message'){
                 if(req.method === "POST"){
                     req.on("data",data=>{
-                        tempCache = JSON.parse(data.toString())//fixme:if data is huge, this will not be work
+                        tempCache += data
                     })
                     req.on("end",()=>{
+                        tempCache = JSON.parse(tempCache.toString())
                         if(lobby.sendChatMessage(tempCache.message,cookieID)){
                             res.statusCode = 200
                             res.end()
@@ -102,9 +104,10 @@ function serverService(req,res){
             if(typeof(path.split('/')[2]) === 'undefined'){//example url:/room
                 if(req.method === "POST"){
                     req.on("data",data=>{
-                        tempCache = JSON.parse(data.toString())//fixme:if data is huge, this will not be work
+                        tempCache += data
                     })
                     req.on("end",()=>{
+                        tempCache = JSON.parse(tempCache.toString())
                         if(tempCache = lobby.userCreateRoom(tempCache,cookieID)){
                             res.statusCode = 200
                             res.setHeader('Content-Type','application/json')
@@ -130,9 +133,10 @@ function serverService(req,res){
                 }
                 else if(req.method === "POST"){
                     req.on("data",data=>{
-                        tempCache = JSON.parse(data.toString())//fixme:if data is huge, this will not be work
+                        tempCache += data
                     })
                     req.on("end",()=>{
+                        tempCache = JSON.parse(tempCache.toString())
                         if(lobby.userSetRoom(tempCache,cookieID,parseInt(path.split('/')[2]))){
                             res.statusCode = 200
                             res.setHeader('Content-Type','application/json')
@@ -148,9 +152,10 @@ function serverService(req,res){
             else if(path.split('/')[3] === 'message'){
                 if(req.method === "POST"){
                     req.on("data",data=>{
-                        tempCache = JSON.parse(data.toString())//fixme:if data is huge, this will not be work
+                        tempCache += data
                     })
                     req.on("end",()=>{
+                        tempCache = JSON.parse(tempCache.toString())
                         if(lobby.sendRoomChatMessage(tempCache.message,cookieID,parseInt(path.split('/')[2]))){
                             res.statusCode = 200
                             res.end()
@@ -208,9 +213,10 @@ function serverService(req,res){
                 }//fixme:if someone post but never get, he will stay at tempUserList forever
                 else if(req.method === "POST"){
                     req.on("data",data=>{
-                        tempCache = JSON.parse(data.toString())//fixme:if data is huge, this will not be work
+                        tempCache += data
                     })
                     req.on("end",()=>{
+                        tempCache = JSON.parse(tempCache.toString())
                         if(lobby.tryGameService(req.method,path,cookieID,tempCache)){
                             res.statusCode = 200
                             res.end()
@@ -223,6 +229,16 @@ function serverService(req,res){
             }
         break
     }
+}
+
+function splitPath(path){
+    splitPath.count = 1
+    if(typeof(path.split('/')[splitPath.count]) !== 'undefined'){
+        splitPath.count = 0
+    }
+
+    splitPath.count++
+    return path.split('/')[splitPath.count]
 }
 
 function sendStaticResource(path,res){

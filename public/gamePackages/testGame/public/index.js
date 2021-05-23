@@ -48,7 +48,7 @@ function inputHandler(inputStr){
     if(/^\.([a-z0-9]*)$/i.test(inputStr)){
         switch(inputStr.match(/^\.([a-z0-9]*)$/i)[1]){
             case 'end':
-                let order = {order:`end`}
+                let order = {order:`endGame`}
                 $.post(`/game/order`,JSON.stringify(order))
             break
             

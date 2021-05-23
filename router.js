@@ -183,6 +183,24 @@ function serverService(req,res){
                     res.end()
                 }
             }
+            else if(path.split('/')[3] === "kick"){
+                if(req.method === "POST"){
+                    req.on("data",data=>{
+                        tempCache += data
+                    })
+                    req.on("end",()=>{
+                        tempCache = JSON.parse(tempCache.toString())
+                        if(lobby.kickUser(cookieID,parseInt(path.split('/')[2]),tempCache.id)){
+                            res.statusCode = 200
+                            res.end()
+                        }
+                        else{
+                            res.statusCode = 401
+                            res.end()
+                        }
+                    })
+                }
+            }
             else if(path.split('/')[3] === "game"){
                 if(req.method === "POST" && typeof(path.split('/')[4]) === 'undefined'){
                     let roomID = parseInt(path.split('/')[2])

@@ -3,11 +3,11 @@
     "options":[
         {
             "modeName":"默认游戏模式",
-            "maxPlayers":"1"
+            "maxPlayers":null
         },
         {
-            "modeName":"测试模式",
-            "maxPlayer":null
+            "modeName":"单人模式",
+            "maxPlayer":1
         }
     ]
 }

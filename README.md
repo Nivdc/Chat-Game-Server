@@ -1,5 +1,5 @@
 ### 特别鸣谢
-@Twelveeee 给爷爬！
+[@Twelveeee](https://github.com/Twelveeee) 给爷爬！
 
 # 简介
 这个项目的目标是基于nodejs创建一个简单、易于使用的网页在线游戏平台。  

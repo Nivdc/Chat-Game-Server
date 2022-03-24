@@ -1,0 +1,329 @@
+*,
+::before,
+::after {
+    margin: 0;padding: 0;
+    box-sizing: border-box;
+}
+html,body{height:100%;}
+:root{
+    /*以下是solarized配色方案的代码
+    这个配色方案要反转颜色只需要简单调整五个base变量即可，
+    base03是暗色调背景，base3是亮色调背景，
+    在此记录的变量未必都会在之后的代码中用到。*/
+    --base03:    #002b36;
+    --base02:    #073642;
+    --base01:    #586e75;
+    --base00:    #657b83;
+    --base0:     #839496;
+    --base1:     #93a1a1;
+    --base2:     #eee8d5;
+    --base3:     #fdf6e3;
+    --yellow:    #b58900;
+    --orange:    #cb4b16;
+    --red:       #dc322f;
+    --magenta:   #d33682;
+    --violet:    #6c71c4;
+    --blue:      #268bd2;
+    --cyan:      #2aa198;
+    --green:     #859900;
+
+    --background:var(--base03);
+    --background-highlights:var(--base02);
+    --secondary-content:var(--base01);
+    --primary-content:var(--base0);
+    --emphasized-content:var(--base1);
+    --optional-emphasized-content:var(--base2)
+}
+
+body{
+    display:flex;
+    background-color:var(--background);
+    color:var(--primary-content);
+
+    align-items: center;
+    justify-content:center;
+}
+
+button{
+    margin: 0.5em;
+
+    position: relative;
+    color: var(--primary-content);
+
+    border-style: none;
+
+    background-color:inherit;
+
+    -webkit-transition:.2s linear;
+    -moz-transition:.2s linear;
+    -o-transition:.2s linear;
+    transition:.2s linear;
+}
+button:hover{
+    color: var(--optional-emphasized-content);
+}
+button:active{
+    top: 2px;
+}
+button:focus{
+    outline-style: none;
+}
+
+select{
+    color:var(--primary-content);
+    font-size:1em;
+    background-color:var(--background-highlights);
+}
+select:focus{
+    outline-style: none;
+}
+
+.form{
+    margin:0px auto;
+    padding: 1em;
+
+    border-style: solid;
+    border-color: var(--secondary-content);
+
+    background-color:var(--background-highlights);
+    text-align: center;
+}
+.form button{
+    font-size: 1.5em;
+}
+
+.hover{
+    border-style:dashed;
+    border-color:rgba(147,161,161,1);
+}
+
+.choose{
+    border-style:solid;
+    border-color:rgba(147,161,161,1);
+    color: var(--optional-emphasized-content);
+}
+
+.roomDataForm{
+    font-size:1.2em;
+}
+.roomDataForm div{
+    padding:0.3em;
+}
+.roomDataForm div:first-child{
+    text-align: left;
+}
+.roomDataForm input{
+    color:var(--primary-content);
+    font-size:1.2em;
+    border-style: solid;
+    border-color: var(--secondary-content);
+    background-color:var(--background-highlights);
+}
+.roomDataForm input:focus{
+    outline-style: none;
+}
+.roomDataForm hr{
+    border-color: var(--secondary-content);
+}
+
+#loginForm{
+    border-radius: 1em;
+}
+
+#lobbyForm{
+    display:none;
+    height:80%;
+    width:80%;
+    border-radius: 1em;
+}
+
+#roomListForm{
+    flex:2;
+}
+
+#roomList{
+    display:flex;
+    padding: 0.5em;
+    height:90%;
+}
+#roomList table{
+    border-collapse:collapse;
+    flex:1;
+}
+#roomList table tr td{
+    padding: 0.5em;
+    background-color:var(--background);
+}
+#roomList table tr td:hover{
+    /*xxx:需要父元素选择器实现的效果，此处使用js
+    border-style:dashed;
+    border-color:rgba(147,161,161,1); */
+}
+#roomList table tr th:first-child{
+    padding-left: 0.5em;
+    text-align:left;
+}
+#roomList table tr td:first-child{
+    text-align:left;
+}
+
+#infoBar{
+    margin-left:0.5em;
+    flex:1;
+    display:flex;
+    flex-direction:column;
+}
+
+#gameInfo{
+    width:100%;
+    flex:2;
+    text-align:left;
+}
+#gameInfo *{
+    background:var(--background);
+}
+#roomUserInfo{
+    width:100%;
+    border-top:none;
+    flex:1;
+}
+#roomUserInfo table tr td{
+    padding:0.5em;
+    background:var(--background);
+}
+
+#createRoomForm{
+    display:none;
+    position:absolute;
+    width: 30em;
+    overflow: auto;
+}
+
+#roomForm{
+    display:none;
+    height:80%;
+    width:80%;
+    border-radius: 1em;
+}
+
+#roomUserListForm{
+    flex:2;
+}
+
+#roomUserList{
+    display:flex;
+    padding: 0.5em;
+    height:90%;
+}
+#roomUserList table{
+    border-collapse:collapse;
+    flex:1;
+}
+#roomUserList table tr td{
+    padding: 0.5em;
+    background-color:var(--background)
+}
+#roomUserList table tr th:first-child{
+    padding-left: 0.5em;
+    text-align:left;
+}
+#roomUserList table tr td:first-child{
+    text-align:left;
+}
+#roomSettingForm{
+    width:100%;
+    height:75%;
+}
+#roomSettingData{
+    height:80%;
+}
+
+#chatForm{
+    display:none;
+    position:absolute;
+    bottom:0.3em;
+    right:0.3em;
+    width: 45em;
+}
+
+#messageForm{
+    display:flex;
+    background-color:rgba(7,54,66,0);
+    height:15em;
+}
+#messageForm:hover{
+    background-color:rgba(7,54,66,1);
+}
+#messageForm:hover #userList{
+    border-color:rgba(88,110,117,1);
+    opacity:1;
+}
+#messageForm:hover #messageList{
+    border-color:rgba(88,110,117,1);
+}
+
+#messageList{
+    display:flex;
+    flex-direction:column-reverse;
+    background-color:rgba(0,0,0,0);
+    border-color:rgba(0,0,0,0);
+    border-bottom:none;
+    padding:0.5em;
+    flex:3;
+    text-align:left;
+    overflow:auto;
+    width: 100%;
+}
+#messageList table tr td{
+    display:inline;
+}
+#messageList table tr td a:link{
+    color:#268bd2;
+}
+#messageList table tr td a:visited{
+    color:#268bd2;
+}
+
+#userList{
+    display:flex;
+    opacity:0;
+    background-color:rgba(0,0,0,0);
+    border-color:rgba(0,0,0,0);
+    padding:0.5em;
+    border-left:none;
+    border-bottom:none;
+    flex:1
+}
+#userList table{
+    flex:1
+}
+#userList table tr td{
+    padding:0.5em;
+    text-align:left;
+    background-color:var(--background);
+}
+
+#msg{
+    display:flex
+}
+#msg select{
+    flex:1;
+}
+#msg input{
+    display:none;
+    color:var(--primary-content);
+    font-size:1.5em;
+    width:28em;
+    border-style: solid;
+    border-color: var(--secondary-content);
+    background-color:var(--background-highlights);
+}
+#msg input:focus{
+    outline-style: none;
+}
+/*#msg input:focus #messageForm #userList{
+    opacity:1;
+}
+xxx:应该有个办法能够非常优雅的作出输入就显示，不输入就不显示的效果
+ 但是父元素选择器在CSS4，兄弟元素选择器要重新调整flex布局
+ 现在姑且就先用js实现吧*/

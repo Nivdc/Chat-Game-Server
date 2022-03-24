@@ -1,0 +1,136 @@
+*,
+::before,
+::after {
+    margin: 0;padding: 0;
+    box-sizing: border-box;
+}
+html,body{height:100%;}
+:root{
+    /*以下是solarized配色方案的代码
+    这个配色方案要反转颜色只需要简单调整五个base变量即可，
+    base03是暗色调背景，base3是亮色调背景，
+    在此记录的变量未必都会在之后的代码中用到。*/
+    --base03:    #002b36;
+    --base02:    #073642;
+    --base01:    #586e75;
+    --base00:    #657b83;
+    --base0:     #839496;
+    --base1:     #93a1a1;
+    --base2:     #eee8d5;
+    --base3:     #fdf6e3;
+    --yellow:    #b58900;
+    --orange:    #cb4b16;
+    --red:       #dc322f;
+    --magenta:   #d33682;
+    --violet:    #6c71c4;
+    --blue:      #268bd2;
+    --cyan:      #2aa198;
+    --green:     #859900;
+
+    --background:var(--base03);
+    --background-highlights:var(--base02);
+    --secondary-content:var(--base01);
+    --primary-content:var(--base0);
+    --emphasized-content:var(--base1);
+    --optional-emphasized-content:var(--base2)
+}
+
+body{
+    display:flex;
+    background-color:var(--background);
+    color:var(--primary-content);
+
+    align-items: center;
+    justify-content:center;
+}
+
+button{
+    margin: 0.5em;
+
+    position: relative;
+    color: var(--primary-content);
+
+    border-style: none;
+
+    background-color:inherit;
+
+    -webkit-transition:.2s linear;
+    -moz-transition:.2s linear;
+    -o-transition:.2s linear;
+    transition:.2s linear;
+}
+button:hover{
+    color: var(--optional-emphasized-content);
+}
+button:active{
+    top: 2px;
+}
+button:focus{
+    outline-style: none;
+}
+
+.form{
+    margin:0px auto;
+    padding: 1em;
+
+    border-style: solid;
+    border-color: var(--secondary-content);
+
+    background-color:var(--background-highlights);
+    text-align: center;
+}
+.form button{
+    font-size: 1.5em;
+}
+
+#gameMessageForm{
+    display:flex;
+    background-color:rgba(7,54,66,1);
+    height:20em;
+    width:calc(1.5rem*30);
+}
+
+#gameMessageList{
+    display:flex;
+    flex-direction:column-reverse;
+    background-color:rgba(0,0,0,0);
+    border-color:rgba(88,110,117,1);
+    border-bottom:none;
+    padding:0.5em;
+    flex:3;
+    text-align:left;
+    overflow: auto;
+}
+#gameMessageList table tr td{
+    display:inline;
+}
+
+#playerList{
+    display:flex;
+    border-color:rgba(88,110,117,1);
+    background-color:rgba(0,0,0,0);
+    padding:0.5em;
+    border-left:none;
+    border-bottom:none;
+    flex:1
+}
+#playerList table{
+    flex:1
+}
+#playerList table tr td{
+    padding:0.5em;
+    text-align:left;
+    background-color:var(--background);
+}
+
+#gameMsg input{
+    color:var(--primary-content);
+    font-size:1.5em;
+    width:calc(1.5rem*30);
+    border-style: solid;
+    border-color: var(--secondary-content);
+    background-color:var(--background-highlights);
+}
+#gameMsg input:focus{
+    outline-style: none;
+}

@@ -33,7 +33,7 @@ $(document).ready(()=>{
     $('#msg select').change(function(){//切换频道
         currentChannel=$(this).val()
     })
-    $('#msg').submit(event => { 
+    $('#msg').submit(event => {
         event.preventDefault()//阻止默认事件
         inputHandler($('#msg input').val())
         $('#msg input').val("")
@@ -43,14 +43,15 @@ $(document).ready(()=>{
 })
 
 function login(userName,password){
-    let user={userName:`${userName}`,password:`${password}`}
-    $.post('session',JSON.stringify(user),(data,textStatus)=>{
+    let user={name:`${userName}`,password:`${password}`}
+    $.post('login',JSON.stringify(user),(data,textStatus)=>{
         if(textStatus === 'success'){
             $("#loginForm").hide()
             $("#lobbyForm").css('display','flex')
             $("#chatForm").show()
             $('#msg input').show()
-            if(SSEconnection = new EventSource('session')){
+            SSEconnection = new WebSocket(`ws://${window.location.host}/session`)
+            if(SSEconnection !== null){
                 SSEconnection.onopen = init
             }
         }

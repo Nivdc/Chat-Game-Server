@@ -2,127 +2,21 @@
 <html lang="zh">
     <head>
         <meta charset="utf-8">
-        <title>testPage</title>
-        <link href="lib/font-awesome-4.7.0/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+        <title>Home</title>
         <link href="index.css" rel="stylesheet" type="text/css">
         <script src="lib/jquery-3.6.0.js"></script>
         <script src="index.js"></script>
     </head>
 
     <body>
-        <div id="loginForm" class="form">
-            <button type="button">游客登录</button>
-        </div>
-
-        <div id="lobbyForm" class="form">
-            <div id="roomListForm">
-                <div id="roomList" class="form">
-                    <table>
-                        <tr>
-                            <th>房间名</th>
-                            <th>游戏</th>
-                            <th>模式</th>
-                            <th><i class="fa fa-users" aria-hidden="true"></i></th>
-                            <th>房主</th>
-                            <th>ID</th>
-                        </tr>
-                    </table>
-                </div>
-                <button type="button"><i class="fa fa-sign-in" aria-hidden="true"></i>加入房间</button>
-                <button type="button"><i class="fa fa-plus" aria-hidden="true"></i>创建房间</button>
-            </div>
-            <div id="infoBar">
-                <div id="gameInfo" class="form">
-                </div>
-                <div id="roomUserInfo" class="form">
-                     <table>
-                   </table>
-                </div>
-            </div>
-        </div>
-
-        <div id="roomForm" class="form">
-            <div id="roomUserListForm">
-                <div id="roomUserList" class="form">
-                    <table>
-                   </table>
-                </div>
-                <button type="button"><i class="fa fa-play" aria-hidden="true"></i>开始游戏</button>
-                <button type="button"><i class="fa fa-sign-out" aria-hidden="true"></i>退出房间</button>
-            </div>
-            <div id="infoBar">
-                <form id="roomSettingForm" class="roomDataForm form">
-                    <div id="roomSettingData">
-                        <div class="inputName">
-                            <p>房间名：</p>
-                            <input type="text" value="" />
-                        </div>
-                        <div class="chooseGame">
-                            <p>选择游戏：</p>
-                            <select>
-                            </select>
-                        </div>
-                        <div class="chooseGameMode">
-                            <p>选择游戏模式：</p>
-                            <select>
-                            </select>
-                        </div>
-                        <hr>
-                        <div class="setting">
-                        </div>
-                    </div>
-                    <div>
-                        <button type="button">修改</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <form id="createRoomForm" class="roomDataForm form">
-            <div id="roomData">
-                <div class="inputName">
-                    <p>房间名：</p>
-                    <input type="text" value="" />
-                </div>
-                <div class="chooseGame">
-                    <p>选择游戏：</p>
-                    <select>
-                    </select>
-                </div>
-                <div class="chooseGameMode">
-                    <p>选择游戏模式：</p>
-                    <select>
-                    </select>
-                </div>
-                <hr>
-                <div class="gameDescription">
-                </div>
-                <hr>
-                <div class="setting">
-                </div>
-            </div>
-            <div>
-                <button type="button">创建</button>
-                <button type="button">取消</button>
-            </div>
-        </form>
-
-        <div id="chatForm">
+        <div id="mainForm">
             <div id="messageForm">
-                <div id="messageList"class="form">
+                <div id="messageList">
                     <table>
                     </table>
-                </div>
-                <div id="userList"class="form">
-                    <table>
-                   </table>
                 </div>
             </div>
             <form id="msg">
-                <select>
-                    <option val="大厅">大厅</option>
-                    <option val="房间">房间</option>
-                </select>
                 <input type="text"></input>
             </form>
         </div>

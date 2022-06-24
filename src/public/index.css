@@ -64,6 +64,7 @@ body{
 
 #messageList{
     display:flex;
+    flex:auto;
     flex-direction:column-reverse;
     /* background-color:rgba(0,0,0,0); */
     /* border-color:var(--secondary-content); */

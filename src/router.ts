@@ -23,7 +23,7 @@ async function server(req: Request): Promise<Response|null>{
         const userInfo = await req.json()
         const userCookie = validateLogin(userInfo.name,userInfo.password)
         if(userCookie !== null){
-            return new Response("login success", { 
+            return new Response("login success.", { 
                 status: 200,
                 headers: {
                     "Set-Cookie": `id=${userCookie}; SameSite=Strict; HttpOnly`,

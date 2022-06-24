@@ -1,9 +1,12 @@
+var socket = null
+
 $(document).ready(()=>{
     $('#msg').submit(event => {
         event.preventDefault()//阻止默认行为
         inputHandler($('#msg input').val())
         $('#msg input').val("")
     })
+    login("","")
     welcome()
 })
 
@@ -12,7 +15,7 @@ function welcome(){
     欢迎使用，当前仍是早期技术测试版。请不要使用同一浏览器多次访问！服务器可能会当场死亡。<br/>
     您可能会遇到页面失去响应、连接中断、游戏结果错误、电脑爆炸等问题。<br/>
     事先声明本平台不对您的遭遇负任何责任。<a href="https://github.com/Nivdc/lobby" target="_blank">点此访问项目主页</a>。<br/>
-    初次访问请使用/login登陆系统，输入/help查看指令帮助。<br/>`)
+    初次访问可输入/help查看指令帮助。<br/>`)
 }
 
 function sendSystemMsg(msgType,msg){
@@ -24,7 +27,7 @@ function updateMessageList(channelName,senderName,message){
         `
         <tr>
             <td>[${channelName}]</td>
-            <td>${senderName}</td>
+            <td>${senderName} :</td>
             <td>${message}</td>
         </tr>
         `
@@ -34,11 +37,6 @@ function updateMessageList(channelName,senderName,message){
 function inputHandler(inputStr){
     if(/^\/([a-z0-9]*)$/i.test(inputStr)){
         switch(inputStr.match(/^\/([a-z0-9]*)$/i)[1]){
-            case 'end':
-                // let order = {order:`endGame`}
-                // $.post(`/game/order`,JSON.stringify(order))
-            break
-            
             case 'help':
                 showHelp()
             break
@@ -50,21 +48,51 @@ function inputHandler(inputStr){
         }
     }
     else{
-        // let message = {message:`${inputStr}`}
-        // $.post(`/game/message`,JSON.stringify(message))
+        if(socket !== null){
+            const message = {message:inputStr}
+            socket.send(JSON.stringify(message))
+        }
+    }
+}
+
+function login(userName,password){
+    const user={name:userName,password:password}
+    $.post('login',JSON.stringify(user),(data,textStatus)=>{
+        if(textStatus === 'success'){
+            socket = new WebSocket(`ws://${window.location.host}/session`)
+            if(socket !== null){
+                socket.onopen = init
+                
+                sendSystemMsg("提示","登陆成功。")
+            }
+            else{
+                alert("登录失败")
+            }
+        }
+        else{
+            alert("登录失败")
+        }
+   })
+}
+
+function init(){
+    socket.onmessage = (e) => {
+        const event = JSON.parse(e.data)
+        if(event.eventType === "chatMessage"){
+            updateMessageList("大厅","未知",event.content)
+        }
     }
 }
 
 function showHelp(){
     sendSystemMsg('指令帮助',
     `<br/>
-    /login : 以游客身份登陆系统。<br/>
     /help : 显示本帮助。<br/>`)
 }
 
 
 
-// var SSEconnection = null//提升至全局变量，让游戏脚本可以添加自己的事件处理函数
+
 // let currentChannel = '大厅'
 // let currentRoom = null
 // let roomsInfo = null
@@ -127,11 +155,6 @@ function showHelp(){
 //    })
 // }
 
-// function init(){
-//     addButtomClick()
-//     addEventListener()
-//     welcome()
-// }
 
 // function addButtomClick(){
 //     $("#roomListForm button").click(event=>{

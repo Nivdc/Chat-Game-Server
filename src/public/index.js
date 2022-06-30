@@ -49,7 +49,7 @@ function inputHandler(inputStr){
     }
     else{
         if(socket !== null){
-            const message = {message:inputStr}
+            const message = {type:"lobbyChatMessage",data:inputStr}
             socket.send(JSON.stringify(message))
         }
     }
@@ -78,8 +78,8 @@ function login(userName,password){
 function init(){
     socket.onmessage = (e) => {
         const event = JSON.parse(e.data)
-        if(event.eventType === "chatMessage"){
-            updateMessageList("大厅","未知",event.content)
+        if(event.type === "lobbyChatMessage"){
+            updateMessageList("大厅", event.data.senderName, event.data.message)
         }
     }
 }

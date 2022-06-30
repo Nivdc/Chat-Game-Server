@@ -1,5 +1,5 @@
 import { crypto } from "../../models/dev_deps.ts"
-// const userJoinLobby = require('./lobby').userJoinLobby
+import { userJoinLobby } from "./lobby.ts"
 const tempUserList: User[] = []
 let guestCount = 1
 
@@ -35,8 +35,10 @@ export function createWebSocketConnection(req: Request) : Response{
         return new Response("request isn't trying to upgrade to websocket.", { status : 400 })
     }
 
-    socket.onopen = () => user.setWebSocketConnection(socket)
-    // userJoinLobby(user)
+    socket.onopen = () => {
+        user.setWebSocketConnection(socket)
+        userJoinLobby(user)
+    }
 
     return response
 

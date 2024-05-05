@@ -42,7 +42,11 @@ function user_join_lobby(req: Request, server: Server){
     console.log(uuid)
 
     if(uuid !== undefined)
+<<<<<<< HEAD
         if(user_list.find(user => {return user.uuid === uuid}) !== undefined){
+=======
+        if(user_list.find(user => {return user.uuid === uuid}) !== undefined)
+>>>>>>> ab4b4f34918f9957bf2ad5dada464ff6cc1032db
             return new Response("WebSocket upgrade error.", { status: 400 })
         }
 

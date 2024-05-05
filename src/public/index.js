@@ -56,23 +56,24 @@ function inputHandler(inputStr){
 }
 
 function login(userName,password){
-    const user={name:userName,password:password}
-    $.post('login',JSON.stringify(user),(data,textStatus)=>{
-        if(textStatus === 'success'){
-            socket = new WebSocket(`ws://${window.location.host}/session`)
-            if(socket !== null){
-                socket.onopen = init
+    socket = new WebSocket(`ws://${window.location.host}/session`)
+//     const user={name:userName,password:password}
+//     $.post('login',JSON.stringify(user),(data,textStatus)=>{
+//         if(textStatus === 'success'){
+//             socket = new WebSocket(`ws://${window.location.host}/session`)
+//             if(socket !== null){
+//                 socket.onopen = init
                 
-                sendSystemMsg("提示","登陆成功。")
-            }
-            else{
-                alert("登录失败")
-            }
-        }
-        else{
-            alert("登录失败")
-        }
-   })
+//                 sendSystemMsg("提示","登陆成功。")
+//             }
+//             else{
+//                 alert("登录失败")
+//             }
+//         }
+//         else{
+//             alert("登录失败")
+//         }
+//    })
 }
 
 function init(){

@@ -8,6 +8,7 @@ $(document).ready(()=>{
     })
     login("","")
     welcome()
+    init()
 })
 
 function welcome(){
@@ -78,6 +79,7 @@ function login(userName,password){
 
 function init(){
     socket.onmessage = (e) => {
+        console.log(e)
         const event = JSON.parse(e.data)
         if(event.type === "lobbyChatMessage"){
             updateMessageList("大厅", event.data.senderName, event.data.message)

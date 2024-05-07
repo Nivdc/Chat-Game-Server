@@ -9,21 +9,22 @@ export function lobby_join_request(req: Request, server: Server){
             return new Response("WebSocket upgrade error.", { status: 400 })
 
     let user = new User(`游客${user_counter}`)
+    user_list.push(user)
     const success = server.upgrade(req, { data: { uuid:user.uuid }, headers : {"Set-Cookie": `user_uuid=${user.uuid}`} })
 
     if(success){
         user_counter ++
-        user_list.push(user)
         return undefined
     }
     else{
+        user_list.pop()
         return new Response("WebSocket upgrade error.", { status: 400 })
     }
 }
 
 export function lobby_set_user_websocket(ws: WebSocket){
     let user = user_list.find(user => {return user.uuid === ws.data.uuid})
-    user?.set_WebSocket(ws)
+    user?.set_websocket(ws)
     user?.socket?.subscribe("lobby")
 }
 
@@ -48,8 +49,10 @@ class User{
         this.currentRoomID = null
     }
 
-    set_WebSocket(socket : WebSocket){
+    set_websocket(socket : WebSocket){
+        console.log(this)
         this.socket = socket
+        console.log(this)
     }
 
     sendEvent(eventType : string, data? : any){

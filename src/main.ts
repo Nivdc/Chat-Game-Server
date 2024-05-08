@@ -1,5 +1,5 @@
 import { lobby_join_request, lobby_set_user_websocket } from "./lib/lobby"
-import { lobby_user_quit } from "./lib/lobby"
+import { lobby_user_quit, lobby_ws_message_router } from "./lib/lobby"
 
 // Configuration
 const port = process.env?.PORT ? Number(process.env.PORT) : 3000
@@ -22,11 +22,11 @@ function main(){
             return serve_static_resource(url.pathname)
         },
         websocket: {
-            message(ws, message) {},
+            message(ws, message) {
+                lobby_ws_message_router(ws, message)
+            },
             open(ws) {
                 lobby_set_user_websocket(ws)
-                // const msg = `${ws.data.uuid} has entered the chat`;
-                // server.publish("lobby", msg);
             },
             close(ws, code, message) {
                 lobby_user_quit(ws)
@@ -40,7 +40,7 @@ function main(){
 
 async function serve_static_resource(path: String): Response {
     const resource = Bun.file("./src/public" + path)
-    return await resource.exists() ? new Response(await resource.stream()) : new Response("404 Not Found", { status: 404 })
+    return await resource.exists() ? new Response(resource) : new Response("404 Not Found", { status: 404 })
 }
 
 main()

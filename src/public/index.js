@@ -12,9 +12,9 @@ $(document).ready(()=>{
 })
 
 function welcome(){
-    sendSystemMsg('欢迎',`<br/>
-    欢迎使用，当前仍是早期技术测试版。请不要使用同一浏览器多次访问！服务器可能会当场死亡。<br/>
-    您可能会遇到页面失去响应、连接中断、游戏结果错误、电脑爆炸等问题。<br/>
+    sendSystemMsg('公告',`<br/>
+    欢迎使用，当前仍是早期技术测试版。服务器随时可能当场死亡。<br/>
+    您可能会遇到页面失去响应、连接中断、游戏结果错误、电脑爆炸等情况。<br/>
     事先声明本平台不对您的遭遇负任何责任。<a href="https://github.com/Nivdc/lobby" target="_blank">点此访问项目主页</a>。<br/>
     初次访问可输入/help查看指令帮助。<br/>`)
 }
@@ -82,7 +82,7 @@ function init(){
         console.log(e)
         const event = JSON.parse(e.data)
         if(event.type === "lobbyChatMessage"){
-            updateMessageList("大厅", event.data.senderName, event.data.message)
+            updateMessageList("大厅", event.data.sender_name, event.data.message)
         }
     }
 }

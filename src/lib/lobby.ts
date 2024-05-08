@@ -50,15 +50,15 @@ export function lobby_ws_message_router(ws: WebSocket, message: string){
         break
 
         case "UserCreatRoom":
+            user_quit_room(user)
             room_list.push(new Room(event.data, user, room_counter))
             room_counter ++
-            console.log(room_list)
         break
 
         case "UserJoinRoom":
+            user_quit_room(user)
             let room = room_list.find(room => {return room.id === event.data})
             room?.userJoin(user)
-            console.log(room)
         break
 
         case "UserQuitRoom":
@@ -82,7 +82,7 @@ function user_quit_room(user: User){
     room?.userQuit(user)
     if(room?.user_list.length === 0){
         room_list.forEach((currentRoom,index,list) => {
-            if(currentRoom.id === room.id){
+            if(currentRoom === room){
                 list.splice(index,1)
             }
         })
@@ -142,7 +142,7 @@ class Room{
         // this.game = gameList.find(game => {return game.id === room_data.gameID})
         // this.gameModeNum=room_data.gameModeNum
         // this.customOption=room_data.customOption
-        this.user_list=[]
+        this.user_list = []
 
         this.userJoin(host)
     }

@@ -57,7 +57,7 @@ export function lobby_ws_message_router(ws: WebSocket, message: string){
 
         case "UserJoinRoom":
             user_quit_room(user)
-            let room = room_list.find(room => {return room.id === event.data})
+            let room = room_list.find(room => {return room.id === Number(event.data)})
             room?.userJoin(user)
         break
 

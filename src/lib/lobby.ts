@@ -45,7 +45,7 @@ export function lobby_ws_message_router(ws: WebSocket, message: string){
 
     if (user !== undefined)
     switch(event.type){
-        case "lobbyChatMessage":
+        case "LobbyChatMessage":
             send_event_to(user_list, event.type, {sender_name:user.name, message:event.data})
         break
 
@@ -75,6 +75,10 @@ function send_event_to(user_list: User[],type:string, data? :any){
     user_list.forEach(user => {
         user.send_event(type,data)
     })
+}
+
+function send_system_message(msg: string){
+    send_event_to(user_list, "LobbyChatMessage", {sender_name:'系统', message:msg})
 }
 
 function user_quit_room(user: User){
@@ -150,11 +154,16 @@ class Room{
     userJoin(user: User){
         this.user_list.push(user)
         user.current_room = this
+        this.send_system_message(`玩家->${user.name} 加入了房间。`)
     }
 
     userQuit(user: User){
-        if(user === this.host && this.user_list.length !== 1){
-            this.host = this.user_list.find(user => user !== this.host)
+        if(user === this.host && this.user_list.length > 1){
+            let new_host = this.user_list.find(user => user !== this.host)
+            if(new_host !== undefined){
+                this.host = new_host
+                this.send_system_message(`由于房主退出房间，新房主为->${new_host?.name} 。`)
+            }
         }
 
         this.user_list.forEach((currentUser,index,list) =>{
@@ -163,6 +172,16 @@ class Room{
                 currentUser.current_room = null
             }
         })
+
+        this.send_system_message(`玩家->${user.name} 退出了房间。`)
+    }
+
+    send_chat_message(sender_name: string, msg: string){
+        send_event_to(this.user_list, "RoomChatMessage", {sender_name:sender_name, message:msg})
+    }
+
+    send_system_message(msg: string){
+        this.send_chat_message('系统', msg)
     }
 
     room_ws_message_router(ws: WebSocket, message: any){
@@ -172,7 +191,7 @@ class Room{
         if (user !== undefined)
         switch(event.type){
             case "RoomChatMessage":
-                send_event_to(this.user_list, event.type, {sender_name:user.name, message:event.data})
+                this.send_chat_message(user.name, event.data)
                 break
             case "UserCreatRoom":
                 break

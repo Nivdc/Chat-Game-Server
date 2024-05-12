@@ -1,4 +1,8 @@
-var socket = null
+let socket = null
+let create_room_data = {
+    name: "未命名",
+    status: "open",
+}
 
 $(document).ready(()=>{
     $('#msg').submit(event => {
@@ -36,11 +40,31 @@ function updateMessageList(channelName,senderName,message){
 }
 
 function inputHandler(inputStr){
-    if(/^\/([a-z0-9]*)$/i.test(inputStr)){
-        switch(inputStr.match(/^\/([a-z0-9]*)$/i)[1]){
+    if(/^\/(\w+).*$/.test(inputStr)){
+        switch(inputStr.match(/^\/(\w+).*$/)[1]){
             case 'help':
                 showHelp()
             break
+
+            case 'cr':
+            case 'CreateRoom' :{
+                const event = {type:"UserCreatRoom",data:create_room_data}
+                socket.send(JSON.stringify(event))
+                break
+            }
+            case 'jr':
+            case 'JoinRoom'   :{
+                const tagete_room_id = inputStr.match(/^\/(\w+)\s+(\d+)*$/)[2]
+                const event = {type:"UserJoinRoom",data:tagete_room_id}
+                socket.send(JSON.stringify(event))
+                break
+            }
+            case 'qr':
+            case 'QuitRoom':{
+                const event = {type:"UserQuitRoom"}
+                socket.send(JSON.stringify(event))
+                break
+            }
 
             default:
                 // let message = {message:`${inputStr}`}
@@ -50,7 +74,7 @@ function inputHandler(inputStr){
     }
     else{
         if(socket !== null){
-            const message = {type:"lobbyChatMessage",data:inputStr}
+            const message = {type:"LobbyChatMessage",data:inputStr}
             socket.send(JSON.stringify(message))
         }
     }
@@ -78,11 +102,19 @@ function login(userName,password){
 }
 
 function init(){
+    // socket.onopen = () => {
+    //     inputHandler("/cr")
+    // }
     socket.onmessage = (e) => {
-        console.log(e)
         const event = JSON.parse(e.data)
-        if(event.type === "lobbyChatMessage"){
-            updateMessageList("大厅", event.data.sender_name, event.data.message)
+        switch(event.type){
+            case "LobbyChatMessage":
+                updateMessageList("大厅", event.data.sender_name, event.data.message)
+            break
+
+            case "RoomChatMessage":
+                updateMessageList("房间", event.data.sender_name, event.data.message)
+            break
         }
     }
 }

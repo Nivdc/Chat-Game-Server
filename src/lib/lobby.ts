@@ -34,7 +34,7 @@ export function lobby_user_quit(ws: WebSocket){
     user_list.forEach((currentUser,index,list) => {
         if(currentUser.uuid === ws.data.uuid){
             list.splice(index,1)
-            user_quit_room(currentUser)
+            currentUser.quit_room()
         }
     })
 }
@@ -50,19 +50,19 @@ export function lobby_ws_message_router(ws: WebSocket, message: string){
         break
 
         case "UserCreatRoom":
-            user_quit_room(user)
+            user.quit_room()
             room_list.push(new Room(event.data, user, room_counter))
             room_counter ++
         break
 
         case "UserJoinRoom":
-            user_quit_room(user)
+            user.quit_room()
             let room = room_list.find(room => {return room.id === Number(event.data)})
             room?.userJoin(user)
         break
 
         case "UserQuitRoom":
-            user_quit_room(user)
+            user.quit_room()
         break
 
         default:
@@ -79,18 +79,6 @@ function send_event_to(user_list: User[],type:string, data? :any){
 
 function send_system_message(msg: string){
     send_event_to(user_list, "LobbyChatMessage", {sender_name:'系统', message:msg})
-}
-
-function user_quit_room(user: User){
-    let room = user.current_room
-    room?.userQuit(user)
-    if(room?.user_list.length === 0){
-        room_list.forEach((currentRoom,index,list) => {
-            if(currentRoom === room){
-                list.splice(index,1)
-            }
-        })
-    }
 }
 
 class User{
@@ -121,6 +109,10 @@ class User{
                 this.socket.send(JSON.stringify(event))
             }
         }
+    }
+
+    quit_room(){
+        this.current_room?.userQuit(this)
     }
 
     info(){
@@ -172,6 +164,14 @@ class Room{
                 currentUser.current_room = null
             }
         })
+
+        if(this.user_list.length === 0){
+            room_list.forEach((currentRoom,index,list) => {
+                if(currentRoom === this){
+                    list.splice(index,1)
+                }
+            })
+        }
 
         this.send_system_message(`玩家->${user.name} 退出了房间。`)
     }
@@ -234,15 +234,6 @@ class Room{
     //         return true
     //     }
     //     else{
-    //         return false
-    //     }
-    // }
-
-    // sendChatMessage(message,senderCookieID){
-    //     try{
-    //         sendEventTo(this.user_list,'roomChatMessage',buildChatMessage(message,this.user_list.find(user=>user.cookieID===senderCookieID).name))
-    //         return true
-    //     }catch(error){//应对房间外的人发送消息至房间
     //         return false
     //     }
     // }

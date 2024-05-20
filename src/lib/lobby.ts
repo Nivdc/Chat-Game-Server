@@ -1,8 +1,28 @@
+import { readdir } from "node:fs/promises"
+
 let user_counter = 1
 const user_list: User[] = []
 
 let room_counter = 1
 const room_list: Room[] = []
+
+const game_package_list: unknown[] = []
+
+init()
+function init(){
+    console.log("hh")
+    scan_game_packages()
+}
+
+async function scan_game_packages(){
+    const gamesFilePath = import.meta.dir + "/../public/gamePackages"
+    const files = await readdir(gamesFilePath)
+    files.forEach((file)=>{
+        import(`${gamesFilePath}/${file}/package`).then((pkg)=>{
+            game_package_list.push(pkg.default)
+        })
+    })
+}
 
 export function lobby_join_request(req: Request, server: Server){
     const uuid = req.headers.get("cookie")?.split('=')[1]
@@ -13,7 +33,7 @@ export function lobby_join_request(req: Request, server: Server){
 
     let user = new User(`游客${user_counter}`)
     user_list.push(user)
-    const success = server.upgrade(req, { data: { uuid:user.uuid }, headers : {"Set-Cookie": `user_uuid=${user.uuid}`} })
+    const success = server.upgrade(req, { data: { uuid:user.uuid }, headers : {"Set-Cookie": `user_uuid=${user.uuid}; SameSite=Strict; HttpOnly`} })
 
     if(success){
         user_counter ++
@@ -84,14 +104,12 @@ function send_system_message(msg: string){
 class User{
     name : string 
     readonly uuid : string
-    socket : WebSocket | null
-    current_room : Room | null
+    socket : WebSocket | undefined
+    current_room : Room | undefined
 
     constructor(name : string){
         this.name = name
         this.uuid = crypto.randomUUID()
-        this.socket = null
-        this.current_room = null
     }
 
     set_websocket(socket : WebSocket){
@@ -124,20 +142,17 @@ class User{
 }
 
 class Room{
-    name: String
-    status: string
+    name: string
+    state: string
     host: User
     readonly id: number
     user_list: User[]
 
     constructor(room_data: any,host: User,roomID: number){
         this.name   = room_data.name
-        this.status = room_data.status
+        this.state = room_data.state
         this.host   = host
         this.id     = roomID
-        // this.game = gameList.find(game => {return game.id === room_data.gameID})
-        // this.gameModeNum=room_data.gameModeNum
-        // this.customOption=room_data.customOption
         this.user_list = []
 
         this.userJoin(host)
@@ -146,7 +161,6 @@ class Room{
     userJoin(user: User){
         this.user_list.push(user)
         user.current_room = this
-        this.send_system_message(`玩家->${user.name} 加入了房间。`)
     }
 
     userQuit(user: User){
@@ -154,7 +168,6 @@ class Room{
             let new_host = this.user_list.find(user => user !== this.host)
             if(new_host !== undefined){
                 this.host = new_host
-                this.send_system_message(`由于房主退出房间，新房主为->${new_host?.name} 。`)
             }
         }
 
@@ -172,16 +185,10 @@ class Room{
                 }
             })
         }
-
-        this.send_system_message(`玩家->${user.name} 退出了房间。`)
     }
 
     send_chat_message(sender_name: string, msg: string){
         send_event_to(this.user_list, "RoomChatMessage", {sender_name:sender_name, message:msg})
-    }
-
-    send_system_message(msg: string){
-        this.send_chat_message('系统', msg)
     }
 
     room_ws_message_router(ws: WebSocket, message: any){

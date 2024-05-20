@@ -6,19 +6,19 @@ const user_list: User[] = []
 let room_counter = 1
 const room_list: Room[] = []
 
-const game_package_list: unknown[] = []
+const gamesFilePath = import.meta.dir + "/../public/gamePackages"
+const game_package_list: any[] = []
 
 init()
 function init(){
-    console.log("hh")
     scan_game_packages()
 }
 
 async function scan_game_packages(){
-    const gamesFilePath = import.meta.dir + "/../public/gamePackages"
     const files = await readdir(gamesFilePath)
     files.forEach((file)=>{
         import(`${gamesFilePath}/${file}/package`).then((pkg)=>{
+            pkg.default.gameFileName = file
             game_package_list.push(pkg.default)
         })
     })
@@ -29,7 +29,7 @@ export function lobby_join_request(req: Request, server: Server){
 
     if(uuid !== undefined)
         if(user_list.find(user => {return user.uuid === uuid}) !== undefined)
-            return new Response("WebSocket upgrade error.", { status: 400 })
+            return new Response("User is already logged in.", { status: 400 })
 
     let user = new User(`游客${user_counter}`)
     user_list.push(user)
@@ -133,10 +133,11 @@ class User{
         this.current_room?.userQuit(this)
     }
 
-    info(){
+    toJSON(){
         return {
             name: this.name,
-            current_room: this.current_room?.id
+            uuid: this.uuid,
+            current_room_id: this.current_room?.id,
         }
     }
 }
@@ -148,12 +149,18 @@ class Room{
     readonly id: number
     user_list: User[]
 
+    selected_game_package: any | undefined
+
+    current_game: any | undefined
+
     constructor(room_data: any,host: User,roomID: number){
         this.name   = room_data.name
-        this.state = room_data.state
+        this.state  = room_data.state
         this.host   = host
         this.id     = roomID
         this.user_list = []
+
+        this.selected_game_package = game_package_list.find(pkg => {return pkg.name === room_data.selected_game_name})
 
         this.userJoin(host)
     }
@@ -174,7 +181,7 @@ class Room{
         this.user_list.forEach((currentUser,index,list) =>{
             if(currentUser === user){
                 list.splice(index,1)
-                currentUser.current_room = null
+                currentUser.current_room = undefined
             }
         })
 
@@ -185,6 +192,8 @@ class Room{
                 }
             })
         }
+
+        this.current_game?.userQuit(user)
     }
 
     send_chat_message(sender_name: string, msg: string){
@@ -200,32 +209,42 @@ class Room{
             case "RoomChatMessage":
                 this.send_chat_message(user.name, event.data)
                 break
-            case "UserCreatRoom":
-                break
-            case "UserJoinRoom":
-                break
-            case "UserQuitRoom":
+            case "HostSetRoom":
+                if(user === this.host)
+                    this.hostSetRoom(event.data)
                 break
             default:
-                // user.current_room?.room_ws_message_router(ws, message)
+                this.current_game?.game_ws_message_router(ws, message)
                 break
         }
     }
     
-    // userSetRoom(room_data,cookieID){
-    //     if(this.host.cookieID === cookieID){
-    //         this.name=room_data.name
-    //         this.status=room_data.status
-    //         this.game = gameList.find(game => {return game.id === room_data.gameID})
-    //         this.gameModeNum=room_data.gameModeNum
-    //         this.customOption=room_data.customOption
+    hostSetRoom(room_data: any){
+        this.name   = room_data.name
+        this.state  = room_data.state
 
+        this.selected_game_package = game_package_list.find(pkg => {return pkg.name === room_data.selected_game_name})
+    }
 
-    //         lobbyListener.emit('roomInfoUpd',this)
-    //         return true
-    //     }
-    //     return false
-    // }
+    start_game(){
+        if(this.selected_game_package !== undefined){
+            let sgp = this.selected_game_package
+            import(`${gamesFilePath}/${sgp.gameFileName}/${sgp.main}`).then(game => {
+                this.current_game = game.start(this)
+            })
+        }
+    }
+
+    toJSON(){
+        return {
+            name:this.name,
+            state:this.state,
+            host:JSON.stringify(this.host),
+            id:this.id,
+            selectedGamePackage:JSON.stringify(this.selected_game_package),
+            userList:this.user_list.map(user => JSON.stringify(user)),
+        }
+    }
 
     // kickUser(hostCookieID,userID){
     //     if(this.host.cookieID === hostCookieID){
@@ -273,22 +292,6 @@ class Room{
     //         gameInfo:this.roomGameInfo(),
     //         gameModeNum:this.gameModeNum,
     //         usersInfos:this.user_list.map(user => user.info()),
-    //     }
-    // }
-
-    // startGame(){
-    //     if(this.user_list.length <= this.roomGameInfo().maxPlayers || !this.roomGameInfo().maxPlayers){
-    //         lobbyListener.emit('gameStart',this)
-    //         sendEventTo(this.user_list,'gameStart')
-    //         if(typeof(this.gameModeNum) === "number"){//如果这个值不是数字，说明使用的是自定义设置。
-    //             this.Ggame = require(this.game.mainPath).start(this.user_list,this.game.config.options[this.gameModeNum],this)            
-    //             //fixme:挖坑给自己跳啊，我就知道下面那个东西不该叫Game，变量名不太对。
-    //         }
-    //         else if(this.customOption){
-    //             this.Ggame = require(this.game.mainPath).start(this.user_list,this.customOption,this)
-    //         }
-    //         //fixme:可以看出来目前我们是直接把用户和这个房间传进游戏逻辑里的，这样做非常非常非常不安全！！！
-    //         //还是说应该信任游戏的作者不会把这些东西弄坏？毕竟传个房间进去很方便嘛
     //     }
     // }
 

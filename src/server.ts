@@ -13,7 +13,6 @@ export function start(){
         development,
         fetch(req, server){
             console.log(`[request]: ${req.method}->${req.url}`)
-            // return new Response("Bun!")
 
             const url = new URL(req.url)
             if(url.pathname === '/') url.pathname = '/index.html'
@@ -31,7 +30,6 @@ export function start(){
             close(ws, code, message) {
                 lobby_user_quit(ws)
             },
-            // drain(ws) {}, // the socket is ready to receive more data
           },
     })
 

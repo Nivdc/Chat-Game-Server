@@ -19,6 +19,7 @@ async function scan_game_packages(){
     files.forEach((file)=>{
         import(`${gamesFilePath}/${file}/package`).then((pkg)=>{
             pkg.default.gameFileName = file
+            pkg.default.gameResourcePath = `gamePackages/${file}/${pkg.staticResourcePath}/index.html`
             game_package_list.push(pkg.default)
         })
     })
@@ -37,6 +38,7 @@ export function lobby_join_request(req: Request, server: Server){
 
     if(success){
         user_counter ++
+        all_user_update_all()
         return undefined
     }
     else{
@@ -57,6 +59,7 @@ export function lobby_user_quit(ws: WebSocket){
             currentUser.quit_room()
         }
     })
+    all_user_update_all()
 }
 
 export function lobby_ws_message_router(ws: WebSocket, message: string){
@@ -73,6 +76,8 @@ export function lobby_ws_message_router(ws: WebSocket, message: string){
             user.quit_room()
             room_list.push(new Room(event.data, user, room_counter))
             room_counter ++
+
+            all_user_update_all()
         break
 
         case "UserJoinRoom":
@@ -97,8 +102,10 @@ function send_event_to(user_list: User[],type:string, data? :any){
     })
 }
 
-function send_system_message(msg: string){
-    send_event_to(user_list, "LobbyChatMessage", {sender_name:'系统', message:msg})
+function all_user_update_all(){
+    send_event_to(user_list, "UserListUpdate", user_list.map(user => JSON.stringify(user)))
+    send_event_to(user_list, "RoomListUpdate", room_list.map(room => JSON.stringify(room)))
+    send_event_to(user_list, "GamePackagesUpdate", game_package_list.map(pkg => JSON.stringify(pkg)))
 }
 
 class User{
@@ -118,14 +125,8 @@ class User{
 
     send_event(type : string, data? : any){
         if(this.socket){
-            if(data){
-                const event = {type, data}
-                this.socket.send(JSON.stringify(event))
-            }
-            else{
-                const event = {type}
-                this.socket.send(JSON.stringify(event))
-            }
+            const event = {type, data}
+            this.socket.send(JSON.stringify(event))
         }
     }
 
@@ -168,6 +169,7 @@ class Room{
     userJoin(user: User){
         this.user_list.push(user)
         user.current_room = this
+        all_user_update_all()
     }
 
     userQuit(user: User){
@@ -194,6 +196,7 @@ class Room{
         }
 
         this.current_game?.userQuit(user)
+        all_user_update_all()
     }
 
     send_chat_message(sender_name: string, msg: string){
@@ -213,6 +216,10 @@ class Room{
                 if(user === this.host)
                     this.hostSetRoom(event.data)
                 break
+            case "HostStartGame":
+                if(user === this.host && this.selected_game_package)
+                    this.start_game()
+                break
             default:
                 this.current_game?.game_ws_message_router(ws, message)
                 break
@@ -224,9 +231,11 @@ class Room{
         this.state  = room_data.state
 
         this.selected_game_package = game_package_list.find(pkg => {return pkg.name === room_data.selected_game_name})
+        all_user_update_all()
     }
 
     start_game(){
+        send_event_to(this.user_list, "GameStarted")
         if(this.selected_game_package !== undefined){
             let sgp = this.selected_game_package
             import(`${gamesFilePath}/${sgp.gameFileName}/${sgp.main}`).then(game => {

@@ -1,7 +1,9 @@
-let socket = null
+var socket = undefined
+var game_onmessage = undefined
 let create_room_data = {
     name: "未命名",
     status: "open",
+    selected_game_name:"测试游戏",
 }
 
 $(document).ready(()=>{
@@ -10,7 +12,7 @@ $(document).ready(()=>{
         inputHandler($('#msg input').val())
         $('#msg input').val("")
     })
-    login("","")
+    login()
     welcome()
     init()
 })
@@ -65,10 +67,14 @@ function inputHandler(inputStr){
                 socket.send(JSON.stringify(event))
                 break
             }
-
+            case 'st':
+            case 'StartGame':{
+                const event = {type:"HostStartGame"}
+                socket.send(JSON.stringify(event))
+                break
+            }
             default:
-                // let message = {message:`${inputStr}`}
-                // $.post(`/game/message`,JSON.stringify(message))
+                sendSystemMsg("系统提示","未知指令，请重试。")
             break
         }
     }
@@ -80,25 +86,8 @@ function inputHandler(inputStr){
     }
 }
 
-function login(userName,password){
+function login(){
     socket = new WebSocket(`ws://${window.location.host}/session`)
-//     const user={name:userName,password:password}
-//     $.post('login',JSON.stringify(user),(data,textStatus)=>{
-//         if(textStatus === 'success'){
-//             socket = new WebSocket(`ws://${window.location.host}/session`)
-//             if(socket !== null){
-//                 socket.onopen = init
-                
-//                 sendSystemMsg("提示","登陆成功。")
-//             }
-//             else{
-//                 alert("登录失败")
-//             }
-//         }
-//         else{
-//             alert("登录失败")
-//         }
-//    })
 }
 
 function init(){
@@ -114,6 +103,22 @@ function init(){
 
             case "RoomChatMessage":
                 updateMessageList("房间", event.data.sender_name, event.data.message)
+            break
+
+            case "UserListUpdate":
+            case "RoomListUpdate":
+            case "GamePackagesUpdate":
+                console.log(event.data)
+            break
+
+            case "GameStarted":
+                $('#mainForm').hide()
+                $('body').append(`<iframe id="game" height="100%" width="100%" src='gamePackages/testGame/public/index.html'></iframe>`)
+            break
+
+            default:
+                if(game_onmessage)
+                    game_onmessage(e)
             break
         }
     }

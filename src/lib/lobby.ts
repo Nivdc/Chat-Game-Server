@@ -244,6 +244,11 @@ class Room{
         }
     }
 
+    end_game(){
+        send_event_to(this.user_list, "GameEnded")
+        this.current_game = undefined
+    }
+
     toJSON(){
         return {
             name:this.name,
@@ -254,68 +259,4 @@ class Room{
             userList:this.user_list.map(user => JSON.stringify(user)),
         }
     }
-
-    // kickUser(hostCookieID,userID){
-    //     if(this.host.cookieID === hostCookieID){
-    //         this.user_list.forEach((user,index,list) =>{
-    //             if(user.id === userID){
-    //                 list.splice(index,1)
-    //                 user.currentRoomID = null
-    //                 user.sendEvent("kickOut")
-    //                 lobbyListener.emit('roomInfoUpd',this)
-    //             }
-    //         })
-
-    //         return true
-    //     }
-    //     else{
-    //         return false
-    //     }
-    // }
-
-    // roomGameInfo(){//xxx:这里的信息可能多余了，只要有gameModeNum,一些信息可以在客户端读出来，但是自定义信息不能
-    //     if(typeof(this.gameModeNum) === "number"){//如果这个值不是数字，说明使用的是自定义设置。
-    //         return {
-    //             gameName:this.game.gamePkgInfo.name,
-    //             gameID:this.game.id,
-    //             gameModeName:this.game.config.options[this.gameModeNum].modeName,
-    //             maxPlayers:this.game.config.options[this.gameModeNum].maxPlayers
-    //         }
-    //     }
-    //     else if(this.customOption){
-    //         return {
-    //             gameName:this.game.gamePkgInfo.name,
-    //             gameID:this.game.id,
-    //             gameModeName:"自定义",
-    //             maxPlayers:this.customOption.maxPlayers
-    //         }
-    //     }
-    // }
-
-    // roomInfo(){
-    //     return {
-    //         name:this.name,
-    //         status:this.status,
-    //         hostInfo:this.host.info(),
-    //         id:this.id,
-    //         gameInfo:this.roomGameInfo(),
-    //         gameModeNum:this.gameModeNum,
-    //         usersInfos:this.user_list.map(user => user.info()),
-    //     }
-    // }
-
-    // gameOver(){
-    //     this.Ggame = undefined
-    //     lobbyListener.emit('gameOver',this)
-    //     sendEventTo(this.user_list,'gameOver')
-    // }
-
-    // inputHandler(method,path,user,data){
-    //     if(this.Ggame){
-    //         return this.Ggame.inputHandler(method,path,user,data)
-    //     }
-    //     else{
-    //         return false
-    //     }
-    // }
 }

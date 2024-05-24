@@ -6,5 +6,5 @@
 游戏包可以使用自己的许可证。
 
 ## 已知问题
-用户创建房间后，如果房间内没有其他人，加入自己的房间会导致房间消失。  
 用户退出游戏不视为退出房间。  
+使用Safari浏览器时滚动条的样式不正确。（这是由于[Safari浏览器没有实现滚动条的样式属性](https://developer.mozilla.org/zh-CN/docs/Web/CSS/CSS_scrollbars_styling)）  

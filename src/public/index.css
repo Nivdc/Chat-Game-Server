@@ -44,7 +44,26 @@ body{
     justify-content:center;
 }
 
-/* .form{
+button{
+    position: relative;
+    color: var(--primary-content);
+    transition:.2s linear;
+    background-color: inherit;
+    border: none;
+}
+button:hover{
+    color: var(--optional-emphasized-content);
+    border-color: var(--optional-emphasized-content);
+}
+button:active{
+    top: 1px;
+    left:1px;
+}
+button:focus{
+    outline-style: none;
+}
+
+.form{
     margin:0px auto;
     padding: 1em;
 
@@ -53,7 +72,23 @@ body{
 
     background-color:var(--background-highlights);
     text-align: center;
-} */
+}
+
+.controlButton{
+    font-size: 1.5em;
+    color: var(--primary-content);
+    border-style: solid;
+    border-color: var(--secondary-content);
+    background-color: var(--background-highlights);
+    padding: 0.5em;
+    border-radius: 100%;
+}
+
+#controlBar{
+    position:fixed;
+    bottom: 1em;
+    left: 1em;
+}
 
 #messageForm{
     display:flex;

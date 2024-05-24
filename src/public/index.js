@@ -1,21 +1,38 @@
 var socket = undefined
 var game_onmessage = undefined
+
+let UI_Controller = {
+    switchConsole:function () {
+        lobbyConsole.showUp = !lobbyConsole.showUp
+    }
+}
+
+let lobbyConsole = {
+    showUp:true,
+}
+
 let create_room_data = {
     name: "未命名",
     status: "open",
     selected_game_name:"测试游戏",
 }
 
-$(document).ready(()=>{
-    $('#msg').submit(event => {
-        event.preventDefault()//阻止默认行为
-        inputHandler($('#msg input').val())
-        $('#msg input').val("")
-    })
-    login()
-    welcome()
-    init()
+let lobbyChatMessageList = []
+
+document.addEventListener("alpine:init", () => {
+    lobbyChatMessageList = Alpine.reactive(lobbyChatMessageList)
+    lobbyConsole = Alpine.reactive(lobbyConsole)
 })
+
+login()
+init()
+welcome()
+
+function msg_submit(){
+    let input = document.querySelector('#msg input')
+    inputHandler(input.value)
+    input.value = ""
+}
 
 function welcome(){
     sendSystemMsg('公告',`<br/>
@@ -30,15 +47,7 @@ function sendSystemMsg(msgType,msg){
 }
 
 function updateMessageList(channelName,senderName,message){
-    $('#messageList table').append(
-        `
-        <tr>
-            <td>[${channelName}]</td>
-            <td>${senderName} :</td>
-            <td>${message}</td>
-        </tr>
-        `
-    )
+    lobbyChatMessageList.push({channelName, senderName,message})
 }
 
 function inputHandler(inputStr){
@@ -112,13 +121,13 @@ function init(){
             break
 
             case "GameStarted":
-                $('#mainForm').hide()
-                $('body').append(`<iframe id="game" height="100%" width="100%" src='gamePackages/testGame/public/index.html'></iframe>`)
+                // $('#mainForm').hide()
+                // $('body').append(`<iframe id="game" height="100%" width="100%" src='gamePackages/testGame/public/index.html'></iframe>`)
             break
             case "GameEnded":
-                $('#mainForm').show()
-                $('#game').remove()
-                game_onmessage = undefined
+                // $('#mainForm').show()
+                // $('#game').remove()
+                // game_onmessage = undefined
 
             default:
                 if(game_onmessage)
@@ -128,8 +137,8 @@ function init(){
     }
 }
 
-function showHelp(){
-    sendSystemMsg('指令帮助',
-    `<br/>
-    /help : 显示本帮助。<br/>`)
-}
+// function showHelp(){
+//     sendSystemMsg('指令帮助',
+//     `<br/>
+//     /help : 显示本帮助。<br/>`)
+// }

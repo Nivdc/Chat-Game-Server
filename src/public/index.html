@@ -2,23 +2,45 @@
 <html lang="zh">
     <head>
         <meta charset="utf-8">
-        <title>Home</title>
+        <title>Lobby</title>
+        <link href="https://cdn.staticfile.net/font-awesome/6.5.1/css/all.min.css" rel="stylesheet" type="text/css">
         <link href="index.css" rel="stylesheet" type="text/css">
-        <script src="lib/jquery-3.7.1.js"></script>
+        <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.0/dist/cdn.min.js"></script>
         <script src="index.js"></script>
     </head>
 
     <body>
         <div id="mainForm">
-            <div id="messageForm">
-                <div id="messageList">
-                    <table>
-                    </table>
+            <div id="controlBar" x-data="UI_Controller">
+                <button class="controlButton"><i class="fa-regular fa-rectangle-list"></i></button>
+                <button class="controlButton"><i class="fa-regular fa-comments"></i></button>
+                <button class="controlButton" @click="switchConsole"><i class="fa-solid fa-terminal"></i></button>
+            </div>
+
+            <div id="consoleForm" class="form" x-data="lobbyConsole" x-show="showUp" x-transition>
+                <div id="consoleFormHead">
+                    <span>Console</span>
+                    <button><i class="fa-solid fa-xmark"></i></button>
                 </div>
             </div>
-            <form id="msg">
-                <input type="text"></input>
-            </form>
+            <!-- <div id="lobbyChatForm">
+                <div id="messageForm">
+                    <div id="messageList" x-data="lobbyChatMessageList">
+                        <table>
+                            <template x-for="message in messageList">
+                                <tr>
+                                    <td x-html="`[${message.channelName}]`"></td>
+                                    <td x-html="`${message.senderName}:`"></td>
+                                    <td x-html="message.message"></td>
+                                </tr>
+                            </template>
+                        </table>
+                    </div>
+                </div>
+                <form id="msg" x-data @submit.prevent="msg_submit()" >
+                    <input type="text"></input>
+                </form>
+            </div> -->
         </div>
     </body>
 </html>

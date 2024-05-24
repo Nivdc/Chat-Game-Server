@@ -98,9 +98,12 @@ input:focus{
     height: 20em;
     padding: 0.5em;
     overflow: auto;
+    scrollbar-color: var(--secondary-content) var(--background-highlights);
+    scrollbar-width: thin;
+    width:calc(1.5rem*35);
 }
 .formTextInput input{
-    width:calc(1.2em*35);
+    width:calc(1.5rem*35);
     border-top: solid;
     border-color: var(--secondary-content);
     background-color:var(--background-highlights);
@@ -130,7 +133,6 @@ input:focus{
 
 #consoleMessageForm{
     display:flex;
-    flex:auto;
     flex-direction:column-reverse;
 }
 

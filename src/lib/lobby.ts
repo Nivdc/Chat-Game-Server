@@ -1,5 +1,12 @@
 import { readdir } from "node:fs/promises"
 
+// const updateHandler = {
+//     get: function (target:any, property:any, receiver:any) {
+//         console.log('target:', target, "property:", property)
+//         return Reflect.get(target, property, receiver)
+//     },
+// }
+
 let user_counter = 1
 const user_list: User[] = []
 
@@ -81,7 +88,6 @@ export function lobby_ws_message_router(ws: WebSocket, message: string){
         break
 
         case "UserJoinRoom":
-            user.quit_room()
             let room = room_list.find(room => {return room.id === Number(event.data)})
             room?.userJoin(user)
         break
@@ -167,6 +173,10 @@ class Room{
     }
 
     userJoin(user: User){
+        if(user.current_room === this)
+            return
+
+        user.quit_room()
         this.user_list.push(user)
         user.current_room = this
         all_user_update_all()

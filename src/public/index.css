@@ -56,22 +56,60 @@ button:hover{
     border-color: var(--optional-emphasized-content);
 }
 button:active{
-    top: 1px;
-    left:1px;
+    transform: translate(1px,1px);
 }
 button:focus{
     outline-style: none;
 }
 
+input{
+    color:var(--primary-content);
+    font-size:1.2em;
+    border: none;
+}
+input:focus{
+    outline-style: none;
+}
+
 .form{
     margin:0px auto;
-    padding: 1em;
 
     border-style: solid;
+    border-width: 0.1em;
     border-color: var(--secondary-content);
 
+    background-color: rgba(0, 0, 0, 0.1);
+}
+.formHead{
+    position:relative;
+    padding: 0.5em;
     background-color:var(--background-highlights);
-    text-align: center;
+
+    border-bottom: solid;
+    border-color: inherit;
+    border-width: inherit;
+}
+.formHead button{
+    position: absolute;
+    right:0.5em;
+    font-size: 1.1em;
+}
+.formBody{
+    height: 20em;
+    padding: 0.5em;
+    overflow: auto;
+}
+.formTextInput input{
+    width:calc(1.2em*35);
+    border-top: solid;
+    border-color: var(--secondary-content);
+    background-color:var(--background-highlights);
+}
+.formTextInput input:focus{
+    border-color: var(--primary-content);
+}
+.formTextInput input:hover{
+    border-color: var(--primary-content);
 }
 
 .controlButton{
@@ -88,6 +126,12 @@ button:focus{
     position:fixed;
     bottom: 1em;
     left: 1em;
+}
+
+#consoleMessageForm{
+    display:flex;
+    flex:auto;
+    flex-direction:column-reverse;
 }
 
 #messageForm{

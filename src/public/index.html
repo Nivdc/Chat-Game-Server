@@ -14,14 +14,35 @@
             <div id="controlBar" x-data="UI_Controller">
                 <button class="controlButton"><i class="fa-regular fa-rectangle-list"></i></button>
                 <button class="controlButton"><i class="fa-regular fa-comments"></i></button>
-                <button class="controlButton" @click="switchConsole"><i class="fa-solid fa-terminal"></i></button>
+                <button class="controlButton" @click="switchConsoleForm"><i class="fa-solid fa-terminal"></i></button>
+            </div>
+
+            <div id="welcome" class="form" x-data="{ open:false }" x-show="open" x-transition>
+                <div id="welcomeFormHead" class="formHead">
+                    <span>Welcome</span>
+                    <button @click="open = false"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div id="welcomeMessageForm" class="formBody">
+                    <p>欢迎使用，当前仍是早期技术测试版，服务器随时可能当场死亡。<br/>
+                        您可能会遇到包括但不限于页面失去响应、连接中断、游戏结果错误、电脑爆炸等情况。<br/>
+                        事先声明本平台不负任何责任。<a href="https://github.com/Nivdc/lobby" target="_blank">点此访问项目主页</a>。<br/>
+                    </p>
+                </div>
             </div>
 
             <div id="consoleForm" class="form" x-data="lobbyConsole" x-show="showUp" x-transition>
-                <div id="consoleFormHead">
+                <div id="consoleFormHead" class="formHead">
                     <span>Console</span>
-                    <button><i class="fa-solid fa-xmark"></i></button>
+                    <button @click="close"><i class="fa-solid fa-xmark"></i></button>
                 </div>
+                <div id="consoleMessageForm" class="formBody">
+                    <template x-for="message in messageList">
+                        <p x-html="message"></p>
+                    </template>
+                </div>
+                <form id="consoleInput" class="formTextInput" x-data @submit.prevent="submit" >
+                    <input id="test" type="text" x-model="inputString"></input>
+                </form>
             </div>
             <!-- <div id="lobbyChatForm">
                 <div id="messageForm">

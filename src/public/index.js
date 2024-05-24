@@ -2,13 +2,67 @@ var socket = undefined
 var game_onmessage = undefined
 
 let UI_Controller = {
-    switchConsole:function () {
+    switchConsoleForm:function () {
         lobbyConsole.showUp = !lobbyConsole.showUp
+        if(lobbyConsole.showUp === true)
+            lobbyConsole.$nextTick(() => { document.querySelector('#consoleInput input').focus() })
+    },
+    switchLobbyChatForm:function () {
     }
 }
 
 let lobbyConsole = {
     showUp:true,
+    messageList:[],
+    inputString:'',
+
+    close(){this.showUp = false},
+    submit(){
+        this.inputHandler(this.inputString)
+        this.inputString = ''
+    },
+    inputHandler(inputString){
+        [command, ...args] = inputString.split(" ")
+
+        switch(command){
+            case 'clear':
+                this.messageList = []
+            break
+
+            case 'help':
+                showHelp()
+            break
+
+            case 'cr':
+            case 'CreateRoom' :{
+                const event = {type:"UserCreatRoom",data:create_room_data}
+                socket.send(JSON.stringify(event))
+                break
+            }
+            case 'jr':
+            case 'JoinRoom'   :{
+                const tagete_room_id = inputStr.match(/^\/(\w+)\s+(\d+)*$/)[2]
+                const event = {type:"UserJoinRoom",data:tagete_room_id}
+                socket.send(JSON.stringify(event))
+                break
+            }
+            case 'qr':
+            case 'QuitRoom':{
+                const event = {type:"UserQuitRoom"}
+                socket.send(JSON.stringify(event))
+                break
+            }
+            case 'st':
+            case 'StartGame':{
+                const event = {type:"HostStartGame"}
+                socket.send(JSON.stringify(event))
+                break
+            }
+            default:
+                this.messageList.push("未知指令，请重试。输入help查看指令帮助。")
+            break
+        }
+    }
 }
 
 let create_room_data = {

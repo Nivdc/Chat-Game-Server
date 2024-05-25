@@ -11,25 +11,28 @@
 
     <body>
         <div id="mainForm">
+            <!-- ControlBar/控制条 -->
             <div id="controlBar" x-data="UI_Controller">
-                <button class="controlButton"><i class="fa-regular fa-rectangle-list"></i></button>
+                <button class="controlButton" @click="switchLobbyRoomListForm"><i class="fa-regular fa-rectangle-list"></i></button>
                 <button class="controlButton" @click="switchLobbyChatForm"><i class="fa-regular fa-comments"></i></button>
                 <button class="controlButton" @click="switchConsoleForm"><i class="fa-solid fa-terminal"></i></button>
             </div>
 
+            <!-- Welconme/欢迎窗口 -->
             <div id="welcome" class="form" x-data="{ open:false }" x-show="open" x-transition>
                 <div id="welcomeFormHead" class="formHead">
                     <span>Welcome</span>
                     <button @click="open = false"><i class="fa-solid fa-xmark"></i></button>
                 </div>
                 <div id="welcomeMessageForm" class="formBody">
-                    <p>欢迎使用，当前仍是早期技术测试版，服务器随时可能当场死亡。<br/>
+                    <p>欢迎使用，当前仍是早期技术测试阶段，服务器随时可能当场死亡。<br/>
                         您可能会遇到包括但不限于页面失去响应、连接中断、游戏结果错误、电脑爆炸等情况。<br/>
                         事先声明本平台不负任何责任。<a href="https://github.com/Nivdc/lobby" target="_blank">点此访问项目主页</a>。<br/>
                     </p>
                 </div>
             </div>
 
+            <!-- ConsoleForm/控制台窗口 -->
             <div id="consoleForm" class="form" x-data="lobbyConsole" x-show="showUp" x-transition>
                 <div id="consoleFormHead" class="formHead">
                     <span>Console</span>
@@ -45,6 +48,7 @@
                 </form>
             </div>
 
+            <!-- LobbyChatForm/大厅聊天窗口 -->
             <div id="lobbyChatForm" class="form" x-data="lobbyChat" x-show="showUp" x-transition>
                 <div id="lobbyChatFormHead" class="formHead">
                     <span>Chat</span>
@@ -60,9 +64,49 @@
                         </template>
                     </table>
                 </div>
-                <form id="lobbyChatInput" class="formTextInput" @submit.prevent="submit()" >
+                <form id="lobbyChatInput" class="formTextInput" @submit.prevent="submit" >
                     <input type="text" x-model="inputString"></input>
                 </form>
+            </div>
+
+            <!-- LobbyRoomListForm/房间列表窗口 -->
+            <div id="lobbyRoomListForm" class="form" x-data="lobbyRoomList" x-show="showUp" x-transition>
+                <div id="lobbyRoomListFormHead" class="formHead">
+                    <span>RoomList</span>
+                    <button @click="close"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div id="lobbyRoomListFormBody" class="formBody">
+                    <table>
+                        <tr>
+                            <th>游戏</th>
+                            <th>房主</th>
+                            <th>房间名</th>
+                            <th><i class="fa fa-users" aria-hidden="true"></i></th>
+                            <th>状态</th>
+                        </tr>
+                        <template x-for="room in roomList">
+                            <tr @click="select(room)">
+                                <td x-text="room.selectedGamePackage.name"></td>
+                                <td x-text="room.host.name"></td>
+                                <td x-text="room.name"></td>
+                                <td x-text="room.userList.length"></td>
+                                <td x-text="room.status === 'open'? '开放':'关闭'"></td>
+                            </tr>
+                        </template>
+                    </table>
+                    <!-- <div id="lobbyRoomListFormSideBar">
+                        <div id="gameInfo" class="form">
+                        </div>
+                        <div id="roomUserInfo" class="form">
+                             <table>
+                           </table>
+                        </div>
+                    </div> -->
+                </div>
+                <div id="lobbyRoomListFormFoot">
+                    <button><i class="fa fa-sign-in" aria-hidden="true"></i>加入房间</button>
+                    <button><i class="fa fa-plus" aria-hidden="true"></i>创建房间</button>
+                </div>
             </div>
         </div>
     </body>

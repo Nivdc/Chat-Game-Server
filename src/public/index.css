@@ -144,12 +144,38 @@ input:focus{
     display:flex;
 }
 #lobbyChatMessageForm table th{
+    margin-right: 0.2em;
     flex:none;
 }
 #lobbyChatMessageForm table tr td{
     flex:initial;
     word-break:break-all;
 }
+
+#lobbyRoomListFormBody table{
+    table-layout: fixed;
+    border-collapse: collapse;
+    width: 100%;
+}
+#lobbyRoomListFormBody table tr th,
+#lobbyRoomListFormBody table tr td{
+    padding: 0.2em;
+}
+#lobbyRoomListFormBody table tbody tr:nth-child(odd){
+    background-color: var(--background);
+}
+#lobbyRoomListFormBody table tbody tr:nth-child(even){
+    background-color: var(--background-highlights);
+}
+#lobbyRoomListFormBody table tbody tr:nth-child(1){
+    background-color: transparent;
+    border-bottom: solid;
+    border-color: var(--secondary-content);
+}
+#lobbyRoomListFormBody table tbody tr td{
+    text-align: center;
+}
+
 
 a:link {color:var(--primary-content);text-decoration:underline;}      /* 未访问链接*/
 a:visited {color:var(--primary-content);text-decoration:underline;}  /* 已访问链接 */

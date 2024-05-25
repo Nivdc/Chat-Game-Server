@@ -7,8 +7,11 @@ let UI_Controller = {
     },
     switchLobbyChatForm:function () {
         lobbyChat.switch()
+    },
+    switchLobbyRoomListForm:function (){
+        lobbyRoomList.switch()
     }
-}
+ }
 
 let lobbyConsole = {
     showUp:false,
@@ -20,6 +23,9 @@ let lobbyConsole = {
         this.showUp = !this.showUp
         if(this.showUp === true)
             this.$nextTick(() => { document.querySelector('#consoleInput input').focus() })
+    },
+    addMessage(message){
+        this.messageList.push(message)
     },
     submit(){
         this.inputHandler(this.inputString)
@@ -34,7 +40,7 @@ let lobbyConsole = {
             break
 
             case 'help':
-                showHelp()
+                this.addMessage('作者很懒，还没有写帮助捏~普通玩家用不到控制台，你非得用的话自己翻代码吧。')
             break
 
             case 'lcm':
@@ -70,14 +76,14 @@ let lobbyConsole = {
                 break
             }
             default:
-                this.messageList.push("未知指令，请重试。输入help查看指令帮助。")
+                this.addMessage("未知指令，请重试。输入help查看指令帮助。")
             break
         }
     }
 }
 
 let lobbyChat = {
-    showUp: true,
+    showUp: false,
     messageList:[],
     inputString:'',
 
@@ -88,12 +94,26 @@ let lobbyChat = {
             this.$nextTick(() => { document.querySelector('#lobbyChatInput input').focus() })
     },
     submit(){
-        lobbyConsole.inputHandler(`LobbyChatMessage ${this.inputString}`)
+        if(/^\s*$/.test(this.inputString) === false)
+            lobbyConsole.inputHandler(`LobbyChatMessage ${this.inputString}`)
         this.inputString = ''
     },
     addMessage(senderName, message){
         this.messageList.push({senderName, message})
     },
+}
+
+let lobbyRoomList = {
+    showUp: true,
+    roomList:[],
+
+    close(){this.showUp = false},
+    switch(){
+        this.showUp = !this.showUp
+    },
+    select(room){
+        console.log(room)
+    }
 }
 
 let create_room_data = {
@@ -103,8 +123,9 @@ let create_room_data = {
 }
 
 document.addEventListener("alpine:init", () => {
-    lobbyConsole = Alpine.reactive(lobbyConsole)
-    lobbyChat    = Alpine.reactive(lobbyChat) 
+    lobbyConsole  = Alpine.reactive(lobbyConsole)
+    lobbyChat     = Alpine.reactive(lobbyChat)
+    lobbyRoomList = Alpine.reactive(lobbyRoomList)
 })
 
 login()
@@ -112,6 +133,9 @@ init_socket()
 
 function login(){
     socket = new WebSocket(`ws://${window.location.host}/session`)
+    // socket.onopen = ()=>{
+    //     let my_uuid = "mm"
+    // }
 }
 
 function init_socket(){
@@ -130,9 +154,12 @@ function init_socket(){
             break
 
             case "UserListUpdate":
-            case "RoomListUpdate":
             case "GamePackagesUpdate":
-                console.log(event.data)
+                // console.log(event.data)
+            break
+
+            case "RoomListUpdate":
+                lobbyRoomList.roomList = event.data.map(roomData => JSON.parse(roomData))
             break
 
             case "GameStarted":

@@ -13,7 +13,7 @@
         <div id="mainForm">
             <div id="controlBar" x-data="UI_Controller">
                 <button class="controlButton"><i class="fa-regular fa-rectangle-list"></i></button>
-                <button class="controlButton"><i class="fa-regular fa-comments"></i></button>
+                <button class="controlButton" @click="switchLobbyChatForm"><i class="fa-regular fa-comments"></i></button>
                 <button class="controlButton" @click="switchConsoleForm"><i class="fa-solid fa-terminal"></i></button>
             </div>
 
@@ -40,28 +40,30 @@
                         <p x-html="message"></p>
                     </template>
                 </div>
-                <form id="consoleInput" class="formTextInput" x-data @submit.prevent="submit" >
-                    <input id="test" type="text" x-model="inputString"></input>
+                <form id="consoleInput" class="formTextInput" @submit.prevent="submit" >
+                    <input type="text" x-model="inputString"></input>
                 </form>
             </div>
-            <!-- <div id="lobbyChatForm">
-                <div id="messageForm">
-                    <div id="messageList" x-data="lobbyChatMessageList">
-                        <table>
-                            <template x-for="message in messageList">
-                                <tr>
-                                    <td x-html="`[${message.channelName}]`"></td>
-                                    <td x-html="`${message.senderName}:`"></td>
-                                    <td x-html="message.message"></td>
-                                </tr>
-                            </template>
-                        </table>
-                    </div>
+
+            <div id="lobbyChatForm" class="form" x-data="lobbyChat" x-show="showUp" x-transition>
+                <div id="lobbyChatFormHead" class="formHead">
+                    <span>Chat</span>
+                    <button @click="close"><i class="fa-solid fa-xmark"></i></button>
                 </div>
-                <form id="msg" x-data @submit.prevent="msg_submit()" >
-                    <input type="text"></input>
+                <div id="lobbyChatMessageForm" class="formBody">
+                    <table>
+                        <template x-for="message in messageList">
+                            <tr>
+                                <th x-html="`${message.senderName}:`"></th>
+                                <td x-html="message.message"></td>
+                            </tr>
+                        </template>
+                    </table>
+                </div>
+                <form id="lobbyChatInput" class="formTextInput" @submit.prevent="submit()" >
+                    <input type="text" x-model="inputString"></input>
                 </form>
-            </div> -->
+            </div>
         </div>
     </body>
 </html>

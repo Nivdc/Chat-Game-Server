@@ -136,40 +136,19 @@ input:focus{
     flex-direction:column-reverse;
 }
 
-#messageForm{
+#lobbyChatMessageForm{
     display:flex;
-    background-color:var(--background-highlights);
-    height:30em;
-    width:calc(1.5rem*50);
-}
-
-#messageList{
-    display:flex;
-    flex:auto;
     flex-direction:column-reverse;
-    /* background-color:rgba(0,0,0,0); */
-    /* border-color:var(--secondary-content); */
-    /* border-bottom:none; */
-    padding:0.5em;
-    padding-left: 0em;
-    text-align:left;
-    overflow: auto;
 }
-
-#messageList table tr td{
-    display:inline;
+#lobbyChatMessageForm table tr{
+    display:flex;
 }
-
-#msg input{
-    color:var(--primary-content);
-    font-size:1.2em;
-    width:calc(1.5rem*50);
-    border-style: solid;
-    border-color: var(--secondary-content);
-    background-color:var(--background-highlights);
+#lobbyChatMessageForm table th{
+    flex:none;
 }
-#msg input:focus{
-    outline-style: none;
+#lobbyChatMessageForm table tr td{
+    flex:initial;
+    word-break:break-all;
 }
 
 a:link {color:var(--primary-content);text-decoration:underline;}      /* 未访问链接*/

@@ -21,6 +21,7 @@ export function start(){
             return serve_static_resource(url.pathname)
         },
         websocket: {
+            perMessageDeflate: true,
             message(ws, message) {
                 lobby_ws_message_router(ws, message)
             },

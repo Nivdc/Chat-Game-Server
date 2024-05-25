@@ -41,7 +41,7 @@ export function lobby_join_request(req: Request, server: Server){
 
     let user = new User(`游客${user_counter}`)
     user_list.push(user)
-    const success = server.upgrade(req, { data: { uuid:user.uuid }, headers : {"Set-Cookie": `user_uuid=${user.uuid}; SameSite=Strict; HttpOnly`} })
+    const success = server.upgrade(req, { data: { uuid:user.uuid }, headers : {"Set-Cookie": `user_uuid=${user.uuid}; SameSite=Strict;`} })
 
     if(success){
         user_counter ++
@@ -151,7 +151,7 @@ class User{
 
 class Room{
     name: string
-    state: string
+    status: string
     host: User
     readonly id: number
     user_list: User[]
@@ -162,7 +162,7 @@ class Room{
 
     constructor(room_data: any,host: User,roomID: number){
         this.name   = room_data.name
-        this.state  = room_data.state
+        this.status  = room_data.status
         this.host   = host
         this.id     = roomID
         this.user_list = []
@@ -238,7 +238,7 @@ class Room{
     
     hostSetRoom(room_data: any){
         this.name   = room_data.name
-        this.state  = room_data.state
+        this.status  = room_data.status
 
         this.selected_game_package = game_package_list.find(pkg => {return pkg.name === room_data.selected_game_name})
         all_user_update_all()
@@ -262,11 +262,11 @@ class Room{
     toJSON(){
         return {
             name:this.name,
-            state:this.state,
-            host:JSON.stringify(this.host),
+            status:this.status,
+            host:this.host,
             id:this.id,
-            selectedGamePackage:JSON.stringify(this.selected_game_package),
-            userList:this.user_list.map(user => JSON.stringify(user)),
+            selectedGamePackage:this.selected_game_package,
+            userList:this.user_list
         }
     }
 }

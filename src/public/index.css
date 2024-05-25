@@ -66,6 +66,7 @@ input{
     color:var(--primary-content);
     font-size:1.2em;
     border: none;
+    padding: 0.2em;
 }
 input:focus{
     outline-style: none;
@@ -101,6 +102,17 @@ input:focus{
     scrollbar-color: var(--secondary-content) var(--background-highlights);
     scrollbar-width: thin;
     width:calc(1.5rem*35);
+}
+.formFoot{
+    display: flex;
+    border-top: solid;
+    border-color: var(--secondary-content);
+    background-color:var(--background-highlights);
+}
+.formFoot button{
+    padding: 0.5em;
+    flex:auto;
+    font-size: 1.2em;
 }
 .formTextInput input{
     width:calc(1.5rem*35);
@@ -152,14 +164,18 @@ input:focus{
     word-break:break-all;
 }
 
+
+/* #lobbyRoomListFormBody{
+    display: flex;
+} */
 #lobbyRoomListFormBody table{
+    /* flex:auto; */
     table-layout: fixed;
     border-collapse: collapse;
     width: 100%;
 }
-#lobbyRoomListFormBody table tr th,
-#lobbyRoomListFormBody table tr td{
-    padding: 0.2em;
+#lobbyRoomListFormBody table tbody tr:has(td):hover{
+    border-style: dashed solid;
 }
 #lobbyRoomListFormBody table tbody tr:nth-child(odd){
     background-color: var(--background);
@@ -172,8 +188,22 @@ input:focus{
     border-bottom: solid;
     border-color: var(--secondary-content);
 }
+#lobbyRoomListFormBody table tbody tr th,
+#lobbyRoomListFormBody table tbody tr td{
+    padding: 0.2em;
+}
 #lobbyRoomListFormBody table tbody tr td{
     text-align: center;
+}
+
+/* #lobbyRoomListFormSideBar{
+    flex:auto;
+} */
+
+.selected{
+    border-style:solid;
+    border-color:var(--primary-content);
+    color: var(--optional-emphasized-content);
 }
 
 

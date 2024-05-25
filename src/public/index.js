@@ -106,13 +106,20 @@ let lobbyChat = {
 let lobbyRoomList = {
     showUp: true,
     roomList:[],
+    selectedRoom:undefined,
 
     close(){this.showUp = false},
     switch(){
         this.showUp = !this.showUp
     },
     select(room){
-        console.log(room)
+        // if(this.selectedRoom === room)
+        //     // lobbyConsole.inputHandler(`JoinRoom ${room.id}`)
+        // else
+        this.selectedRoom = room
+    },
+    joinRoom(){
+        lobbyConsole.inputHandler(`JoinRoom ${this.selectedRoom.id}`)
     }
 }
 

@@ -85,7 +85,7 @@
                             <th>状态</th>
                         </tr>
                         <template x-for="room in roomList">
-                            <tr @click="select(room)">
+                            <tr @click="select(room)" :class=" selectedRoom === room ? 'selected':'' ">
                                 <td x-text="room.selectedGamePackage.name"></td>
                                 <td x-text="room.host.name"></td>
                                 <td x-text="room.name"></td>
@@ -103,8 +103,8 @@
                         </div>
                     </div> -->
                 </div>
-                <div id="lobbyRoomListFormFoot">
-                    <button><i class="fa fa-sign-in" aria-hidden="true"></i>加入房间</button>
+                <div id="lobbyRoomListFormFoot" class="formFoot">
+                    <button @click="joinRoom"><i class="fa fa-sign-in" aria-hidden="true"></i>加入房间</button>
                     <button><i class="fa fa-plus" aria-hidden="true"></i>创建房间</button>
                 </div>
             </div>

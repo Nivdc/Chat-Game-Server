@@ -167,7 +167,7 @@ class Room{
         this.id     = roomID
         this.user_list = []
 
-        this.selected_game_package = game_package_list.find(pkg => {return pkg.name === room_data.selected_game_name})
+        this.selected_game_package = game_package_list.find(pkg => {return pkg.name === room_data.selectedGameName})
 
         this.userJoin(host)
     }
@@ -240,7 +240,7 @@ class Room{
         this.name   = room_data.name
         this.status  = room_data.status
 
-        this.selected_game_package = game_package_list.find(pkg => {return pkg.name === room_data.selected_game_name})
+        this.selected_game_package = game_package_list.find(pkg => {return pkg.name === room_data.selectedGameName})
         all_user_update_all()
     }
 

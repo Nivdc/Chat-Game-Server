@@ -1,6 +1,9 @@
 var socket = undefined
 var game_onmessage = undefined
 
+let userList = undefined
+let userSelf = {}
+
 let UI_Controller = {
     switchConsoleForm:function () {
         lobbyConsole.switch()
@@ -11,7 +14,7 @@ let UI_Controller = {
     switchLobbyRoomListForm:function (){
         lobbyRoomList.switch()
     }
- }
+}
 
 let lobbyConsole = {
     showUp:false,
@@ -52,7 +55,7 @@ let lobbyConsole = {
 
             case 'cr':
             case 'CreateRoom':{
-                const event = {type:"UserCreatRoom",data:create_room_data}
+                const event = {type:"UserCreatRoom",data:JSON.parse(args.shift())}
                 socket.send(JSON.stringify(event))
                 break
             }
@@ -104,7 +107,7 @@ let lobbyChat = {
 }
 
 let lobbyRoomList = {
-    showUp: true,
+    showUp: false,
     roomList:[],
     selectedRoom:undefined,
 
@@ -113,26 +116,39 @@ let lobbyRoomList = {
         this.showUp = !this.showUp
     },
     select(room){
-        // if(this.selectedRoom === room)
-        //     // lobbyConsole.inputHandler(`JoinRoom ${room.id}`)
-        // else
-        this.selectedRoom = room
+        if(this.selectedRoom === room)
+            this.joinRoom()
+        else
+            this.selectedRoom = room
     },
     joinRoom(){
-        lobbyConsole.inputHandler(`JoinRoom ${this.selectedRoom.id}`)
-    }
+        if(this.selectedRoom)
+            lobbyConsole.inputHandler(`JoinRoom ${this.selectedRoom.id}`)
+    },
+    openCreateRoomForm(){
+        lobbyCreateRoom.showUp = true
+    },
 }
 
-let create_room_data = {
-    name: "未命名",
-    status: "open",
-    selected_game_name:"测试游戏",
+let lobbyCreateRoom = {
+    showUp: true,
+    gamePackageList: [],
+    roomCreationData: {
+        name: "未命名",
+        status: "open",
+        selectedGameName:undefined,
+    },
+
+    close(){this.showUp = false},
+    submit(){lobbyConsole.inputHandler(`CreateRoom ${JSON.stringify(this.roomCreationData)}`)},
+    cancel(){this.close()},
 }
 
 document.addEventListener("alpine:init", () => {
     lobbyConsole  = Alpine.reactive(lobbyConsole)
     lobbyChat     = Alpine.reactive(lobbyChat)
     lobbyRoomList = Alpine.reactive(lobbyRoomList)
+    lobbyCreateRoom = Alpine.reactive(lobbyCreateRoom)
 })
 
 login()
@@ -140,9 +156,9 @@ init_socket()
 
 function login(){
     socket = new WebSocket(`ws://${window.location.host}/session`)
-    // socket.onopen = ()=>{
-    //     let my_uuid = "mm"
-    // }
+    socket.onopen = ()=>{
+        userSelf.uuid = document.cookie.split('=')[1]
+    }
 }
 
 function init_socket(){
@@ -161,12 +177,17 @@ function init_socket(){
             break
 
             case "UserListUpdate":
-            case "GamePackagesUpdate":
-                // console.log(event.data)
+                userList = event.data.map(userData => JSON.parse(userData))
+                userSelf = userList.find(user => {return user.uuid === userSelf.uuid})
             break
 
             case "RoomListUpdate":
                 lobbyRoomList.roomList = event.data.map(roomData => JSON.parse(roomData))
+            break
+
+            case "GamePackagesUpdate":
+                lobbyCreateRoom.gamePackageList = event.data.map(gaamePackageData => JSON.parse(gaamePackageData))
+                lobbyCreateRoom.roomCreationData.selectedGameName = lobbyCreateRoom.gamePackageList[0].name
             break
 
             case "GameStarted":

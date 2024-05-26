@@ -64,12 +64,28 @@ button:focus{
 
 input{
     color:var(--primary-content);
-    font-size:1.2em;
     border: none;
-    padding: 0.2em;
+    padding: 0.2rem;
+    font-size:1.2rem;
+    background-color:var(--background-highlights);
 }
 input:focus{
     outline-style: none;
+}
+
+select{
+    color:var(--primary-content);
+    font-size:1.2rem;
+    padding: 0.2rem;
+    border: none;
+    background-color:var(--background-highlights);
+}
+select:focus{
+    outline-style: none;
+}
+option:active{
+    color:var(--primary-content);
+    background-color:var(--background-highlights);
 }
 
 .form{
@@ -118,7 +134,6 @@ input:focus{
     width:calc(1.5rem*35);
     border-top: solid;
     border-color: var(--secondary-content);
-    background-color:var(--background-highlights);
 }
 .formTextInput input:focus{
     border-color: var(--primary-content);
@@ -204,6 +219,20 @@ input:focus{
     border-style:solid;
     border-color:var(--primary-content);
     color: var(--optional-emphasized-content);
+}
+
+#lobbyCreateRoomFormBody{
+    height: auto;
+    width: auto;
+}
+#lobbyCreateRoomFormBody div{
+    padding: 0.5em;
+    font-size:1.2rem;
+}
+#lobbyCreateRoomFormBody div input{
+    font-size:1.2rem;
+}
+#lobbyCreateRoomFormBody div select{
 }
 
 

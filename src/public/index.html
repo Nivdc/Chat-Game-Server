@@ -105,7 +105,34 @@
                 </div>
                 <div id="lobbyRoomListFormFoot" class="formFoot">
                     <button @click="joinRoom"><i class="fa fa-sign-in" aria-hidden="true"></i>加入房间</button>
-                    <button><i class="fa fa-plus" aria-hidden="true"></i>创建房间</button>
+                    <button @click="openCreateRoomForm"><i class="fa fa-plus" aria-hidden="true"></i>创建房间</button>
+                </div>
+            </div>
+
+            <!-- LobbyCreateRoomForm/创建房间窗口 -->
+            <div id="lobbyCreateRoomForm" class="form" x-data="lobbyCreateRoom" x-show="showUp" x-transition>
+                <div id="lobbyCreateRoomFormHead" class="formHead">
+                    <span>CreateRoom</span>
+                    <button @click="close"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div id="lobbyCreateRoomFormBody" class="formBody">
+                    <div>
+                        <span>房间名：</span>
+                        <input type="text" x-model="roomCreationData.name"/>
+                    </div>
+                    <div>
+                        <span>选择游戏：</span>
+                        <select x-model="roomCreationData.selectedGameName" disabled>
+                            <!-- <option value="" disabled>请选择游戏</option> -->
+                            <template x-for="gamePackage in gamePackageList">
+                                <option x-text="gamePackage.name"></option>
+                            </template>
+                        </select>
+                    </div>
+                </div>
+                <div id="lobbyCreateRoomFormFoot" class="formFoot">
+                    <button @click="submit">创建</button>
+                    <button @click="cancel">取消</button>
                 </div>
             </div>
         </div>

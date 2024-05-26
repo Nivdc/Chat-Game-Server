@@ -78,6 +78,12 @@ let lobbyConsole = {
                 socket.send(JSON.stringify(event))
                 break
             }
+            case 'rcm':
+            case 'RoomChatMessage':{
+                const event = {type:"RoomChatMessage",data:args.shift()}
+                socket.send(JSON.stringify(event))
+                break
+            }
             default:
                 this.addMessage("未知指令，请重试。输入help查看指令帮助。")
             break
@@ -131,7 +137,7 @@ let lobbyRoomList = {
 }
 
 let lobbyCreateRoom = {
-    showUp: true,
+    showUp: false,
     gamePackageList: [],
     roomCreationData: {
         name: "未命名",
@@ -140,25 +146,49 @@ let lobbyCreateRoom = {
     },
 
     close(){this.showUp = false},
-    submit(){lobbyConsole.inputHandler(`CreateRoom ${JSON.stringify(this.roomCreationData)}`)},
+    submit(){
+        lobbyConsole.inputHandler(`CreateRoom ${JSON.stringify(this.roomCreationData)}`)
+        this.close()
+    },
     cancel(){this.close()},
 }
+
+let lobbyRoom = {
+    showUp: true,
+    name:'测试',
+    host:undefined,
+    userList: [],
+    messageList:[],
+    chatInputString:'',
+
+    close(){this.showUp = false},
+    submit(){
+        lobbyConsole.inputHandler(`RoomChatMessage ${chatInputString}`)
+        this.chatInputString = ''
+    },
+    cancel(){this.close()},
+}
+
 
 document.addEventListener("alpine:init", () => {
     lobbyConsole  = Alpine.reactive(lobbyConsole)
     lobbyChat     = Alpine.reactive(lobbyChat)
     lobbyRoomList = Alpine.reactive(lobbyRoomList)
     lobbyCreateRoom = Alpine.reactive(lobbyCreateRoom)
+
+    init()
 })
 
-login()
-init_socket()
 
-function login(){
+function init(){
     socket = new WebSocket(`ws://${window.location.host}/session`)
     socket.onopen = ()=>{
         userSelf.uuid = document.cookie.split('=')[1]
     }
+    // socket.onclose = ()=>{
+    //     alert("与服务器的连接已断开")
+    // }
+    init_socket()
 }
 
 function init_socket(){

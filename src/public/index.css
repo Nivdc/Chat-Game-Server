@@ -47,7 +47,7 @@ body{
 button{
     position: relative;
     color: var(--primary-content);
-    transition:.2s linear;
+    transition:.1s linear;
     background-color: inherit;
     border: none;
 }
@@ -86,6 +86,10 @@ select:focus{
 option:active{
     color:var(--primary-content);
     background-color:var(--background-highlights);
+}
+
+hr{
+    border-color: var(--secondary-content);
 }
 
 .form{
@@ -232,7 +236,63 @@ option:active{
 #lobbyCreateRoomFormBody div input{
     font-size:1.2rem;
 }
-#lobbyCreateRoomFormBody div select{
+
+#lobbyRoomFormRoom{
+    display: grid;
+    grid-template-columns: 5fr 2fr;
+    grid-template-rows: 1fr 1fr;
+    width:calc(1.5rem*40);
+}
+#lobbyRoomFormUserList span{
+    display: inline-block;
+    margin: 0.1em;
+    padding: 0.5em;
+    background-color:var(--background);
+
+    border: solid;
+    border-color: var(--secondary-content);
+}
+#lobbyRoomFormChat{
+    display: flex;
+    flex-direction: column;
+    border-top: solid;
+    border-color: var(--secondary-content);
+    height: 100%;
+}
+#lobbyRoomFormChat table{
+    flex: auto;
+    display:flex;
+    flex-direction:column-reverse;
+}
+#lobbyChatInput input{
+    flex:none;
+    width: 100%;
+}
+#lobbyRoomFormRoomSetting{
+    display: flex;
+    flex-direction: column;
+    border-left: solid;
+    border-color: var(--secondary-content);
+    height: 100%;
+}
+#lobbyRoomFormRoomSettingBody{
+    flex: auto;
+}
+#lobbyRoomFormRoomSettingBody input{
+    width: 10rem;
+}
+#lobbyRoomFormRoomSettingFoot{
+    border-top: none;
+    flex: none;
+}
+#lobbyRoomFormRoomSetting div div{
+    padding: 0.5em;
+    font-size:1.1rem;
+}
+#lobbyRoomFormButton{
+    border-left: solid;
+    border-color: var(--secondary-content);
+    flex-direction: column;
 }
 
 

@@ -84,6 +84,12 @@ let lobbyConsole = {
                 socket.send(JSON.stringify(event))
                 break
             }
+            case 'sr':
+            case 'SetRoom':{
+                const event = {type:"HostSetRoom",data:JSON.parse(args.shift())}
+                socket.send(JSON.stringify(event))
+                break
+            }
             default:
                 this.addMessage("未知指令，请重试。输入help查看指令帮助。")
             break
@@ -154,19 +160,53 @@ let lobbyCreateRoom = {
 }
 
 let lobbyRoom = {
-    showUp: true,
+    showUp: false,
     name:'测试',
     host:undefined,
+    status:undefined,
     userList: [],
     messageList:[],
     chatInputString:'',
+    selectedGameName:'',
 
-    close(){this.showUp = false},
-    submit(){
-        lobbyConsole.inputHandler(`RoomChatMessage ${chatInputString}`)
+    setup(room){
+        this.name = room.name
+        this.host = room.host
+        this.status = room.status
+        this.userList = room.userList
+        this.selectedGameName = room.selectedGamePackage.name
+
+        this.showUp = true
+    },
+    close(){
+        this.showUp = false
+        lobbyConsole.inputHandler(`QuitRoom`)
+        this.messageList = []
         this.chatInputString = ''
     },
-    cancel(){this.close()},
+    submit(){
+        lobbyConsole.inputHandler(`RoomChatMessage ${this.chatInputString}`)
+        this.chatInputString = ''
+    },
+    start(){
+        console.log('好像要开始了')
+    },
+    set(){
+        let roomSetData = {
+            name: this.name,
+            status: this.status,
+            selectedGameName: this.selectedGameName,
+        }
+        lobbyConsole.inputHandler(`SetRoom ${JSON.stringify(roomSetData)}`)
+    },
+    isHost(){
+        if(this.host)
+            return userSelf.uuid === this.host.uuid
+        return false
+    },
+    addMessage(senderName, message){
+        this.messageList.push({senderName, message})
+    },
 }
 
 
@@ -175,6 +215,7 @@ document.addEventListener("alpine:init", () => {
     lobbyChat     = Alpine.reactive(lobbyChat)
     lobbyRoomList = Alpine.reactive(lobbyRoomList)
     lobbyCreateRoom = Alpine.reactive(lobbyCreateRoom)
+    lobbyRoom = Alpine.reactive(lobbyRoom)
 
     init()
 })
@@ -203,7 +244,7 @@ function init_socket(){
             break
 
             case "RoomChatMessage":
-                // updateMessageList("房间", event.data.sender_name, event.data.message)
+                lobbyRoom.addMessage(event.data.sender_name, event.data.message)
             break
 
             case "UserListUpdate":
@@ -213,6 +254,12 @@ function init_socket(){
 
             case "RoomListUpdate":
                 lobbyRoomList.roomList = event.data.map(roomData => JSON.parse(roomData))
+                if(userSelf.current_room_id){
+                    let room = lobbyRoomList.roomList.find(room => {return room.id === userSelf.current_room_id})
+                    if(room){
+                        lobbyRoom.setup(lobbyRoomList.roomList.find(room => {return room.id === userSelf.current_room_id}))
+                    }
+                }
             break
 
             case "GamePackagesUpdate":

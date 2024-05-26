@@ -257,14 +257,30 @@ hr{
     flex-direction: column;
     border-top: solid;
     border-color: var(--secondary-content);
-    height: 100%;
+    min-height: 0;
 }
-#lobbyRoomFormChat table{
-    flex: auto;
+#lobbyRoomFormChatMessageList{
+    height: 100%;
+    flex:auto;
+    overflow: auto;
+    scrollbar-color: var(--secondary-content) var(--background-highlights);
+    scrollbar-width: thin;
     display:flex;
     flex-direction:column-reverse;
 }
-#lobbyChatInput input{
+#lobbyRoomFormChatMessageList table tr{
+    display:flex;
+}
+#lobbyRoomFormChatMessageList table th{
+    margin-right: 0.2em;
+    flex:none;
+}
+#lobbyRoomFormChatMessageList table tr td{
+    flex:initial;
+    word-break:break-all;
+}
+
+#lobbyRoomChatInput input{
     flex:none;
     width: 100%;
 }

@@ -147,49 +147,48 @@
                         <p>玩家列表</p>
                         <hr/>
                         <template x-for="user in userList">
-                            <span x-text="user.name"><i class="fa-solid fa-crown" x-show="user.uuid === lobbyRoom.host.uuid"></i></span>
+                            <span x-text="user.name"><i class="fa-solid fa-crown"></i></span>
                         </template>
                     </div>
                     <div id="lobbyRoomFormRoomSetting">
                         <div id="lobbyRoomFormRoomSettingBody">
                             <div>
                                 <span>房间名：</span>
-                                <input type="text" x-model="name" :disabled="userSelf.uuid !== host.uuid"/>
+                                <input type="text" x-model="name" :disabled="!isHost()"/>
                             </div>
                             <div>
                                 <span>选择游戏：</span>
                                 <select x-model="selectedGameName" disabled>
-                                    <option value="" disabled>请选择游戏</option>
-                                    <template x-data="lobbyCreateRoom" x-for="gamePackage in gamePackageList">
+                                    <option x-text="selectedGameName"></option>
+                                    <!-- <option value="" disabled>请选择游戏</option> -->
+                                    <!-- <template x-data="lobbyCreateRoom.gamePackageList" x-for="gamePackage in gamePackageList">
                                         <option x-text="gamePackage.name" :selected="gamePackage.name === selectedGameName"></option>
-                                    </template>
+                                    </template> -->
                                 </select>
                             </div>
                         </div>
                         <div id="lobbyRoomFormRoomSettingFoot" class="formFoot">
-                            <button>修改</button>
+                            <button x-show="isHost" @click="set">修改</button>
                         </div>
                     </div>
                     <div id="lobbyRoomFormChat">
-                        <table>
-                            <tr>
-                                <th>测试</th>
-                                <td>测试</td>
-                            </tr>
-                            <template x-for="message in messageList">
-                                <tr>
-                                    <th x-html="`${message.senderName}:`"></th>
-                                    <td x-html="message.message"></td>
-                                </tr>
-                            </template>
-                        </table>
-                        <form id="lobbyChatInput" class="formTextInput" @submit.prevent="submit" >
+                        <div id="lobbyRoomFormChatMessageList">
+                            <table>
+                                <template x-for="message in messageList">
+                                    <tr>
+                                        <th x-html="`${message.senderName}:`"></th>
+                                        <td x-html="message.message"></td>
+                                    </tr>
+                                </template>
+                            </table>
+                        </div>
+                        <form id="lobbyRoomChatInput" class="formTextInput" @submit.prevent="submit" >
                             <input type="text" x-model="chatInputString"></input>
                         </form>
                     </div>
                     <div id="lobbyRoomFormButton" class="formFoot">
-                        <button @click="start">开始游戏</button>
-                        <button @click="quit">退出房间</button>
+                        <button @click="start" x-show="isHost">开始游戏</button>
+                        <button @click="close">退出房间</button>
                     </div>
                 </div>
             </div>

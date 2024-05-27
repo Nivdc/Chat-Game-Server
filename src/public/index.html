@@ -39,9 +39,11 @@
                     <button @click="close"><i class="fa-solid fa-xmark"></i></button>
                 </div>
                 <div id="consoleMessageForm" class="formBody">
-                    <template x-for="message in messageList">
-                        <p x-text="message"></p>
-                    </template>
+                    <div>
+                        <template x-for="message in messageList">
+                            <p x-text="message"></p>
+                        </template>
+                    </div>
                 </div>
                 <form id="consoleInput" class="formTextInput" @submit.prevent="submit" >
                     <input type="text" x-model="inputString"></input>

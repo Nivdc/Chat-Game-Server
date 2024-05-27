@@ -40,7 +40,7 @@
                 </div>
                 <div id="consoleMessageForm" class="formBody">
                     <template x-for="message in messageList">
-                        <p x-html="message"></p>
+                        <p x-text="message"></p>
                     </template>
                 </div>
                 <form id="consoleInput" class="formTextInput" @submit.prevent="submit" >
@@ -58,8 +58,8 @@
                     <table>
                         <template x-for="message in messageList">
                             <tr>
-                                <th x-html="`${message.senderName}:`"></th>
-                                <td x-html="message.message"></td>
+                                <th x-text="`${message.senderName}:`"></th>
+                                <td x-text="message.message"></td>
                             </tr>
                         </template>
                     </table>
@@ -146,8 +146,8 @@
                     <div id="lobbyRoomFormUserList">
                         <p>玩家列表</p>
                         <hr/>
-                        <template x-for="user in userList">
-                            <span x-text="user.name"><i class="fa-solid fa-crown"></i></span>
+                        <template x-for="user in userList" :key="user.uuid">
+                            <span x-html="(user.uuid === host.uuid? `<i class='fa-solid fa-crown'></i> `:'')+user.name"></span>
                         </template>
                     </div>
                     <div id="lobbyRoomFormRoomSetting">
@@ -176,8 +176,8 @@
                             <table>
                                 <template x-for="message in messageList">
                                     <tr>
-                                        <th x-html="`${message.senderName}:`"></th>
-                                        <td x-html="message.message"></td>
+                                        <th x-text="`${message.senderName}:`"></th>
+                                        <td x-text="message.message"></td>
                                     </tr>
                                 </template>
                             </table>

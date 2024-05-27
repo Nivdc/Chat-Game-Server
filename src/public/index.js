@@ -139,6 +139,7 @@ let lobbyRoomList = {
     },
     openCreateRoomForm(){
         lobbyCreateRoom.showUp = true
+        document.getElementById('lobbyCreateRoomForm').style.zIndex = 2
     },
 }
 
@@ -189,7 +190,7 @@ let lobbyRoom = {
         this.chatInputString = ''
     },
     start(){
-        console.log('好像要开始了')
+        lobbyConsole.inputHandler(`StartGame`)
     },
     set(){
         let roomSetData = {
@@ -271,13 +272,15 @@ function init_socket(){
             break
 
             case "GameStarted":
-                // $('#mainForm').hide()
-                // $('body').append(`<iframe id="game" height="100%" width="100%" src='gamePackages/testGame/public/index.html'></iframe>`)
+                document.getElementById('mainForm').style.display = 'none'
+                document.body.insertAdjacentHTML('beforeend', `<iframe id="game" height="100%" width="100%" src='gamePackages/testGame/public/index.html'></iframe>`)
             break
+
             case "GameEnded":
-                // $('#mainForm').show()
-                // $('#game').remove()
-                // game_onmessage = undefined
+                document.getElementById('mainForm').style.display = ''
+                document.getElementById('game').remove()
+                game_onmessage = undefined
+            break
 
             default:
                 if(game_onmessage)
@@ -330,4 +333,4 @@ function dragElement(elmnt, elmnts) {
       document.onmouseup = null;
       document.onmousemove = null;
     }
-  }
+}

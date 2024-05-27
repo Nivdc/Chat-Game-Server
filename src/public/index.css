@@ -40,8 +40,8 @@ body{
     background-color:var(--background);
     color:var(--primary-content);
 
-    align-items: center;
-    justify-content:center;
+    /* align-items: center; */
+    justify-content:start;
 }
 
 button{

@@ -129,6 +129,7 @@ class User{
         this.socket = socket
     }
 
+    sendEvent(type : string, data? : any){this.send_event(type,data)}
     send_event(type : string, data? : any){
         if(this.socket){
             const event = {type, data}
@@ -173,6 +174,8 @@ class Room{
     }
 
     userJoin(user: User){
+        if(this.status !== "open")
+            return
         if(user.current_room === this)
             return
 
@@ -245,18 +248,23 @@ class Room{
     }
 
     start_game(){
-        send_event_to(this.user_list, "GameStarted")
-        if(this.selected_game_package !== undefined){
-            let sgp = this.selected_game_package
-            import(`${gamesFilePath}/${sgp.gameFileName}/${sgp.main}`).then(game => {
-                this.current_game = game.start(this)
-            })
+        if(this.current_game === undefined){            
+            send_event_to(this.user_list, "GameStarted")
+            if(this.selected_game_package !== undefined){
+                let sgp = this.selected_game_package
+                import(`${gamesFilePath}/${sgp.gameFileName}/${sgp.main}`).then(game => {
+                    this.current_game = game.start(this)
+                })
+            }
+            this.status = "inGame"
         }
     }
 
+    endGame(){this.end_game()}
     end_game(){
         send_event_to(this.user_list, "GameEnded")
         this.current_game = undefined
+        this.status = "open"
     }
 
     toJSON(){

@@ -176,6 +176,7 @@ let lobbyRoom = {
         this.status = room.status
         this.userList = room.userList
         this.selectedGameName = room.selectedGamePackage.name
+        this.selectedGamePackage = room.selectedGamePackage
 
         this.showUp = true
     },
@@ -273,7 +274,7 @@ function init_socket(){
 
             case "GameStarted":
                 document.getElementById('mainForm').style.display = 'none'
-                document.body.insertAdjacentHTML('beforeend', `<iframe id="game" height="100%" width="100%" src='gamePackages/testGame/public/index.html'></iframe>`)
+                document.body.insertAdjacentHTML('beforeend', `<iframe id="game" height="100%" width="100%" src='${lobbyRoom.selectedGamePackage.gameResourcePath}'></iframe>`)
             break
 
             case "GameEnded":

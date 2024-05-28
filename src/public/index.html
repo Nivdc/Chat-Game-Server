@@ -86,7 +86,7 @@
                             <th><i class="fa fa-users" aria-hidden="true"></i></th>
                             <th>状态</th>
                         </tr>
-                        <template x-for="room in roomList">
+                        <template x-for="room in roomList" :key="room.id">
                             <tr @click="select(room)" :class=" selectedRoom === room ? 'selected':'' ">
                                 <td x-text="room.selectedGamePackage.name"></td>
                                 <td x-text="room.host.name"></td>

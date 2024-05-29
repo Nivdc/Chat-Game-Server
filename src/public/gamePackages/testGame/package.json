@@ -1,0 +1,9 @@
+{
+    "name":"测试游戏",
+    "main":"main.js",
+    "staticResourcePath":"public",
+
+    "version":"0.1.0", 
+    "description":"一个简单的聊天室。",
+    "author":"Nivdc <nivdc@live.com>"
+}

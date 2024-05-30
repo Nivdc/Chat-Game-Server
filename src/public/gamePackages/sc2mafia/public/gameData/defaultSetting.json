@@ -1,0 +1,34 @@
+{
+    "dayVoteType":"Majority",
+    "dayLength":1.2,
+    "enableTrial":true,
+    "enableTrialDefense":true,
+    "trialTime":0.8,
+
+    "startAt":"day/No-Lynch",
+
+    "nightType":"Classic",
+    "nightLength":0.6,
+
+    "enableDiscussion":true,
+    "discussionTime":0.3,
+
+    "enableLastWord":true,
+    "enablePrivateMessage":true,
+
+    "enableCustomName":true,
+
+    "roleSet":[
+        "Citizen","Citizen","Citizen","Citizen","Citizen",
+        "Citizen","Citizen",
+        "Sheriff","Sheriff","Sheriff","Sheriff",
+        "Mafioso","Mafioso","Mafioso","Mafioso"
+    ],
+
+    "roleModifier":[
+        {
+            "name":"Sheriff",
+            "enableNightChatAndVoting":true
+        }
+    ]
+}

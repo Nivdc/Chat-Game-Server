@@ -1,0 +1,15 @@
+[
+    {
+        "name":"Citizen"
+    },
+    {
+        "name":"Sheriff"
+    },
+    {
+        "name":"Doctor"
+    },
+
+    {
+        "name":"Mafioso"
+    }
+]

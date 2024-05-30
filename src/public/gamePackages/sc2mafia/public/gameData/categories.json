@@ -1,0 +1,22 @@
+[
+    {
+        "name":"Town",
+        "includeRole":[
+            "Citizen",
+            "Sheriff",
+            "Doctor"
+        ]
+    },
+    {
+        "name":"Mafia",
+        "includeRole":[
+            "Mafioso"
+        ]
+    },
+    {
+        "name":"Killing",
+        "includeRole":[
+            "Mafioso"
+        ]
+    }
+]

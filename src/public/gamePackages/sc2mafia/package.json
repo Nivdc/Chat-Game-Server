@@ -1,0 +1,9 @@
+{
+    "name":"sc2mafia",
+    "main":"main.js",
+    "staticResourcePath":"public",
+
+    "version":"0.1.0", 
+    "description":"星际争霸2黑手党",
+    "author":"Nivdc <nivdc@live.com>"
+}

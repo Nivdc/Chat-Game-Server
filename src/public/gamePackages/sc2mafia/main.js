@@ -52,31 +52,39 @@ class Game{
         this.room = room
         this.status = "init"
 
-        generatePlayerList(userList){
+        function generatePlayerList(userList){
             return userList.map(user => Object.create(user))
         }
     }
 
+    get survivingPlayerList(){
+        return player.filter((p) => p.isAlive === true)
+    }
+
     game_ws_message_router(ws, message){
         const event = JSON.parse(message)
-        let user = this.playerList.find(user => {return user.uuid === ws.data.uuid})
+        let player = this.playerList.find(player => {return player.uuid === ws.data.uuid})
     
-        if (user !== undefined)
+        if (player !== undefined)
         switch(event.type){
-            case "GameChatMessage":
-                this.sendEventToAll("GameChatMessage",{sender_name:user.name, message:event.data})
-            break
-            // case "IAmReady":
-            //     user.send_event("GameInit",{
-            //         playersNames:this.playerList.map(player => player.name),
-            //     })
-            // break
             case "HostSetupGame":
-                if(user.uuid === this.host.uuid)
+                if(player.uuid === this.host.uuid)
                     this.setup(event.data)
-                break
-            case "EndGame":
-                this.room.end_game()
+            break
+
+            case "Rename":
+                if(this.status === "begin" && this.setting.enableCustomName){
+                    player.name = event.data
+                }
+            break
+
+            case "LynchVote":
+                if(player.isAlive && this.status === "day"){
+                    if(event.data){
+                        player.lynchVoteTarget = event.data
+                        this.lynchVoteCheck()
+                    }
+                }
             break
         }
     }
@@ -101,13 +109,10 @@ class Game{
             p.isAlive = true
         }
 
-        this.dayCycleCount = 1
-        this.nightCycleCount = 1
+        this.dayCount = 1
 
-
-        this.run()
+        this.setStatus("begin")
     }
-
 
     // 此处有一个比较反直觉的逻辑，我思考了很久
     // 一个状态会持续多久，并不是它本身有个长度决定的，
@@ -115,6 +120,7 @@ class Game{
     // 当前阶段持续30秒和下一个阶段30秒后出现，其实是逻辑等价的说法。
 
     // 感觉从下方的代码可以抽出一个gameStage的数据对象出来...
+    // 总的来看，游戏可以有以下这几个阶段：begin, day/discussion, day/lyuchVote, day/trial/defense, day/trial, night, end
     // 但是...累了累了，先搞完再说吧。
 
     // 我们说30秒后黑夜会到来，它真的会来吗？如来
@@ -126,12 +132,14 @@ class Game{
         switch(status){
             case "begin":
                 this.status = "begin"
-                new Timer(this.begin(), 0.5, true)
+                this.nextStageTimer = new Timer(() => this.begin(), 0.5, true)
             break
             default:
                 this.status = status
             break
         }
+
+        console.log(this.status)
     }
 
     begin(){
@@ -143,31 +151,50 @@ class Game{
                 this.nightCycle()
             break
             case "day/No-Lynch":
-                this.status = "discussion"
+                this.dayCycle("day/No-Lynch")
             break
         }
     }
 
     dayCycle(type){
-        let dayType = type !== "No-Lynch" ? "day" : "day/No-Lynch"
-        let length = type !== "No-Lynch" ? this.setting.dayLength : 0
+        let dayType = type ?  type : "day"
+        let length = type !== "day/No-Lynch" ? this.setting.dayLength : 0
 
         if(this.setting.enableDiscussion){
             length += this.setting.discussionTime
             this.setStatus("discussion")
-            new Timer(this.setStatus(dayType), this.setting.discussionTime, true)
+            this.subStageTimer = new Timer(() => this.setStatus(dayType), this.setting.discussionTime, true)
         }else{
             this.setStatus(dayType)
         }
 
-        this.dayCycleCount ++
-        this.dayTimer = new Timer(this.nightCycle(), length, true)
+        this.nextStageTimer = new Timer(() => this.nightCycle(), length, true)
     }
 
     nightCycle(){
         this.setStatus("night")
-        this.nightCycleCount ++
-        new Timer(this.dayCycle(), this.setting.nightLength, true)
+        this.dayCount ++
+        this.nextStageTimer = new Timer(() => this.dayCycle(), this.setting.nightLength, true)
+    }
+
+    lynchVoteCheck(){
+        let voteCount = Array(15).fill(0);
+        for(const p of this.survivingPlayerList){
+            if("lynchVoteTarget" in p)
+                voteCount[p.lynchVoteTarget - 1] += "voteWeight" in p ? p.voteWeight : 1
+        }
+
+        for(const [index, vc] of voteCount.entries()){
+            let spll = this.survivingPlayerList.length
+            let voteNeeded = spll % 2 === 0 ? ((spll / 2) + 1) : Math.ceil(spll / 2)
+            if(vc >= voteNeeded){
+                if(this.setting.enableTrial){
+                    this.trialCycle(this.playerList[index])
+                }else{
+                    this.execute(this.playerList[index])
+                }
+            }
+        }
     }
 
     userQuit(user){
@@ -198,6 +225,14 @@ class Timer{
             this.start()
     }
 
+    get remainTime(){
+        if(this.id){
+            return this.delay - (Date.now() - this.startTime)
+        }else{
+            return undefined
+        }
+    }
+
     start(){
         if(!this.id){
             this.startTime = Date.now()
@@ -207,9 +242,41 @@ class Timer{
 
     pause(){
         if(this.id){
+            this.clear()
+            this.delay = Date.now() - this.startTime
+        }
+    }
+
+    tick(){
+        if(this.id){
+            this.callback()
+            this.clear()
+        }
+    }
+
+    addDelay(min, go){
+        this.pause()
+        this.delay += 1000 * 60 * min
+
+        if(go)
+            this.start()
+    }
+
+    change(newCallback, newDelay, nowGo){
+        this.pause()
+        this.callback = newCallback
+
+        if(newDelay)
+            this.delay = newDelay
+        
+        if(nowGo)
+            this.start()
+    }
+
+    clear(){
+        if(this.id){
             clearTimeout(id)
             this.id = undefined
-            this.delay = Date.now() - this.startTime
         }
     }
 }

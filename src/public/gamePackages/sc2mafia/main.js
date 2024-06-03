@@ -61,6 +61,11 @@ class Game{
         return player.filter((p) => p.isAlive === true)
     }
 
+    get atTrialOrExecutionStage(){
+        const trialAndExecutionStatuses = ["trial", "trialDefense", "execution", "executionLastWord"]
+        return trialAndExecutionStatuses.includes(this.status)
+    }
+
     game_ws_message_router(ws, message){
         const event = JSON.parse(message)
         let player = this.playerList.find(player => {return player.uuid === ws.data.uuid})
@@ -120,15 +125,14 @@ class Game{
     // 当前阶段持续30秒和下一个阶段30秒后出现，其实是逻辑等价的说法。
 
     // 感觉从下方的代码可以抽出一个gameStage的数据对象出来...
-    // 总的来看，游戏可以有以下这几个阶段：begin, day/discussion, day/lyuchVote, day/trial/defense, day/trial, night, end
+    // 总的来看，游戏可以有以下这几个阶段：
+    // begin, day/discussion, day/lyuchVote, day/trial/defense, day/trial
+    // day/execution, day/execution/lastWord, night, end
     // 但是...累了累了，先搞完再说吧。
 
     // 我们说30秒后黑夜会到来，它真的会来吗？如来
     // 到底来没来？如来~
     setStatus(status){
-        if(this.status !== "end")
-            this.victoryCheck()
-
         switch(status){
             case "begin":
                 this.status = "begin"
@@ -157,24 +161,30 @@ class Game{
     }
 
     dayCycle(type){
+        this.dayOver = false
+
         let dayType = type ?  type : "day"
         let length = type !== "day/No-Lynch" ? this.setting.dayLength : 0
 
         if(this.setting.enableDiscussion){
             length += this.setting.discussionTime
             this.setStatus("discussion")
-            this.subStageTimer = new Timer(() => this.setStatus(dayType), this.setting.discussionTime, true)
+            this.discussionTimer = new Timer(() => this.setStatus(dayType), this.setting.discussionTime, true)
         }else{
             this.setStatus(dayType)
         }
 
-        this.nextStageTimer = new Timer(() => this.nightCycle(), length, true)
+        this.dayTimer = new Timer(() => {
+            this.dayOver = true
+            if(!this.atTrialOrExecutionStage)
+                this.nightCycle()
+        }, length, true)
     }
 
     nightCycle(){
         this.setStatus("night")
         this.dayCount ++
-        this.nextStageTimer = new Timer(() => this.dayCycle(), this.setting.nightLength, true)
+        this.nightTimer = new Timer(() => this.dayCycle(), this.setting.nightLength, true)
     }
 
     lynchVoteCheck(){
@@ -185,16 +195,37 @@ class Game{
         }
 
         for(const [index, vc] of voteCount.entries()){
-            let spll = this.survivingPlayerList.length
-            let voteNeeded = spll % 2 === 0 ? ((spll / 2) + 1) : Math.ceil(spll / 2)
-            if(vc >= voteNeeded){
-                if(this.setting.enableTrial){
-                    this.trialCycle(this.playerList[index])
-                }else{
-                    this.execute(this.playerList[index])
+            if(this.playerList[index].isAlive){
+                let spll = this.survivingPlayerList.length
+                let voteNeeded = spll % 2 === 0 ? ((spll / 2) + 1) : Math.ceil(spll / 2)
+                if(vc >= voteNeeded){
+                    if(this.setting.enableTrial){
+                        this.trialCycle(this.playerList[index])
+                    }else{
+                        this.execution(this.playerList[index])
+                    }
                 }
             }
         }
+    }
+
+    execution(player){
+        let executionLenght = 0.4
+        this.setStatus("executionLastWord")
+        this.executionLWTimer = new Timer(()=> {
+            this.setStatus("execution")
+        }, executionLenght/2, true)
+
+        player.isAlive = false
+        player.deathReason = "Execution"
+        //todo:向所有玩家发送处决消息和玩家遗言
+
+        this.executionTimer = new Timer(()=> {
+            this.dayTimer.tick()
+            this.nightCycle()
+        }, executionLenght, true)
+
+        this.victoryCheck()
     }
 
     userQuit(user){
@@ -225,7 +256,7 @@ class Timer{
             this.start()
     }
 
-    get remainTime(){
+    get remainingTime(){
         if(this.id){
             return this.delay - (Date.now() - this.startTime)
         }else{
@@ -236,7 +267,7 @@ class Timer{
     start(){
         if(!this.id){
             this.startTime = Date.now()
-            this.id = setTimeout(this.callback, this.delay)
+            this.id = setTimeout(()=>{this.tick()}, this.delay)
         }
     }
 
@@ -248,10 +279,8 @@ class Timer{
     }
 
     tick(){
-        if(this.id){
-            this.callback()
-            this.clear()
-        }
+        this.clear()
+        this.callback()
     }
 
     addDelay(min, go){
@@ -275,7 +304,7 @@ class Timer{
 
     clear(){
         if(this.id){
-            clearTimeout(id)
+            clearTimeout(this.id)
             this.id = undefined
         }
     }

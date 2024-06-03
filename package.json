@@ -2,6 +2,7 @@
   "name": "lobby",
   "module": "src/main.ts",
   "type": "module",
+  "version": "0.1.0",
   "scripts": {
     "start": "bun run --hot ./src/main.ts"
   },

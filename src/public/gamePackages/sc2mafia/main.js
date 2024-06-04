@@ -16,22 +16,22 @@ async function init(){
     async function generateRoleList(){
         let roleList = []
         let roleData = await readJsonFile(gameDataPath+"roles.json")
-        let categorieData = await readJsonFile(gameDataPath+"categories.json")
+        let categoriesData = await readJsonFile(gameDataPath+"categories.json")
 
         for(let r of roleData){
-            r.categorie = []
-            for(const c of categorieData){
+            r.categories = []
+            for(const c of categoriesData){
                 if(c.includeRole.includes(r.name))
-                    r.categorie.push(c.name)
+                    r.categories.push(c.name)
             }
 
             // 设置角色的从属关系，不属于“城镇”、“黑手党”、“三合会”的角色会被设置为中立
-            let f = r.categorie.filter(c => majorFactions.has(c))
+            let f = r.categories.filter(c => majorFactions.has(c))
             if (f){
                 r.affiliation = f.pop()
             }else{
                 r.affiliation = "Neutral"
-                r.categorie.unshift("Neutral")
+                r.categories.unshift("Neutral")
             }
 
             roleList.push(r)
@@ -58,7 +58,7 @@ class Game{
     }
 
     get survivingPlayerList(){
-        return player.filter((p) => p.isAlive === true)
+        return this.playerList.filter((p) => p.isAlive === true)
     }
 
     get atTrialOrExecutionStage(){
@@ -73,7 +73,7 @@ class Game{
         if (player !== undefined)
         switch(event.type){
             case "HostSetupGame":
-                if(player.uuid === this.host.uuid)
+                if(player.uuid === this.host.uuid && this.status === "init")
                     this.setup(event.data)
             break
 
@@ -85,8 +85,8 @@ class Game{
 
             case "LynchVote":
                 if(player.isAlive && this.status === "day"){
-                    if(event.data){
-                        player.lynchVoteTarget = event.data
+                    if(event.data !== undefined){
+                        player.lynchVoteTargetNumber = event.data
                         this.lynchVoteCheck()
                     }
                 }
@@ -136,12 +136,14 @@ class Game{
         switch(status){
             case "begin":
                 this.status = "begin"
-                this.nextStageTimer = new Timer(() => this.begin(), 0.5, true)
+                this.beginTimer = new Timer(() => this.begin(), 0.5, true)
             break
             default:
                 this.status = status
             break
         }
+
+        this.sendEventToAll("GameStatusUpdate", JSON.stringify(this))
 
         console.log(this.status)
     }
@@ -190,10 +192,11 @@ class Game{
     lynchVoteCheck(){
         let voteCount = Array(15).fill(0);
         for(const p of this.survivingPlayerList){
-            if("lynchVoteTarget" in p)
-                voteCount[p.lynchVoteTarget - 1] += "voteWeight" in p ? p.voteWeight : 1
+            if(p.lynchVoteTargetNumber !== undefined)
+                voteCount[p.lynchVoteTargetNumber - 1] += "voteWeight" in p ? p.voteWeight : 1
         }
 
+        console.log(voteCount)
         for(const [index, vc] of voteCount.entries()){
             if(this.playerList[index].isAlive){
                 let spll = this.survivingPlayerList.length
@@ -226,6 +229,41 @@ class Game{
         }, executionLenght, true)
 
         this.victoryCheck()
+    }
+
+    victoryCheck(){
+        let town_sp_l = this.querySurvivingPlayerByCategory("Town").length
+        let mafia_sp_l = this.querySurvivingPlayerByCategory("Mafia").length
+        
+        if(town_sp_l === 0){
+            this.winningFaction = "Mafia"
+            this.winners = this.querySurvivingPlayerByCategory("Mafia")
+        }else if(mafia_sp_l === 0){
+            this.winningFaction = "Town"
+            this.winners = this.querySurvivingPlayerByCategory("Town")
+        }
+        
+        if(this.winningFaction !== undefined){        
+            this.setStatus("end")
+            this.clearAllTimer()
+            this.endTimer = new Timer(()=> this.room.endGame(), 0.02, true)
+        }
+    }
+
+    querySurvivingPlayerByCategory(categoryString){
+        return this.survivingPlayerList.filter((p)=>{
+            return p.role.categories.includes(categoryString)
+        })
+    }
+
+    clearAllTimer(){
+        for (const [key, value] of Object.entries(this)) {
+            if(key.endsWith("Timer")){
+                console.log(key)
+                value.clear()
+            }
+        }
+
     }
 
     userQuit(user){

@@ -47,14 +47,10 @@ export function start(room){
 
 class Game{
     constructor(room){
-        this.playerList = generatePlayerList(room.user_list)
+        this.playerList = room.user_list.map(user => new Player(user))
         this.host = room.host
         this.room = room
         this.status = "init"
-
-        function generatePlayerList(userList){
-            return userList.map(user => Object.create(user))
-        }
     }
 
     get survivingPlayerList(){
@@ -68,16 +64,16 @@ class Game{
 
     game_ws_message_router(ws, message){
         const event = JSON.parse(message)
-        let player = this.playerList.find(player => {return player.uuid === ws.data.uuid})
+        let player = this.playerList.find(player => {return player.user.uuid === ws.data.uuid})
     
         if (player !== undefined)
         switch(event.type){
             case "HostSetupGame":
-                if(player.uuid === this.host.uuid && this.status === "init")
+                if(player.user.uuid === this.host.uuid && this.status === "init")
                     this.setup(event.data)
             break
 
-            case "Rename":
+            case "PlayerRename":
                 if(this.status === "begin" && this.setting.enableCustomName){
                     player.name = event.data
                 }
@@ -86,7 +82,7 @@ class Game{
             case "LynchVote":
                 if(player.isAlive && this.status === "day"){
                     if(event.data !== undefined){
-                        player.lynchVoteTargetNumber = event.data
+                        player.lynchVoteTargetNumber = Number(event.data)
                         this.lynchVoteCheck()
                     }
                 }
@@ -107,6 +103,8 @@ class Game{
     setup(setting){
         this.setting = {...defaultSetting, ...setting}
         // todo:此处应有根据随机规则生成真正角色列表的逻辑
+        // todo:检查玩家人数是否与角色列表匹配
+        // todo:为没有自定义名字的玩家随机分配名字
         shuffleArray(this.setting.roleSet)
         shuffleArray(this.playerList)
         for(let [index, p] of this.playerList.entries()){
@@ -163,6 +161,7 @@ class Game{
     }
 
     dayCycle(type){
+        this.playerList.forEach((p) => p.resetCommonProperties())
         this.dayOver = false
 
         let dayType = type ?  type : "day"
@@ -267,14 +266,11 @@ class Game{
     }
 
     userQuit(user){
-        this.playerList.forEach((currentUser,index,list) =>{
-            if(currentUser === user){
-                list.splice(index,1)
+        this.playerList.forEach((currentPlaer,index,list) =>{
+            if(currentPlaer.user === user){
+                currentPlaer.user = undefined
             }
         })
-
-        if(this.playerList.length === 0)
-            this.room.end_game()
     }
 }
 
@@ -282,6 +278,21 @@ function shuffleArray(array) {
     for (let i = array.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [array[i], array[j]] = [array[j], array[i]];
+    }
+}
+
+class Player{
+    constructor(user){
+        this.user = user
+    }
+
+    sendEvent(eventType, data){
+        if(this.user !== undefined)
+            this.user.sendEvent(eventType, data)
+    }
+
+    resetCommonProperties(){
+        this.lynchVoteTargetNumber = undefined
     }
 }
 
@@ -294,13 +305,13 @@ class Timer{
             this.start()
     }
 
-    get remainingTime(){
-        if(this.id){
-            return this.delay - (Date.now() - this.startTime)
-        }else{
-            return undefined
-        }
-    }
+    // get remainingTime(){
+    //     if(this.id){
+    //         return this.delay - (Date.now() - this.startTime)
+    //     }else{
+    //         return undefined
+    //     }
+    // }
 
     start(){
         if(!this.id){
@@ -321,24 +332,24 @@ class Timer{
         this.callback()
     }
 
-    addDelay(min, go){
-        this.pause()
-        this.delay += 1000 * 60 * min
+    // addDelay(min, go){
+    //     this.pause()
+    //     this.delay += 1000 * 60 * min
 
-        if(go)
-            this.start()
-    }
+    //     if(go)
+    //         this.start()
+    // }
 
-    change(newCallback, newDelay, nowGo){
-        this.pause()
-        this.callback = newCallback
+    // change(newCallback, newDelay, nowGo){
+    //     this.pause()
+    //     this.callback = newCallback
 
-        if(newDelay)
-            this.delay = newDelay
+    //     if(newDelay)
+    //         this.delay = newDelay
         
-        if(nowGo)
-            this.start()
-    }
+    //     if(nowGo)
+    //         this.start()
+    // }
 
     clear(){
         if(this.id){

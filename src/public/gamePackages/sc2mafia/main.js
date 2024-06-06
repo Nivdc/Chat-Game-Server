@@ -215,7 +215,14 @@ class Game{
 
     nightAction(){
         this.setStatus("nightAction")
+
+        this.nightActionSequence.push({type:"MafiaKill", targets:this.MafiaKillTargets})
+
+
         this.nightActionSequence.sort(actionSequencing)
+
+        // this.nightActionStep.count = 0
+        this.nightActionStep()
 
         function actionSequencing(a,b){
             const priorityOfActions = {
@@ -225,6 +232,43 @@ class Game{
             return priorityOfActions[a.name] - priorityOfActions[b.name]
         }
     }
+
+    nightActionStep(){
+        if(this.nightActionSequence.length === 0){
+            this.dayCycle()
+            return
+        }
+
+        let a = this.nightActionSequence.shift()
+        switch(a.type){
+            case "MafiaKill":
+                let realTarget = getRandomElement(a.targets)
+                // let realKiller = getRandomElement(this.querySurvivingPlayerByRoleName("Mafioso"))
+                realTarget.isAlive = false
+                realTarget.deathReason = "MafiaKill"
+            break
+        }
+        
+
+
+
+        function getRandomElement(arr){
+            const randomIndex = Math.floor(Math.random() * arr.length)
+            return arr[randomIndex]
+        }
+    }
+
+    // addNightAction(type, args){
+    //     let existedEvents = this.nightActionSequence.filter((a) => a.type === type)
+
+    //     switch(type){
+    //         case "MafiaKill":
+    //             if(existedEvents.length === 1) 
+    //                 this.nightActionSequence.splice(this.nightActionSequence.indexOf(existedEvents.pop()), 1)
+    //             this.nightActionSequence.push({type, target:args.target})
+    //         break
+    //     }
+    // }
 
     sendChatMessage(sender, data){
         let targetGroup = undefined
@@ -259,8 +303,9 @@ class Game{
     }
 
     mafiaKillVoteCheck(){
-        let killTarget = this.voteCheck('MafiaKillVote', this.querySurvivingPlayerByCategory('Mafia'))
-        this.nightActionSequence.push({name:"MafiaKill", target:killTarget})
+        // Note that when a tie vote occurs, there can be multiple targets
+        let killTargets = this.voteCheck('MafiaKillVote', this.querySurvivingPlayerByCategory('Mafia'))
+        this.MafiaKillTargets = killTargets
         // todo:发往客户端的提示信息
     }
 

@@ -57,6 +57,10 @@ class Game{
         return this.playerList.filter((p) => p.isAlive === true)
     }
 
+    get deadPlayerList(){
+        return this.playerList.filter((p) => p.isAlive === false)
+    }
+
     get atTrialOrExecutionStage(){
         const trialAndExecutionStatuses = ["trial", "trialDefense", "execution", "executionLastWord"]
         return trialAndExecutionStatuses.includes(this.status)
@@ -79,12 +83,24 @@ class Game{
                 }
             break
 
+            case "ChatMessage":
+                this.sendChatMessage(player, event.data)
+            break
+
             case "LynchVote":
+                // todo:发送投票信息
                 if(player.isAlive && this.status === "day"){
                     if(event.data !== undefined){
                         player.lynchVoteTargetNumber = Number(event.data)
                         this.lynchVoteCheck()
                     }
+                }
+            break
+
+            case "MafiaKillVote":
+                if(player.isAlive && player.role.affiliation === "Mafia"){
+                    player.mafiaKillVoteTargetNumber = Number(event.data)
+                    this.mafiaKillVoteCheck()
                 }
             break
         }
@@ -112,7 +128,12 @@ class Game{
             p.isAlive = true
         }
 
+        // todo:向每名玩家发送自己的角色
+        // todo:向黑手党发送队友的信息
+
+        // 游戏环境变量初始化...可能不全，因为js可以随时添加上去，欸嘿
         this.dayCount = 1
+        this.nightActionSequence = []
 
         this.setStatus("begin")
     }
@@ -125,7 +146,7 @@ class Game{
     // 感觉从下方的代码可以抽出一个gameStage的数据对象出来...
     // 总的来看，游戏可以有以下这几个阶段：
     // begin, day/discussion, day/lyuchVote, day/trial/defense, day/trial
-    // day/execution, day/execution/lastWord, night, end
+    // day/execution, day/execution/lastWord, night, night/action, end
     // 但是...累了累了，先搞完再说吧。
 
     // 我们说30秒后黑夜会到来，它真的会来吗？如来
@@ -184,30 +205,94 @@ class Game{
 
     nightCycle(){
         this.setStatus("night")
+        this.nightActionSequence = []
         this.dayCount ++
-        this.nightTimer = new Timer(() => this.dayCycle(), this.setting.nightLength, true)
+        this.nightTimer = new Timer(() => {
+            this.nightAction()
+            this.dayCycle()
+        }, this.setting.nightLength, true)
+    }
+
+    nightAction(){
+        this.setStatus("nightAction")
+        this.nightActionSequence.sort(actionSequencing)
+
+        function actionSequencing(a,b){
+            const priorityOfActions = {
+                "MafiaKill":1
+            }
+
+            return priorityOfActions[a.name] - priorityOfActions[b.name]
+        }
+    }
+
+    sendChatMessage(sender, data){
+        let targetGroup = undefined
+        if(sender.isAlive === true){
+            let publicChatEnableStatus = ["day", "init", "discussion", "execution", "trial",]
+            if(publicChatEnableStatus.includes(this.status)){
+                targetGroup = this.survivingPlayerList
+            }else if(this.status === "night"){
+                if(["Mafia"].includes(sender.role.affiliation))
+                    targetGroup = this.querySurvivingPlayerByCategory(sender.role.affiliation)
+            }   
+        }else{
+            targetGroup = this.deadPlayerList
+        }
+
+        this.sendEventToGroup(targetGroup, "Game:ChatMessage", {senderName:sender.name, message:data.message})
     }
 
     lynchVoteCheck(){
-        let voteCount = Array(15).fill(0);
-        for(const p of this.survivingPlayerList){
-            if(p.lynchVoteTargetNumber !== undefined)
-                voteCount[p.lynchVoteTargetNumber - 1] += "voteWeight" in p ? p.voteWeight : 1
+        let spll = this.survivingPlayerList.length
+        let voteNeeded = spll % 2 === 0 ? ((spll / 2) + 1) : Math.ceil(spll / 2)
+        let lynchTarget = this.voteCheck('LynchVote', this.survivingPlayerList, voteNeeded)
+
+        if(lynchTarget !== undefined){
+            if(this.setting.enableTrial){
+                this.trialCycle(lynchTarget)
+            }else{
+                this.execution(lynchTarget)
+            }
         }
 
-        console.log(voteCount)
-        for(const [index, vc] of voteCount.entries()){
-            if(this.playerList[index].isAlive){
-                let spll = this.survivingPlayerList.length
-                let voteNeeded = spll % 2 === 0 ? ((spll / 2) + 1) : Math.ceil(spll / 2)
+    }
+
+    mafiaKillVoteCheck(){
+        let killTarget = this.voteCheck('MafiaKillVote', this.querySurvivingPlayerByCategory('Mafia'))
+        this.nightActionSequence.push({name:"MafiaKill", target:killTarget})
+        // todo:发往客户端的提示信息
+    }
+
+    voteCheck(voteType, checkPlayers, voteNeeded = undefined){
+        let voteCount = Array(this.playerList.length).fill(0)
+        for(const p of checkPlayers){
+            if(p[`${voteType}TargetNumber`] !== undefined)
+                voteCount[p[`${voteType}TargetNumber`] - 1] += `${voteType}Weight` in p ? p[`${voteType}Weight`] : 1
+        }
+
+        // if target isn't alive, vote count = 0
+        for(const index of voteCount.keys()){
+            if(this.playerList[index].isAlive === false)
+                voteCount[index] = 0
+        }
+
+        // 如果定义了最小票数，达到最小票数的玩家对象将被返回
+        // 否则得票最高的玩家将被返回，可以返回多个
+        if(voteNeeded !== undefined){
+            for(const [index, vc] of voteCount.entries()){
                 if(vc >= voteNeeded){
-                    if(this.setting.enableTrial){
-                        this.trialCycle(this.playerList[index])
-                    }else{
-                        this.execution(this.playerList[index])
-                    }
+                    return this.player[index]
                 }
             }
+            return undefined
+        }else{
+            let voteMax = Math.max(voteCount)
+            let voteMaxIndexArray = voteCount.map((vc, idx) => {
+                if(vc === voteMax)
+                    return idx
+            })
+            return voteMaxIndexArray.map((idx) => this.playerList[idx])
         }
     }
 
@@ -216,10 +301,10 @@ class Game{
         this.setStatus("executionLastWord")
         this.executionLWTimer = new Timer(()=> {
             this.setStatus("execution")
+            player.isAlive = false
+            player.deathReason = "Execution"
         }, executionLenght/2, true)
 
-        player.isAlive = false
-        player.deathReason = "Execution"
         //todo:向所有玩家发送处决消息和玩家遗言
 
         this.executionTimer = new Timer(()=> {
@@ -242,7 +327,7 @@ class Game{
             this.winners = this.querySurvivingPlayerByCategory("Town")
         }
         
-        if(this.winningFaction !== undefined){        
+        if(this.winningFaction !== undefined){
             this.setStatus("end")
             this.clearAllTimer()
             this.endTimer = new Timer(()=> this.room.endGame(), 0.02, true)
@@ -252,6 +337,12 @@ class Game{
     querySurvivingPlayerByCategory(categoryString){
         return this.survivingPlayerList.filter((p)=>{
             return p.role.categories.includes(categoryString)
+        })
+    }
+
+    querySurvivingPlayerByRoleName(roleName){
+        return this.survivingPlayerList.filter((p)=>{
+            return p.role.name === roleName
         })
     }
 

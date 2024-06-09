@@ -53,6 +53,7 @@ class Game{
         this.room = room
         this.status = "init"
 
+        // 异步函数的执行顺序和性能影响需要更多的观察
         class GameStage{
             constructor(game, name, durationMin){
                 this.promise = new Promise((resolve)=>{
@@ -166,8 +167,8 @@ class Game{
         this.dayCount = 1
         this.nightActionSequence = []
 
-        this.gameStage = this.newGameStage("begin", 0.05)
-        this.gameStage.then(()=>{this.begin()})
+        this.newGameStage("begin", 0.05)
+        this.gameStage.then(()=>{ this.begin() })
     }
 
     // 此处有一个比较反直觉的逻辑，我思考了很久
@@ -239,13 +240,15 @@ class Game{
 
         this.dayCount ++
         this.nightAction()
-        this.dayCycle()
     }
 
     nightAction(){
         this.setStatus("night/action")
 
-        this.nightActionSequence.push({type:"MafiaKill", targets:this.MafiaKillTargets})
+        if(this.MafiaKillTargets)
+            this.nightActionSequence.push({type:"MafiaKill", targets:this.MafiaKillTargets})
+        else
+            // todo:今晚不杀人?的消息事件
 
 
         this.nightActionSequence.sort(actionSequencing)
@@ -352,8 +355,8 @@ class Game{
                 voteCount[index] = 0
         }
 
-        // 如果定义了最小票数，达到最小票数的玩家对象将被返回
-        // 否则得票最高的玩家将被返回，可以返回多个
+        // 如果定义了最小票数，达到最小票数的玩家对象将被返回(lynchVote)
+        // 否则得票最高的玩家将被返回，可以返回多个(MafiaKillVote)
         if(voteNeeded !== undefined){
             for(const [index, vc] of voteCount.entries()){
                 if(vc >= voteNeeded){
@@ -418,15 +421,14 @@ class Game{
         })
     }
 
-    clearAllTimer(){
-        for (const [key, value] of Object.entries(this)) {
-            if(key.endsWith("Timer")){
-                console.log(key)
-                value.clear()
-            }
-        }
-
-    }
+    // clearAllTimer(){
+    //     for (const [key, value] of Object.entries(this)) {
+    //         if(key.endsWith("Timer")){
+    //             console.log(key)
+    //             value.clear()
+    //         }
+    //     }
+    // }
 
     userQuit(user){
         this.playerList.forEach((currentPlaer,index,list) =>{

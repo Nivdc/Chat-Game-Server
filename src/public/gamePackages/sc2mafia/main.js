@@ -48,9 +48,28 @@ export function start(room){
 class Game{
     constructor(room){
         this.playerList = room.user_list.map(user => new Player(user))
+        this.playerList.forEach((p) => {p.setPlayerList(this.playerList)})
         this.host = room.host
         this.room = room
         this.status = "init"
+
+        class GameStage extends Promise{
+            constructor(game, name, durationMin){
+                let timer = undefined
+                super((resolve)=>{
+                    timer = new Timer(resolve, durationMin, true)
+                })
+
+                this.timer = timer
+                game.setStatus(name)
+            }
+
+            end(){
+                this.timer.tick()
+            }
+        }
+
+        this.GameStage = GameStage
     }
 
     get survivingPlayerList(){
@@ -135,7 +154,7 @@ class Game{
         this.dayCount = 1
         this.nightActionSequence = []
 
-        this.setStatus("begin")
+        this.gameStage = this.newGameStage("begin", 0.5).then(this.begin())
     }
 
     // 此处有一个比较反直觉的逻辑，我思考了很久
@@ -145,26 +164,21 @@ class Game{
 
     // 感觉从下方的代码可以抽出一个gameStage的数据对象出来...
     // 总的来看，游戏可以有以下这几个阶段：
-    // begin, day/discussion, day/lyuchVote, day/trial/defense, day/trial
+    // begin, day/discussion, day/lyuchVote/discussion, day/trial/defense, day/trial/discussion
     // day/execution, day/execution/lastWord, night, night/action, end
     // 但是...累了累了，先搞完再说吧。
 
     // 我们说30秒后黑夜会到来，它真的会来吗？如来
     // 到底来没来？如来~
     setStatus(status){
-        switch(status){
-            case "begin":
-                this.status = "begin"
-                this.beginTimer = new Timer(() => this.begin(), 0.5, true)
-            break
-            default:
-                this.status = status
-            break
-        }
-
+        this.status = status
         this.sendEventToAll("GameStatusUpdate", JSON.stringify(this))
 
         console.log(this.status)
+    }
+
+    newGameStage(name, durationMin){
+        return new this.GameStage(this, name, durationMin)
     }
 
     begin(){
@@ -181,12 +195,16 @@ class Game{
         }
     }
 
-    dayCycle(type){
+    async dayCycle(type){
         this.playerList.forEach((p) => p.resetCommonProperties())
         this.dayOver = false
 
         let dayType = type ?  type : "day"
         let length = type !== "day/No-Lynch" ? this.setting.dayLength : 0
+
+        if(this.dayCount !== 1){
+            this.deathDeclare()
+        }
 
         if(this.setting.enableDiscussion){
             length += this.setting.discussionTime
@@ -203,9 +221,14 @@ class Game{
         }, length, true)
     }
 
+    deathDeclare(){
+
+    }
+
     nightCycle(){
         this.setStatus("night")
         this.nightActionSequence = []
+        this.recentlyDeadPlayers = []
         this.dayCount ++
         this.nightTimer = new Timer(() => {
             this.nightAction()
@@ -246,6 +269,7 @@ class Game{
                 // let realKiller = getRandomElement(this.querySurvivingPlayerByRoleName("Mafioso"))
                 realTarget.isAlive = false
                 realTarget.deathReason = "MafiaKill"
+                this.recentlyDeadPlayers.push(realTarget)
             break
         }
         
@@ -420,6 +444,14 @@ function shuffleArray(array) {
 class Player{
     constructor(user){
         this.user = user
+    }
+
+    get index(){
+        return this.playerList.indexOf(this)
+    }
+
+    setPlayerList(playerList){
+        this.playerList = playerList
     }
 
     sendEvent(eventType, data){

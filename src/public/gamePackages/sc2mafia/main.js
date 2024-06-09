@@ -66,10 +66,6 @@ class Game{
                 this.timer.tick()
             }
 
-            clear(){
-                this.timer.clear()
-            }
-
             then(...args){
                 return this.promise.then(...args)
             }
@@ -83,6 +79,10 @@ class Game{
         }
 
         this.GameStage = GameStage
+    }
+
+    get onlinePlayerList(){
+        return this.playerList.filter((p) => p.user !== undefined)
     }
 
     get survivingPlayerList(){
@@ -207,7 +207,7 @@ class Game{
         }
     }
 
-    async dayCycle(type){
+    async dayCycle(){
         this.playerList.forEach((p) => p.resetCommonProperties())
         this.dayOver = false
 
@@ -305,16 +305,20 @@ class Game{
 
     sendChatMessage(sender, data){
         let targetGroup = undefined
-        if(sender.isAlive === true){
-            let publicChatEnableStatus = ["day", "init", "discussion", "execution", "trial",]
-            if(publicChatEnableStatus.includes(this.status)){
-                targetGroup = this.survivingPlayerList
-            }else if(this.status === "night"){
-                if(["Mafia"].includes(sender.role.affiliation))
-                    targetGroup = this.querySurvivingPlayerByCategory(sender.role.affiliation)
-            }   
-        }else{
-            targetGroup = this.deadPlayerList
+
+        if(this.status === "init" || this.status === "begin" || this.status === "end")
+            targetGroup = this.onlinePlayerList
+        else{
+            if(sender.isAlive === true){
+                if(this.status.startsWith("day") && this.status.split('/').includes("discussion")){
+                    targetGroup = this.survivingPlayerList
+                }else if(this.status.startsWith("night") && this.status.split('/').includes("discussion")){
+                    if(sender.role.affiliation === "Mafia")
+                        targetGroup = this.querySurvivingPlayerByCategory(sender.role.affiliation)
+                }
+            }else{
+                targetGroup = this.deadPlayerList
+            }
         }
 
         this.sendEventToGroup(targetGroup, "Game:ChatMessage", {senderName:sender.name, message:data.message})
@@ -465,7 +469,11 @@ class Player{
     }
 
     resetCommonProperties(){
-        this.lynchVoteTargetNumber = undefined
+        // this.lynchVoteTargetNumber = undefined
+        for (const key of Object.keys(this)) {
+            if(key.endsWith("VoteTargetNumber"))
+                this[key] = undefined
+        }
     }
 }
 

@@ -53,19 +53,31 @@ class Game{
         this.room = room
         this.status = "init"
 
-        class GameStage extends Promise{
+        class GameStage{
             constructor(game, name, durationMin){
-                let timer = undefined
-                super((resolve)=>{
-                    timer = new Timer(resolve, durationMin, true)
+                this.promise = new Promise((resolve)=>{
+                    this.timer = new Timer(resolve, durationMin, true)
                 })
-
-                this.timer = timer
                 game.setStatus(name)
             }
 
             end(){
                 this.timer.tick()
+            }
+
+            clear(){
+                this.timer.clear()
+            }
+
+            then(...args){
+                return this.promise.then(...args)
+            }
+
+            [Symbol.asyncIterator]() {
+                return (async function* () {
+                    await this.promise;
+                    yield;
+                }).call(this);
             }
         }
 
@@ -154,7 +166,8 @@ class Game{
         this.dayCount = 1
         this.nightActionSequence = []
 
-        this.gameStage = this.newGameStage("begin", 0.5).then(this.begin())
+        this.gameStage = this.newGameStage("begin", 0.05)
+        this.gameStage.then(()=>{this.begin()})
     }
 
     // 此处有一个比较反直觉的逻辑，我思考了很久
@@ -164,33 +177,31 @@ class Game{
 
     // 感觉从下方的代码可以抽出一个gameStage的数据对象出来...
     // 总的来看，游戏可以有以下这几个阶段：
-    // begin, day/discussion, day/lyuchVote/discussion, day/trial/defense, day/trial/discussion
-    // day/execution, day/execution/lastWord, night, night/action, end
+    // begin, day/deathDeclare, day/discussion, day/discussion/lyuchVote, day/trial/defense, day/trial/discussion
+    // day/execution/lastWord,day/execution/discussion, night/discussion, night/action, end
     // 但是...累了累了，先搞完再说吧。
 
     // 我们说30秒后黑夜会到来，它真的会来吗？如来
     // 到底来没来？如来~
     setStatus(status){
         this.status = status
-        this.sendEventToAll("GameStatusUpdate", JSON.stringify(this))
+        // this.sendEventToAll("GameStatusUpdate", JSON.stringify(this))
 
-        console.log(this.status)
+        console.log("StatusChange->",this.status)
     }
 
     newGameStage(name, durationMin){
-        return new this.GameStage(this, name, durationMin)
+        this.gameStage = new this.GameStage(this, name, durationMin)
+        return this.gameStage
     }
 
     begin(){
-        switch(this.setting.startAt){
+        switch(this.setting.startAt.split('/')[0]){
             case "day":
                 this.dayCycle()
             break
             case "night":
                 this.nightCycle()
-            break
-            case "day/No-Lynch":
-                this.dayCycle("day/No-Lynch")
             break
         }
     }
@@ -199,45 +210,40 @@ class Game{
         this.playerList.forEach((p) => p.resetCommonProperties())
         this.dayOver = false
 
-        let dayType = type ?  type : "day"
-        let length = type !== "day/No-Lynch" ? this.setting.dayLength : 0
+        // if(this.dayCount !== 1){
+        //     this.deathDeclare()
+        // }
 
-        if(this.dayCount !== 1){
-            this.deathDeclare()
-        }
+        if(this.setting.enableDiscussion)
+            await this.newGameStage("day/discussion", this.setting.discussionTime)
 
-        if(this.setting.enableDiscussion){
-            length += this.setting.discussionTime
-            this.setStatus("discussion")
-            this.discussionTimer = new Timer(() => this.setStatus(dayType), this.setting.discussionTime, true)
-        }else{
-            this.setStatus(dayType)
-        }
+        // Except for the first day/No-Lynch...this is a bit counter-intuitive.
+        if(this.dayCount !== 1 || this.setting.startAt !== "day/No-Lynch")
+            await this.newGameStage("day/discussion/lyuchVote", this.setting.dayLength)
 
-        this.dayTimer = new Timer(() => {
-            this.dayOver = true
-            if(!this.atTrialOrExecutionStage)
-                this.nightCycle()
-        }, length, true)
+
+        this.dayOver = true
+        if(!this.atTrialOrExecutionStage)
+            this.nightCycle()
     }
 
     deathDeclare(){
 
     }
 
-    nightCycle(){
-        this.setStatus("night")
+    async nightCycle(){
         this.nightActionSequence = []
         this.recentlyDeadPlayers = []
+
+        await this.newGameStage("night/discussion", this.setting.nightLength)
+
         this.dayCount ++
-        this.nightTimer = new Timer(() => {
-            this.nightAction()
-            this.dayCycle()
-        }, this.setting.nightLength, true)
+        this.nightAction()
+        this.dayCycle()
     }
 
     nightAction(){
-        this.setStatus("nightAction")
+        this.setStatus("night/action")
 
         this.nightActionSequence.push({type:"MafiaKill", targets:this.MafiaKillTargets})
 
@@ -365,26 +371,24 @@ class Game{
         }
     }
 
-    execution(player){
+    async execution(player){
         let executionLenght = 0.4
-        this.setStatus("executionLastWord")
-        this.executionLWTimer = new Timer(()=> {
-            this.setStatus("execution")
-            player.isAlive = false
-            player.deathReason = "Execution"
-        }, executionLenght/2, true)
+
+        this.gameStage.end()
+        await this.newGameStage("day/execution/lastWord", executionLenght/2)
+        player.isAlive = false
+        player.deathReason = "Execution"
 
         //todo:向所有玩家发送处决消息和玩家遗言
 
-        this.executionTimer = new Timer(()=> {
-            this.dayTimer.tick()
-            this.nightCycle()
-        }, executionLenght, true)
+        await this.newGameStage("day/execution/discussion", executionLenght/2)
+        await this.victoryCheck()
 
-        this.victoryCheck()
+        if(this.status !== "end")
+            this.nightCycle()
     }
 
-    victoryCheck(){
+    async victoryCheck(){
         let town_sp_l = this.querySurvivingPlayerByCategory("Town").length
         let mafia_sp_l = this.querySurvivingPlayerByCategory("Mafia").length
         
@@ -397,9 +401,8 @@ class Game{
         }
         
         if(this.winningFaction !== undefined){
-            this.setStatus("end")
-            this.clearAllTimer()
-            this.endTimer = new Timer(()=> this.room.endGame(), 0.02, true)
+            await this.newGameStage("end", 0.02)
+            this.room.endGame()
         }
     }
 

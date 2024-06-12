@@ -94,8 +94,7 @@ class Game{
     }
 
     get atTrialOrExecutionStage(){
-        const trialAndExecutionStatuses = ["trial", "trialDefense", "execution", "executionLastWord"]
-        return trialAndExecutionStatuses.includes(this.status)
+        return this.status.split('/').includes("trial") || this.status.split('/').includes("execution")
     }
 
     game_ws_message_router(ws, message){
@@ -121,7 +120,7 @@ class Game{
 
             case "LynchVote":
                 // todo:发送投票信息
-                if(player.isAlive && this.status === "day"){
+                if(player.isAlive && this.status === "day/discussion/lynchVote"){
                     if(event.data !== undefined){
                         player.lynchVoteTargetNumber = Number(event.data)
                         this.lynchVoteCheck()
@@ -178,17 +177,20 @@ class Game{
 
     // 感觉从下方的代码可以抽出一个gameStage的数据对象出来...
     // 总的来看，游戏可以有以下这几个阶段：
-    // begin, day/deathDeclare, day/discussion, day/discussion/lyuchVote, day/trial/defense, day/trial/discussion
+    // begin, day/deathDeclare, day/discussion, day/discussion/lynchVote, day/trial/defense, day/trial/discussion
     // day/execution/lastWord,day/execution/discussion, night/discussion, night/action, end
     // 但是...累了累了，先搞完再说吧。
 
     // 我们说30秒后黑夜会到来，它真的会来吗？如来
     // 到底来没来？如来~
-    setStatus(status){
-        this.status = status
-        // this.sendEventToAll("GameStatusUpdate", JSON.stringify(this))
 
-        console.log("StatusChange->",this.status)
+    setStatus(status){
+        // console.log("Befor->",this.status)
+
+        this.status = status
+        this.sendEventToAll("GameStatusUpdate", JSON.stringify(this))
+
+        console.log("After->",this.status)
     }
 
     newGameStage(name, durationMin){
@@ -211,16 +213,15 @@ class Game{
         this.playerList.forEach((p) => p.resetCommonProperties())
         this.dayOver = false
 
-        // if(this.dayCount !== 1){
-        //     this.deathDeclare()
-        // }
+        if(this.dayCount !== 1)
+            await this.deathDeclare()
 
         if(this.setting.enableDiscussion)
             await this.newGameStage("day/discussion", this.setting.discussionTime)
 
         // Except for the first day/No-Lynch...this is a bit counter-intuitive.
         if(this.dayCount !== 1 || this.setting.startAt !== "day/No-Lynch")
-            await this.newGameStage("day/discussion/lyuchVote", this.setting.dayLength)
+            await this.newGameStage("day/discussion/lynchVote", this.setting.dayLength)
 
 
         this.dayOver = true
@@ -228,8 +229,8 @@ class Game{
             this.nightCycle()
     }
 
-    deathDeclare(){
-
+    async deathDeclare(){
+        // todo:没啥特别的...就是把最近死掉的人的信息发送出去（然后等待动画播放完成...会有动画的吧？大概？
     }
 
     async nightCycle(){
@@ -245,7 +246,7 @@ class Game{
     nightAction(){
         this.setStatus("night/action")
 
-        if(this.MafiaKillTargets)
+        if(this.MafiaKillTargets ?? false)
             this.nightActionSequence.push({type:"MafiaKill", targets:this.MafiaKillTargets})
         else
             // todo:今晚不杀人?的消息事件
@@ -328,7 +329,6 @@ class Game{
         let spll = this.survivingPlayerList.length
         let voteNeeded = spll % 2 === 0 ? ((spll / 2) + 1) : Math.ceil(spll / 2)
         let lynchTarget = this.voteCheck('LynchVote', this.survivingPlayerList, voteNeeded)
-
         if(lynchTarget !== undefined){
             if(this.setting.enableTrial){
                 this.trialCycle(lynchTarget)
@@ -347,6 +347,7 @@ class Game{
     }
 
     voteCheck(voteType, checkPlayers, voteNeeded = undefined){
+        voteType = voteType.charAt(0).toLowerCase() + voteType.slice(1)
         let voteCount = Array(this.playerList.length).fill(0)
         for(const p of checkPlayers){
             if(p[`${voteType}TargetNumber`] !== undefined)
@@ -364,7 +365,7 @@ class Game{
         if(voteNeeded !== undefined){
             for(const [index, vc] of voteCount.entries()){
                 if(vc >= voteNeeded){
-                    return this.player[index]
+                    return this.playerList[index]
                 }
             }
             return undefined
@@ -381,6 +382,7 @@ class Game{
     async execution(player){
         let executionLenght = 0.4
 
+        // "day" stage end
         this.gameStage.end()
         await this.newGameStage("day/execution/lastWord", executionLenght/2)
         player.isAlive = false
@@ -428,7 +430,6 @@ class Game{
     // clearAllTimer(){
     //     for (const [key, value] of Object.entries(this)) {
     //         if(key.endsWith("Timer")){
-    //             console.log(key)
     //             value.clear()
     //         }
     //     }
@@ -455,6 +456,15 @@ class Player{
         this.user = user
     }
 
+    get name(){
+        return this.nickname !== undefined ? this.nickname : 
+            this.user !== undefined ? this.user.name : "OfflinePlayer"
+    }
+
+    set name(name){
+        this.nickname = name
+    }
+
     get index(){
         return this.playerList.indexOf(this)
     }
@@ -473,6 +483,12 @@ class Player{
         for (const key of Object.keys(this)) {
             if(key.endsWith("VoteTargetNumber"))
                 this[key] = undefined
+        }
+    }
+
+    toJSON(){
+        return {
+            name: this.name,
         }
     }
 }

@@ -99,41 +99,50 @@ class Game{
 
     game_ws_message_router(ws, message){
         const event = JSON.parse(message)
-        let player = this.playerList.find(player => {return player.user.uuid === ws.data.uuid})
+        let player = this.playerList.find(player => {return player.user?.uuid === ws.data.uuid})
     
-        if (player !== undefined)
-        switch(event.type){
-            case "HostSetupGame":
-                if(player.user.uuid === this.host.uuid && this.status === "init")
-                    this.setup(event.data)
-            break
+        if (player !== undefined){
+            switch(event.type){
+                case "HostSetupGame":
+                    if(player.user?.uuid === this.host.uuid && this.status === "init")
+                        this.setup(event.data)
+                break
 
-            case "PlayerRename":
-                if(this.status === "begin" && this.setting.enableCustomName){
-                    player.name = event.data
-                }
-            break
-
-            case "ChatMessage":
-                this.sendChatMessage(player, event.data)
-            break
-
-            case "LynchVote":
-                // todo:发送投票信息
-                if(player.isAlive && this.status === "day/discussion/lynchVote"){
-                    if(event.data !== undefined){
-                        player.lynchVoteTargetNumber = Number(event.data)
-                        this.lynchVoteCheck()
+                case "PlayerRename":
+                    if(this.status === "begin" && this.setting.enableCustomName){
+                        player.name = event.data
                     }
-                }
-            break
+                break
 
-            case "MafiaKillVote":
-                if(player.isAlive && player.role.affiliation === "Mafia"){
-                    player.mafiaKillVoteTargetNumber = Number(event.data)
-                    this.mafiaKillVoteCheck()
-                }
-            break
+                case "ChatMessage":
+                    this.sendChatMessage(player, event.data)
+                break
+            }
+
+            if(player.isAlive ?? false)
+            switch(event.type){
+                case "LynchVote":
+                    // todo:发送投票信息
+                    if(this.status.split('/').includes('lynchVote')){
+                        if(event.data !== undefined){
+                            player.lynchVoteTargetNumber = Number(event.data)
+                            this.lynchVoteCheck()
+                        }
+                    }
+                break
+                
+                case "MafiaKillVote":
+                    if(player.role.affiliation === "Mafia"){
+                        player.mafiaKillVoteTargetNumber = Number(event.data)
+                        this.mafiaKillVoteCheck()
+                    }
+                break
+
+                case "useAbility":
+                        player.abilityTargetNumber = Number(event.data)
+                break
+            }
+    
         }
     }
 
@@ -164,7 +173,6 @@ class Game{
 
         // 游戏环境变量初始化...可能不全，因为js可以随时添加上去，欸嘿
         this.dayCount = 1
-        this.nightActionSequence = []
 
         this.newGameStage("begin", 0.05)
         this.gameStage.then(()=>{ this.begin() })
@@ -216,6 +224,8 @@ class Game{
         if(this.dayCount !== 1)
             await this.deathDeclare()
 
+        this.victoryCheck()
+
         if(this.setting.enableDiscussion)
             await this.newGameStage("day/discussion", this.setting.discussionTime)
 
@@ -246,11 +256,7 @@ class Game{
     nightAction(){
         this.setStatus("night/action")
 
-        if(this.MafiaKillTargets ?? false)
-            this.nightActionSequence.push({type:"MafiaKill", targets:this.MafiaKillTargets})
-        else
-            // todo:今晚不杀人?的消息事件
-
+        this.generatePlayerAction()
 
         this.nightActionSequence.sort(actionSequencing)
 
@@ -259,10 +265,43 @@ class Game{
 
         function actionSequencing(a,b){
             const priorityOfActions = {
-                "MafiaKill":1
+                "MafiaKill":10,
+                "SheriffCheck":20,
+                "DoctorProtect":89,
             }
 
             return priorityOfActions[a.name] - priorityOfActions[b.name]
+        }
+    }
+
+    generatePlayerAction(){
+        // MafiaKill
+        if(this.mafiaKillTargets ?? false){
+            let realTarget = getRandomElement(this.mafiaKillTargets)
+            let realKiller = getMafiaKiller()
+            this.nightActionSequence.push({type:"MafiaKill", origin:realKiller, target:this.mafiaKillTargets})
+            this.mafiaKillTargets = undefined
+        }
+
+        // SoloPlayer
+        for(const p of this.playerList){
+            if(p.abilityTargetNumber !== undefined){
+                let targetPlayrerIndex = p.abilityTargetNumber - 1
+                let targetPlayer = this.playerList[targetPlayrerIndex]
+                let actionType = undefined
+
+                switch(p.role.name){
+                    case "Sheriff":
+                        actionType = "SheriffCheck"
+                    break
+                    case "Doctor":
+                        actionType = "DoctorHeal"
+                    break
+                }
+
+                if(actionType ?? false)
+                    nightActionSequence.push({type:actionType, origin:p, target:targetPlayer})
+            }
         }
     }
 
@@ -275,21 +314,20 @@ class Game{
         let a = this.nightActionSequence.shift()
         switch(a.type){
             case "MafiaKill":
-                let realTarget = getRandomElement(a.targets)
-                // let realKiller = getRandomElement(this.querySurvivingPlayerByRoleName("Mafioso"))
-                realTarget.isAlive = false
-                realTarget.deathReason = "MafiaKill"
-                this.recentlyDeadPlayers.push(realTarget)
+                a.target.isAlive = false
+                a.target.deathReason = "MafiaKill"
+                this.recentlyDeadPlayers.push(a.target)
+            break
+
+            case "SheriffCheck":
+                // todo: 没啥特别的...就是发送消息去就好
+            break
+
+            case "DoctorHeal":
+                
             break
         }
         
-
-
-
-        function getRandomElement(arr){
-            const randomIndex = Math.floor(Math.random() * arr.length)
-            return arr[randomIndex]
-        }
     }
 
     // addNightAction(type, args){
@@ -342,7 +380,7 @@ class Game{
     mafiaKillVoteCheck(){
         // Note that when a tie vote occurs, there can be multiple targets
         let killTargets = this.voteCheck('MafiaKillVote', this.querySurvivingPlayerByCategory('Mafia'))
-        this.MafiaKillTargets = killTargets
+        this.mafiaKillTargets = killTargets
         // todo:发往客户端的提示信息
     }
 
@@ -441,7 +479,14 @@ class Game{
                 currentPlaer.user = undefined
             }
         })
+
+        // fixme: host quit, no one can setup game
     }
+}
+
+function getRandomElement(arr){
+    const randomIndex = Math.floor(Math.random() * arr.length)
+    return arr[randomIndex]
 }
 
 function shuffleArray(array) {
@@ -481,10 +526,18 @@ class Player{
     resetCommonProperties(){
         // this.lynchVoteTargetNumber = undefined
         for (const key of Object.keys(this)) {
-            if(key.endsWith("VoteTargetNumber"))
+            if(key.endsWith("TargetNumber"))
                 this[key] = undefined
         }
     }
+
+    // toJSON_self(){
+    //     return {
+    //         name: this.name,
+    //         affiliation: this.affiliation, 
+    //         roleName: this.roleName
+    //     }
+    // }
 
     toJSON(){
         return {

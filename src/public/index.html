@@ -3,9 +3,9 @@
     <head>
         <meta charset="utf-8">
         <title>Lobby</title>
-        <link href="https://cdn.staticfile.net/font-awesome/6.5.1/css/all.min.css" rel="stylesheet" type="text/css">
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" type="text/css">
         <link href="index.css" rel="stylesheet" type="text/css">
-        <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.0/dist/cdn.min.js"></script>
+        <script defer src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.14.0/cdn.min.js"></script>
         <script src="index.js"></script>
     </head>
 
@@ -92,7 +92,7 @@
                                 <td x-text="room.host.name"></td>
                                 <td x-text="room.name"></td>
                                 <td x-text="room.userList.length"></td>
-                                <td x-text="room.status === 'open'? '开放':'关闭'"></td>
+                                <td x-text="room.status === 'open'? '开放':'游戏中'"></td>
                             </tr>
                         </template>
                     </table>

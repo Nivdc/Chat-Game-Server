@@ -80,6 +80,10 @@ select{
     border: none;
     background-color:var(--background-highlights);
 }
+select[disabled]{
+    color: color-mix(in srgb, black, var(--primary-content) 70%);
+    background-color: color-mix(in srgb, black, var(--background) 70%);
+}
 select:focus{
     outline-style: none;
 }

@@ -260,8 +260,7 @@ class Game{
 
         this.nightActionSequence.sort(actionSequencing)
 
-        // this.nightActionStep.count = 0
-        this.nightActionStep()
+        this.nightActionProcess()
 
         function actionSequencing(a,b){
             const priorityOfActions = {
@@ -305,7 +304,10 @@ class Game{
         }
     }
 
-    nightActionStep(){
+    nightActionProcess(){
+        let attackCount = Array(this.playerList.length).fill(0)
+        let healCount   = Array(this.playerList.length).fill(0)
+
         if(this.nightActionSequence.length === 0){
             this.dayCycle()
             return
@@ -314,9 +316,8 @@ class Game{
         let a = this.nightActionSequence.shift()
         switch(a.type){
             case "MafiaKill":
-                a.target.isAlive = false
-                a.target.deathReason = "MafiaKill"
-                this.recentlyDeadPlayers.push(a.target)
+                attackCount[a.target.index] ++
+                // todo: 发送提示
             break
 
             case "SheriffCheck":
@@ -324,8 +325,19 @@ class Game{
             break
 
             case "DoctorHeal":
-                
+                healCount[a.target.index] ++
+                // todo: 发送提示
             break
+        }
+
+        for(let p of this.playerList){
+            let idx = p.index
+            if(p.isAlive){
+                if(attackCount[idx] > healCount[idx]){
+                    p.isAlive = false
+                    this.recentlyDeadPlayers.push(p)
+                }
+            }
         }
         
     }

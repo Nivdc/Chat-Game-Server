@@ -32,7 +32,25 @@ html,body{height:100%;}
     --secondary-content:var(--base01);
     --primary-content:var(--base0);
     --emphasized-content:var(--base1);
-    --optional-emphasized-content:var(--base2)
+    --optional-emphasized-content:var(--base2);
+
+
+    /* 以下是sc2mafia玩家的默认配色，以1-15的顺序排列 */
+    --red:         red;
+    --blue:        blue;
+    --teal:        #87CEFA;
+    --purple:      purple;
+    --yellow:      yellow;
+    --orange:      #FF6811;
+    --green:       #228B22;
+    --light-pink:  #FFC0EA;
+    --violet:      #8A2BE2;
+    --grey:        #D3D3D3;
+    --dark-green:  #006400;
+    --brown:       #8B4513;
+    --light-green: #98FB98;
+    --black:       #696969;
+    --pink:        fuchsia;
 }
 
 body{
@@ -44,91 +62,64 @@ body{
     justify-content:center;
 }
 
-button{
-    margin: 0.5em;
-
-    position: relative;
-    color: var(--primary-content);
-
-    border-style: none;
-
-    background-color:inherit;
-
-    -webkit-transition:.2s linear;
-    -moz-transition:.2s linear;
-    -o-transition:.2s linear;
-    transition:.2s linear;
+select{
+    color:var(--primary-content);
+    padding: 0.2rem;
+    border: none;
+    background-color:var(--background-highlights);
 }
-button:hover{
-    color: var(--optional-emphasized-content);
-}
-button:active{
-    top: 2px;
-}
-button:focus{
+select:focus{
     outline-style: none;
 }
-
-.form{
-    margin:0px auto;
-    padding: 1em;
-
-    border-style: solid;
-    border-color: var(--secondary-content);
-
+select[disabled]{
+    color: color-mix(in srgb, black, var(--primary-content) 70%);
+    background-color: color-mix(in srgb, black, var(--background) 70%);
+}
+option:active{
+    color:var(--primary-content);
     background-color:var(--background-highlights);
+}
+
+.boxLabel{
+    position: absolute;
+    top: -1em;
+    left: 1em;
+    padding: 0.2em;
     text-align: center;
-}
-.form button{
-    font-size: 1.5em;
-}
-
-#gameMessageForm{
-    display:flex;
-    background-color:rgba(7,54,66,1);
-    height:20em;
-    width:calc(1.5rem*30);
-}
-
-#gameMessageList{
-    display:flex;
-    flex-direction:column-reverse;
-    background-color:rgba(0,0,0,0);
-    border-color:rgba(88,110,117,1);
-    border-bottom:none;
-    padding:0.5em;
-    flex:3;
-    text-align:left;
-    overflow: auto;
-}
-#gameMessageList table tr td{
-    display:inline;
-}
-
-#playerList{
-    /* display:flex; */
-    padding:0.5em;
-    border-left:none;
-    border-bottom:none;
-    flex:1
-}
-#playerList table{
-    flex:1
-}
-#playerList table tr td{
-    padding:0.5em;
-    text-align:left;
     background-color:var(--background);
 }
 
-#gameMsg input{
-    color:var(--primary-content);
-    font-size:1.5em;
-    width:calc(1.5rem*30);
-    border-style: solid;
-    border-color: var(--secondary-content);
-    background-color:var(--background-highlights);
+.border{
+    border: 0.1em solid var(--secondary-content);
 }
-#gameMsg input:focus{
-    outline-style: none;
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(359deg);
+    }
+}
+#loading {
+    font-size: 2rem;
+}
+#loading i{
+    animation: spin 1.5s linear infinite;
+}
+
+#gameSettingForm{
+    display: flex;
+    padding: 0.4em;
+    position: absolute;
+    top: 0;
+    left: 0;
+    margin:1em;
+}
+#gameSettingForm > div{
+    margin: 0.2em;
+}
+#gameSettingForm > div+div{
+    border-left: 0.1em solid var(--secondary-content);
+    padding-left: 0.2em;
 }

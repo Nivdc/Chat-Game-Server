@@ -108,6 +108,11 @@ class Game{
                         this.setup(event.data)
                 break
 
+                case "HostChangesGameSetting":
+                    if(player.user?.uuid === this.host.uuid && this.status === "init")
+                        this.sendEventToAll(event.type, event.data)
+                break
+
                 case "PlayerRename":
                     if(this.status === "begin" && this.setting.enableCustomName){
                         player.name = event.data
@@ -138,7 +143,7 @@ class Game{
                     }
                 break
 
-                case "useAbility":
+                case "UseAbility":
                         player.abilityTargetNumber = Number(event.data)
                 break
             }

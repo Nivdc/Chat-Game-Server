@@ -10,10 +10,10 @@
         <script src="index.js"></script>
     </head>
 
-    <body>
-        <div id="loading"><i class="fa-solid fa-spinner"></i> 加载中...</div>
+    <body x-data="game">
+        <div id="loading" x-show="loading"><i class="fa-solid fa-spinner"></i> 加载中...</div>
 
-        <div id="gameSettingForm" x-data="gameSetting" x-effect="gameSettingChanged()" class="border">
+        <div id="settingForm" class="border">
             <h3 class="boxLabel">游戏设置</h3>
             <div>
                 <h4>游戏性设置</h4>
@@ -24,6 +24,10 @@
                             <option x-text="type.name" :value="type.value"></option>
                         </template>
                     </select>
+                </div>
+                <div>
+                    <label>死亡后揭示玩家角色</label>
+                    <input type="checkbox" x-model="setting.revealPlayerRoleOnDeath" />
                 </div>
                 <div>
                     <label>启用自设名字</label>
@@ -56,6 +60,8 @@
                 <div>
                     <label>白天时长</label>
                     <input type="range" min="0.1" max="5" step="0.1" x-model="setting.dayLength" />
+                    <!-- <input type="text"  min="0.1" max="5" step="0.1" x-model="setting.dayLength" />
+                    <span>分钟</span> -->
                     <span x-text="`${Number(setting?.dayLength).toFixed(1)} 分钟`"></span>
                 </div>
                 <span>
@@ -71,6 +77,8 @@
                     <div>
                         <label>讨论时长</label>
                         <input type="range" min="0.1" max="5" step="0.1" x-model="setting.discussionTime" />
+                        <!-- <input type="text"  min="0.1" max="5" step="0.1" x-model="setting.discussionTime" />
+                        <span>分钟</span> -->
                         <span x-text="`${Number(setting?.discussionTime).toFixed(1)} 分钟`"></span>
                     </div>
                 </div>
@@ -79,6 +87,8 @@
                     <div>
                         <label>审判时长</label>
                         <input type="range" min="0.1" max="5" step="0.1" x-model="setting.trialTime" />
+                        <!-- <input type="text"  min="0.1" max="5" step="0.1" x-model="setting.trialTime" />
+                        <span>分钟</span> -->
                         <span x-text="`${Number(setting?.trialTime).toFixed(1)} 分钟`"></span>
                     </div>
                     <span>
@@ -104,6 +114,8 @@
                 <div>
                     <label>夜晚时长</label>
                     <input type="range" min="0.1" max="5" step="0.1" x-model="setting.nightLength" />
+                    <!-- <input type="text"  min="0.1" max="5" step="0.1" x-model="setting.nightLength" />
+                    <span>分钟</span> -->
                     <span x-text="`${Number(setting?.nightLength).toFixed(1)} 分钟`"></span>
                 </div>
             </div>

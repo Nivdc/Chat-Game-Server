@@ -61,6 +61,13 @@ button:active{
 button:focus{
     outline-style: none;
 }
+button[disabled]{
+    color: color-mix(in srgb, black, var(--primary-content) 70%);
+    background-color: color-mix(in srgb, black, var(--background) 70%);
+}
+button[disabled]:active{
+    transform: none;
+}
 
 input{
     color:var(--primary-content);
@@ -71,6 +78,10 @@ input{
 }
 input:focus{
     outline-style: none;
+}
+input[disabled]{
+    color: color-mix(in srgb, black, var(--primary-content) 70%);
+    background-color: color-mix(in srgb, black, var(--background) 70%);
 }
 
 select{

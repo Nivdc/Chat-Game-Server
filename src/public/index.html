@@ -170,7 +170,7 @@
                             </div>
                         </div>
                         <div id="lobbyRoomFormRoomSettingFoot" class="formFoot">
-                            <button x-show="isHost" @click="set">修改</button>
+                            <button :disabled="!isHost()" @click="set">修改</button>
                         </div>
                     </div>
                     <div id="lobbyRoomFormChat">
@@ -189,7 +189,7 @@
                         </form>
                     </div>
                     <div id="lobbyRoomFormButton" class="formFoot">
-                        <button @click="start" x-show="isHost">开始游戏</button>
+                        <button @click="start" :disabled="!isHost()">开始游戏</button>
                         <button @click="close">退出房间</button>
                     </div>
                 </div>

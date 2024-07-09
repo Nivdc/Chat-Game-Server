@@ -46,9 +46,7 @@ document.addEventListener('alpine:init', () => {
         selectedPreset:undefined,
 
         async init() {
-            // 这个注释掉的写法有一个bug，“游戏开始于”这个选项无法正确索引，姑且就先从服务器请求默认设置项吧。
-            // this.setting = cloneDeep(this.presets[0].setting)
-            this.setting = await (await fetch("./gameData/defaultSetting.json")).json()
+            this.setting = cloneDeep(this.presets[0].setting)
             this.socketInit()
             this.loading = false
 
@@ -84,10 +82,12 @@ document.addEventListener('alpine:init', () => {
         },
         importSelectedPreset(){
             let importJsonString = prompt("请输入导出字符串: ")
-            try{
-                importJsonString ? this.setting = JSON.parse(window.atob(importJsonString)) : alert("导入错误，请重试。")
-            }catch(e){
-                alert("导入错误，请重试。")
+            if(typeof(importJsonString) === 'string'){
+                try{
+                    this.setting = JSON.parse(window.atob(importJsonString))
+                }catch(e){
+                    alert("导入错误，请重试。")
+                }
             }
         },
         exportSelectedPreset(){

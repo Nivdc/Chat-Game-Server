@@ -25,7 +25,7 @@
                             <span>游戏开始于</span>
                             <select x-model="setting.startAt">
                                 <template x-for="type in [{name:'白天', value:'day'}, {name:'夜晚', value:'night'}, {name:'白天（无处刑）', value:'day/No-Lynch'}]" :key="type.value">
-                                    <option x-text="type.name" :value="type.value"></option>
+                                    <option x-text="type.name" :value="type.value" :selected="type.value === setting.startAt"></option>
                                 </template>
                             </select>
                         </div>
@@ -56,8 +56,8 @@
                         <div>
                             <span>白天投票类型</span>
                             <select x-model="setting.dayVoteType" disabled>
-                                <template x-for="voteType in [{name:'实名过半数', value:'Majority'}, {name:'匿名最高得票', value:'Ballot'}]" :key="voteType.name">
-                                    <option x-text="voteType.name" :value="voteType.value"></option>
+                                <template x-for="voteType in [{name:'实名过半数', value:'Majority'}, {name:'匿名最高票', value:'Ballot'}]" :key="voteType.name">
+                                    <option x-text="voteType.name" :value="voteType.value" :selected="voteType.value === setting.dayVoteType"></option>
                                 </template>
                             </select>
                         </div>
@@ -109,9 +109,9 @@
                         <h4>夜晚设置</h4>
                         <div>
                             <span>夜晚信息类型</span>
-                            <select x-model="setting.dayVoteType" disabled>
-                                <template x-for="nightype in [{name:'经典', value:'Classic'}]" :key="nightype.name">
-                                    <option x-text="nightype.name" :value="nightype.value"></option>
+                            <select x-model="setting.nightType" disabled>
+                                <template x-for="nighType in [{name:'经典', value:'Classic'}]" :key="nighType.name">
+                                    <option x-text="nighType.name" :value="nighType.value" :selected="nighType.value === setting.nightType"></option>
                                 </template>
                             </select>
                         </div>

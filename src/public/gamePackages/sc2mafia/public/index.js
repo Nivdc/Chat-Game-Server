@@ -80,7 +80,7 @@ document.addEventListener('alpine:init', () => {
             if(this.selectedPreset??false)
                 this.setting = cloneDeep(this.selectedPreset.setting)
         },
-        importSelectedPreset(){
+        importSetting(){
             let importJsonString = prompt("请输入导出字符串: ")
             if(typeof(importJsonString) === 'string'){
                 try{
@@ -90,7 +90,7 @@ document.addEventListener('alpine:init', () => {
                 }
             }
         },
-        exportSelectedPreset(){
+        exportSetting(){
             let s = JSON.stringify(this.setting);
             let exportString = window.btoa(s)
             alert("导出结果为: \n\n" + exportString);

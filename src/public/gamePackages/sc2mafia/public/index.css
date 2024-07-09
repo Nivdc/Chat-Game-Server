@@ -93,6 +93,32 @@ option:active{
     background-color:var(--background-highlights);
 }
 
+button{
+    position: relative;
+    color: var(--primary-content);
+    transition:.1s linear;
+    background-color: inherit;
+    border: solid;
+    border-width: thin;
+}
+button:hover{
+    color: var(--optional-emphasized-content);
+    border-color: var(--optional-emphasized-content);
+}
+button:active{
+    transform: translate(1px,1px);
+}
+button:focus{
+    outline-style: none;
+}
+button[disabled]{
+    color: color-mix(in srgb, black, var(--primary-content) 70%);
+    background-color: color-mix(in srgb, black, var(--background) 70%);
+}
+button[disabled]:active{
+    transform: none;
+}
+
 .boxLabel{
     position: absolute;
     top: -1em;
@@ -112,6 +138,16 @@ option:active{
     border-width: thin;
     border-color:var(--primary-content); */
     color: var(--optional-emphasized-content);
+}
+
+.buttonBar{
+    margin-left: 1em;
+    width: 10em;
+}
+.buttonBar button{
+    font-size: 1.1em;
+    padding: 0.1em;
+    margin: 0.1em;
 }
 
 @keyframes spin {

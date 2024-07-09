@@ -7,116 +7,147 @@
         <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" type="text/css">
         <link href="index.css" rel="stylesheet" type="text/css">
         <script defer src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.14.0/cdn.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
         <script src="index.js"></script>
     </head>
 
     <body x-data="game">
         <div id="loading" x-show="loading"><i class="fa-solid fa-spinner"></i> 加载中...</div>
 
-        <div id="settingForm" class="border">
-            <h3 class="boxLabel">游戏设置</h3>
-            <div>
-                <h4>游戏性设置</h4>
-                <div>
-                    <span>游戏开始于</span>
-                    <select x-model="setting.startAt">
-                        <template x-for="type in [{name:'白天', value:'day'}, {name:'夜晚', value:'night'}, {name:'白天（无处刑）', value:'day/No-Lynch'}]" :key="type.name">
-                            <option x-text="type.name" :value="type.value"></option>
-                        </template>
-                    </select>
-                </div>
-                <div>
-                    <label>死亡后揭示玩家角色</label>
-                    <input type="checkbox" x-model="setting.revealPlayerRoleOnDeath" />
-                </div>
-                <div>
-                    <label>启用自设名字</label>
-                    <input type="checkbox" x-model="setting.enableCustomName" />
-                </div>
-                <div>
-                    <label>启用遗嘱</label>
-                    <input type="checkbox" x-model="setting.enableLastWord" />
-                </div>
-                <div>
-                    <label>启用击杀留言</label>
-                    <input type="checkbox" x-model="setting.enableKillMessage" />
-                </div>
-                <div>
-                    <label>启用私信</label>
-                    <input type="checkbox" x-model="setting.enablePrivateMessage" />
-                </div>
-                
-            </div>
-            <div>
-                <h4>白天设置</h4>
-                <div>
-                    <span>白天投票类型</span>
-                    <select x-model="setting.dayVoteType" disabled>
-                        <template x-for="voteType in [{name:'实名过半数', value:'Majority'}, {name:'匿名最高得票', value:'Ballot'}]" :key="voteType.name">
-                            <option x-text="voteType.name" :value="voteType.value"></option>
-                        </template>
-                    </select>
-                </div>
-                <div>
-                    <label>白天时长</label>
-                    <input type="range" min="0.1" max="5" step="0.1" x-model="setting.dayLength" />
-                    <!-- <input type="text"  min="0.1" max="5" step="0.1" x-model="setting.dayLength" />
-                    <span>分钟</span> -->
-                    <span x-text="`${Number(setting?.dayLength).toFixed(1)} 分钟`"></span>
-                </div>
-                <span>
-                    <label>启用讨论</label>
-                    <input type="checkbox" x-model="setting.enableDiscussion" />
-                </span>
-                <span>
-                    <label>启用审判</label>
-                    <input type="checkbox" x-model="setting.enableTrial" />
-                </span>
-                <div x-show="setting.enableDiscussion" x-transition>
-                    <h5>讨论设置</h5>
+        <div id="settingFrom">
+            <div id="topBar">
+                <!-- 游戏设置项 -->
+                <div id="settingForm" class="border">
+                    <h3 class="boxLabel">游戏设置</h3>
                     <div>
-                        <label>讨论时长</label>
-                        <input type="range" min="0.1" max="5" step="0.1" x-model="setting.discussionTime" />
-                        <!-- <input type="text"  min="0.1" max="5" step="0.1" x-model="setting.discussionTime" />
-                        <span>分钟</span> -->
-                        <span x-text="`${Number(setting?.discussionTime).toFixed(1)} 分钟`"></span>
+                        <h4>游戏性设置</h4>
+                        <div>
+                            <span>游戏开始于</span>
+                            <select x-model="setting.startAt">
+                                <template x-for="type in [{name:'白天', value:'day'}, {name:'夜晚', value:'night'}, {name:'白天（无处刑）', value:'day/No-Lynch'}]" :key="type.value">
+                                    <option x-text="type.name" :value="type.value"></option>
+                                </template>
+                            </select>
+                        </div>
+                        <div>
+                            <label>死亡后揭示玩家角色</label>
+                            <input type="checkbox" x-model="setting.revealPlayerRoleOnDeath" />
+                        </div>
+                        <div>
+                            <label>启用自设名字</label>
+                            <input type="checkbox" x-model="setting.enableCustomName" />
+                        </div>
+                        <div>
+                            <label>启用遗嘱</label>
+                            <input type="checkbox" x-model="setting.enableLastWord" />
+                        </div>
+                        <div>
+                            <label>启用击杀留言</label>
+                            <input type="checkbox" x-model="setting.enableKillMessage" />
+                        </div>
+                        <div>
+                            <label>启用私信</label>
+                            <input type="checkbox" x-model="setting.enablePrivateMessage" />
+                        </div>
+                        
+                    </div>
+                    <div>
+                        <h4>白天设置</h4>
+                        <div>
+                            <span>白天投票类型</span>
+                            <select x-model="setting.dayVoteType" disabled>
+                                <template x-for="voteType in [{name:'实名过半数', value:'Majority'}, {name:'匿名最高得票', value:'Ballot'}]" :key="voteType.name">
+                                    <option x-text="voteType.name" :value="voteType.value"></option>
+                                </template>
+                            </select>
+                        </div>
+                        <div>
+                            <label>白天时长</label>
+                            <input type="range" min="0.1" max="5" step="0.1" x-model="setting.dayLength" />
+                            <!-- <input type="text"  min="0.1" max="5" step="0.1" x-model="setting.dayLength" />
+                            <span>分钟</span> -->
+                            <span x-text="`${Number(setting?.dayLength).toFixed(1)} 分钟`"></span>
+                        </div>
+                        <span>
+                            <label>启用讨论</label>
+                            <input type="checkbox" x-model="setting.enableDiscussion" />
+                        </span>
+                        <span>
+                            <label>启用审判</label>
+                            <input type="checkbox" x-model="setting.enableTrial" />
+                        </span>
+                        <div x-show="setting.enableDiscussion" x-transition>
+                            <h5>讨论设置</h5>
+                            <div>
+                                <label>讨论时长</label>
+                                <input type="range" min="0.1" max="5" step="0.1" x-model="setting.discussionTime" />
+                                <!-- <input type="text"  min="0.1" max="5" step="0.1" x-model="setting.discussionTime" />
+                                <span>分钟</span> -->
+                                <span x-text="`${Number(setting?.discussionTime).toFixed(1)} 分钟`"></span>
+                            </div>
+                        </div>
+                        <div x-show="setting.enableTrial" x-transition>
+                            <h5>审判设置</h5>
+                            <div>
+                                <label>审判时长</label>
+                                <input type="range" min="0.1" max="5" step="0.1" x-model="setting.trialTime" />
+                                <!-- <input type="text"  min="0.1" max="5" step="0.1" x-model="setting.trialTime" />
+                                <span>分钟</span> -->
+                                <span x-text="`${Number(setting?.trialTime).toFixed(1)} 分钟`"></span>
+                            </div>
+                            <span>
+                                <label>审判时暂停白天</label>
+                                <input type="checkbox" x-model="setting.pauseDayTimerDuringTrial" disabled/>
+                            </span>
+                            <span>
+                                <label>启用辩护</label>
+                                <input type="checkbox" x-model="setting.enableTrialDefense" />
+                            </span>
+                        </div>
+                    </div>
+                    <div>
+                        <h4>夜晚设置</h4>
+                        <div>
+                            <span>夜晚信息类型</span>
+                            <select x-model="setting.dayVoteType" disabled>
+                                <template x-for="nightype in [{name:'经典', value:'Classic'}]" :key="nightype.name">
+                                    <option x-text="nightype.name" :value="nightype.value"></option>
+                                </template>
+                            </select>
+                        </div>
+                        <div>
+                            <label>夜晚时长</label>
+                            <input type="range" min="0.1" max="5" step="0.1" x-model="setting.nightLength" />
+                            <!-- <input type="text"  min="0.1" max="5" step="0.1" x-model="setting.nightLength" />
+                            <span>分钟</span> -->
+                            <span x-text="`${Number(setting?.nightLength).toFixed(1)} 分钟`"></span>
+                        </div>
                     </div>
                 </div>
-                <div x-show="setting.enableTrial" x-transition>
-                    <h5>审判设置</h5>
-                    <div>
-                        <label>审判时长</label>
-                        <input type="range" min="0.1" max="5" step="0.1" x-model="setting.trialTime" />
-                        <!-- <input type="text"  min="0.1" max="5" step="0.1" x-model="setting.trialTime" />
-                        <span>分钟</span> -->
-                        <span x-text="`${Number(setting?.trialTime).toFixed(1)} 分钟`"></span>
-                    </div>
-                    <span>
-                        <label>审判时暂停白天</label>
-                        <input type="checkbox" x-model="setting.pauseDayTimerDuringTrial" disabled/>
-                    </span>
-                    <span>
-                        <label>启用辩护</label>
-                        <input type="checkbox" x-model="setting.enableTrialDefense" />
-                    </span>
-                </div>
             </div>
-            <div>
-                <h4>夜晚设置</h4>
+
+            <div id="innerBody">
                 <div>
-                    <span>夜晚信息类型</span>
-                    <select x-model="setting.dayVoteType" disabled>
-                        <template x-for="nightype in [{name:'经典', value:'Classic'}]" :key="nightype.name">
-                            <option x-text="nightype.name" :value="nightype.value"></option>
-                        </template>
-                    </select>
-                </div>
-                <div>
-                    <label>夜晚时长</label>
-                    <input type="range" min="0.1" max="5" step="0.1" x-model="setting.nightLength" />
-                    <!-- <input type="text"  min="0.1" max="5" step="0.1" x-model="setting.nightLength" />
-                    <span>分钟</span> -->
-                    <span x-text="`${Number(setting?.nightLength).toFixed(1)} 分钟`"></span>
+                    <div style="display: flex;">
+                        <div id="presetBar" class="border">
+                            <h3 class="boxLabel">预设栏</h3>
+                            <template x-for="preset in presets" :key="preset.name">
+                                <span x-html="preset.name" @click="selectPreset(preset)" class="presetButton" :class="selectedPreset === preset ? 'selected':'' "></span>
+                            </template>
+                        </div>
+                        <div id="presetIntroduction" x-show="selectedPreset" style="position: relative;">
+                            <h3 class="boxLabel" x-text="selectedPreset?.name"></h3>
+                            <p x-text="selectedPreset?.description"></p>
+                        </div>
+                    </div>
+
+                    <div id="presetButtonBar">
+                        <button @click="useSelectedPreset">采用</button>
+                        <button @click="saveSelectedPreset">保存</button>
+                        <button @click="deleteSelectedPreset">删除</button>
+                        <button @click="importSelectedPreset">导入</button>
+                        <button @click="exportSelectedPreset">导出</button>
+                    </div>
                 </div>
             </div>
         </div>

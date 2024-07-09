@@ -58,8 +58,10 @@ body{
     background-color:var(--background);
     color:var(--primary-content);
 
-    align-items: center;
-    justify-content:center;
+    flex-direction: column;
+
+    /* align-items: center;
+    justify-content:center; */
 }
 
 input[type=text]{
@@ -104,6 +106,14 @@ option:active{
     border: 0.1em solid var(--secondary-content);
 }
 
+.selected{
+    padding: 0.1em;
+    /* border-style:solid;
+    border-width: thin;
+    border-color:var(--primary-content); */
+    color: var(--optional-emphasized-content);
+}
+
 @keyframes spin {
     0% {
         transform: rotate(0deg);
@@ -124,12 +134,17 @@ option:active{
     animation: spin 1.5s linear infinite;
 }
 
+#topBar{
+    display: flex;
+}
+
 #settingForm{
     display: flex;
+    flex:initial;
     padding: 0.4em;
-    position: absolute;
-    top: 0;
-    left: 0;
+    position: relative;
+    /* top: 0;
+    left: 0; */
     margin:1em;
 }
 #settingForm > div{
@@ -138,4 +153,27 @@ option:active{
 #settingForm > div+div{
     border-left: 0.1em solid var(--secondary-content);
     padding-left: 0.2em;
+}
+
+#innerBody{
+    display: flex;
+}
+#presetBar{
+    position: relative;
+    flex:initial;
+    padding: 1em;
+    margin:1em;
+    Font-weight:700;
+    width: 10em;
+}
+#presetBar span:hover{
+    padding: 0.1em;
+    cursor:pointer;
+    color: var(--optional-emphasized-content);
+}
+
+#presetIntroduction{
+    margin-top:1em;
+    padding: 1em;
+    position:relative;
 }

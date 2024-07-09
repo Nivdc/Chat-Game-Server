@@ -119,7 +119,7 @@ let lobbyChat = {
 }
 
 let lobbyRoomList = {
-    showUp: false,
+    showUp: true,
     roomList:[],
     selectedRoom:undefined,
 
@@ -231,9 +231,9 @@ function init(){
     socket.onopen = ()=>{
         userSelf.uuid = document.cookie.split('=')[1]
     }
-    // socket.onclose = ()=>{
-    //     alert("与服务器的连接已断开")
-    // }
+    socket.onclose = ()=>{
+        alert("与服务器的连接已断开")
+    }
     init_socket()
 }
 
@@ -263,6 +263,7 @@ function init_socket(){
                     let room = lobbyRoomList.roomList.find(room => {return room.id === userSelf.current_room_id})
                     if(room){
                         lobbyRoom.setup(lobbyRoomList.roomList.find(room => {return room.id === userSelf.current_room_id}))
+                        // document.getElementById("lobbyRoomForm").style.zIndex = 1
                     }
                 }
             break

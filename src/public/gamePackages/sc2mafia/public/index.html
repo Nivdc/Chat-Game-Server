@@ -14,7 +14,7 @@
     <body x-data="game">
         <div id="loading" x-show="loading"><i class="fa-solid fa-spinner"></i> 加载中...</div>
 
-        <div id="settingFrom">
+        <div id="settingPage">
             <div id="topBar">
                 <!-- 游戏设置项 -->
                 <div id="settingForm" class="border">
@@ -127,26 +127,100 @@
             </div>
 
             <div id="innerBody">
-                <div>
-                    <div style="display: flex;">
-                        <div id="presetBar" class="border">
-                            <h3 class="boxLabel">预设栏</h3>
-                            <template x-for="preset in presets" :key="preset.name">
-                                <span x-html="preset.name" @click="selectPreset(preset)" class="presetButton" :class="selectedPreset === preset ? 'selected':'' "></span>
-                            </template>
+                <div id="settingLeftBar">
+                    <div>
+                        <div style="display: flex;">
+                            <div id="presetBar" class="border scrollbar">
+                                <h3 class="boxLabel">预设栏</h3>
+                                <template x-for="preset in presets" :key="preset.name">
+                                    <span x-html="preset.name" @click="selectPreset(preset)" class="presetButton" :class="selectedPreset === preset ? 'selected':'' "></span>
+                                </template>
+                            </div>
+                            <div id="presetIntroduction" x-show="selectedPreset" style="position: relative;" x-transition>
+                                <h3 class="boxLabel" x-text="selectedPreset?.name"></h3>
+                                <p x-text="selectedPreset?.description"></p>
+                            </div>
                         </div>
-                        <div id="presetIntroduction" x-show="selectedPreset" style="position: relative;">
-                            <h3 class="boxLabel" x-text="selectedPreset?.name"></h3>
-                            <p x-text="selectedPreset?.description"></p>
+
+                        <div id="presetButtonBar" class="buttonBar">
+                            <button @click="useSelectedPreset">采用</button>
+                            <!-- <button @click="saveSelectedPreset">保存</button>
+                            <button @click="deleteSelectedPreset">删除</button> -->
+                            <button @click="importSetting">导入</button>
+                            <button @click="exportSetting">导出</button>
                         </div>
                     </div>
 
-                    <div id="presetButtonBar" class="buttonBar">
-                        <button @click="useSelectedPreset">采用</button>
-                        <!-- <button @click="saveSelectedPreset">保存</button>
-                        <button @click="deleteSelectedPreset">删除</button> -->
-                        <button @click="importSetting">导入</button>
-                        <button @click="exportSetting">导出</button>
+                    <div id="chatAndUserList">
+                        <div class="chatForm border">
+                            <div class="chatMessageList">
+                                <table>
+                                    <tr>
+                                        <th>测试：</th>
+                                        <td>测试内容</td>
+                                    </tr>
+                                    <tr>
+                                        <th>测试：</th>
+                                        <td>测试内容</td>
+                                    </tr>
+                                    <tr>
+                                        <th>测试：</th>
+                                        <td>测试内容</td>
+                                    </tr>
+                                    <tr>
+                                        <th>测试：</th>
+                                        <td>测试内容</td>
+                                    </tr>
+                                    <tr>
+                                        <th>测试：</th>
+                                        <td>测试内容</td>
+                                    </tr>
+                                    <tr>
+                                        <th>测试：</th>
+                                        <td>测试内容</td>
+                                    </tr>
+                                    <tr>
+                                        <th>测试：</th>
+                                        <td>测试内容</td>
+                                    </tr>
+                                    <tr>
+                                        <th>测试：</th>
+                                        <td>测试内容</td>
+                                    </tr>
+
+                                    <tr>
+                                        <th>测试：</th>
+                                        <td>测试内容</td>
+                                    </tr>
+                                    <tr>
+                                        <th>测试1：</th>
+                                        <td>测试内容1</td>
+                                    </tr>
+                                    <tr>
+                                        <th>测试：</th>
+                                        <td>测试内容</td>
+                                    </tr>
+                                    <tr>
+                                        <th>测试2：</th>
+                                        <td>测试内容2</td>
+                                    </tr>
+                                    <tr>
+                                        <th>测试：</th>
+                                        <td>测试内容</td>
+                                    </tr>
+
+                                    <!-- <template x-for="message in messageList">
+                                        <tr>
+                                            <th x-text="`${message.senderName}:`"></th>
+                                            <td x-text="message.message"></td>
+                                        </tr>
+                                    </template> -->
+                                </table>
+                            </div>
+                            <form class="formTextInput">
+                                <input type="text" />
+                            </form>
+                        </div>
                     </div>
                 </div>
             </div>

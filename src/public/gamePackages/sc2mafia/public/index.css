@@ -67,7 +67,7 @@ body{
 input[type=text]{
     color:var(--primary-content);
     border: none;
-    width: 2em;
+    width: 100%;
     padding: 0.2rem;
     background-color:var(--background-highlights);
 }
@@ -150,6 +150,36 @@ button[disabled]:active{
     margin: 0.1em;
 }
 
+.scrollbar{
+    scrollbar-color: var(--secondary-content) var(--background-highlights);
+    scrollbar-width: thin;
+}
+
+.chatForm{
+    width: 30em;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.chatMessageList{
+    flex:auto;
+}
+.chatMessageList tr{
+    text-align: left;
+}
+
+.formTextInput input{
+    border-top: solid;
+    border-color: var(--secondary-content);
+}
+.formTextInput input:focus{
+    border-color: var(--primary-content);
+}
+.formTextInput input:hover{
+    border-color: var(--primary-content);
+}
+
 @keyframes spin {
     0% {
         transform: rotate(0deg);
@@ -170,8 +200,10 @@ button[disabled]:active{
     animation: spin 1.5s linear infinite;
 }
 
-#topBar{
+#settingPage{
+    height: 100%;
     display: flex;
+    flex-direction: column;
 }
 
 #settingForm{
@@ -179,8 +211,6 @@ button[disabled]:active{
     flex:initial;
     padding: 0.4em;
     position: relative;
-    /* top: 0;
-    left: 0; */
     margin:1em;
 }
 #settingForm > div{
@@ -191,9 +221,24 @@ button[disabled]:active{
     padding-left: 0.2em;
 }
 
+#topBar{
+    display: flex;
+    flex:initial;
+}
+
 #innerBody{
     display: flex;
+    /* flex-direction: column; */
+    flex: auto;
 }
+
+#settingLeftBar{
+    width: 40em;
+    display: flex;
+    flex: auto;
+    flex-direction: column;
+}
+
 #presetBar{
     position: relative;
     flex:initial;
@@ -212,4 +257,9 @@ button[disabled]:active{
     margin-top:1em;
     padding: 1em;
     position:relative;
+}
+
+#chatAndUserList{
+    flex: auto;
+    margin:1em;
 }

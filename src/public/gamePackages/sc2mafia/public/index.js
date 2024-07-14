@@ -6,6 +6,37 @@ document.addEventListener('alpine:init', () => {
         watchIgnore:false,
         setting:{},
 
+        async init() {
+            this.setting = cloneDeep(this.presets[0].setting)
+            this.socketInit()
+            this.loading = false
+
+            this.$watch('setting', (value, oldValue)=>{
+                if(this.watchIgnore === false){
+                    const event = {type:"HostChangesGameSetting",data:value}
+                    socket?.send(JSON.stringify(event))
+                }else{
+                    this.watchIgnore = false
+                }
+            })
+        },
+        socketInit(){
+            socket = window.top.socket
+            window.top.game_onmessage = onMessage
+        
+            if(socket === undefined){
+                console.log("调试模式，事件将不会被发送到服务器。")
+                socket = {send:console.log}
+            }
+
+            window.addEventListener('HostChangesGameSetting', (e) => {
+                this.watchIgnore = true
+                this.setting = e.detail
+            })
+        },
+
+        // 预设栏组件
+        selectedPreset:undefined,
         presets : [
             {
                 name:"默认",
@@ -42,37 +73,6 @@ document.addEventListener('alpine:init', () => {
                 }
             }
         ],
-
-        selectedPreset:undefined,
-
-        async init() {
-            this.setting = cloneDeep(this.presets[0].setting)
-            this.socketInit()
-            this.loading = false
-
-            this.$watch('setting', (value, oldValue)=>{
-                if(this.watchIgnore === false){
-                    const event = {type:"HostChangesGameSetting",data:value}
-                    socket?.send(JSON.stringify(event))
-                }else{
-                    this.watchIgnore = false
-                }
-            })
-        },
-        socketInit(){
-            socket = window.top.socket
-            window.top.game_onmessage = onMessage
-        
-            if(socket === undefined){
-                console.log("调试模式，事件将不会被发送到服务器。")
-                socket = {send:console.log}
-            }
-
-            window.addEventListener('HostChangesGameSetting', (e) => {
-                this.watchIgnore = true
-                this.setting = e.detail
-            })
-        },
         selectPreset(preset){
             this.selectedPreset = preset
         },
@@ -94,6 +94,14 @@ document.addEventListener('alpine:init', () => {
             let s = JSON.stringify(this.setting);
             let exportString = window.btoa(s)
             alert("导出结果为: \n\n" + exportString);
+        },
+
+        // 聊天框组件
+        messageList:[],
+        messageLog:[],
+        submit(){},
+        clearMssagesList(){
+            this.messageList = []
         }
     }))
 

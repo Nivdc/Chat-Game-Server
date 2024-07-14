@@ -59,7 +59,6 @@ body{
     color:var(--primary-content);
 
     flex-direction: column;
-    height: 100vh;
     /* align-items: center;
     justify-content:center; */
 }
@@ -168,6 +167,17 @@ button[disabled]:active{
     flex:auto;
     max-height: 100%;
 }
+.chatMessageList table tr{
+    display:flex;
+}
+.chatMessageList table tr th{
+    margin-right: 0.2em;
+    flex:none;
+}
+.chatMessageList table tr td{
+    flex:initial;
+    word-break:break-all;
+}
 .formTextInput{
     flex:none;
 }
@@ -223,20 +233,19 @@ button[disabled]:active{
     padding-left: 0.2em;
 }
 
-#topBar{
+#settingPageTopBar{
     display: flex;
     flex:initial;
 }
 
-#innerBody{
+#settingPageInnerBody{
     display: flex;
     /* flex-direction: column; */
     flex: auto;
     height: 100%;
 }
 
-#settingLeftBar{
-    width: 40em;
+#settingPageInnerBodyLeftBar{
     display: flex;
     flex: auto;
     flex-direction: column;
@@ -268,5 +277,20 @@ button[disabled]:active{
     flex: auto;
     margin:1em;
     width: 30em;
-    height: 20em;
+    height: 18em;
+}
+
+#settingPageInnerBodyMiddle{
+    flex:initial;
+    display: flex;
+    flex-direction: column;
+}
+#settingPageInnerBodyMiddle button{
+    font-size: 1.2em;
+    margin: 0.5rem;
+    background-color: green;
+}
+
+#settingPageInnerBodyRightBar{
+    flex:auto;
 }

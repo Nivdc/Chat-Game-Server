@@ -15,7 +15,7 @@
         <div id="loading" x-show="loading"><i class="fa-solid fa-spinner"></i> 加载中...</div>
 
         <div id="settingPage">
-            <div id="topBar">
+            <div id="settingPageTopBar">
                 <!-- 游戏设置项 -->
                 <div id="settingForm" class="border">
                     <h3 class="boxLabel">游戏设置</h3>
@@ -126,8 +126,8 @@
                 </div>
             </div>
 
-            <div id="innerBody">
-                <div id="settingLeftBar">
+            <div id="settingPageInnerBody">
+                <div id="settingPageInnerBodyLeftBar">
                     <div>
                         <div style="display: flex;">
                             <div id="presetBar" class="border scrollbar">
@@ -154,106 +154,29 @@
                     <div id="chatAndUserList">
                         <div class="chatForm border">
                             <div class="chatMessageList scrollbar">
-                                <table>
-                                    <tr>
-                                        <th>测试：</th>
-                                        <td>测试内容</td>
-                                    </tr>
-                                    <tr>
-                                        <th>测试：</th>
-                                        <td>测试内容</td>
-                                    </tr>
-                                    <tr>
-                                        <th>测试：</th>
-                                        <td>测试内容</td>
-                                    </tr>
-                                    <tr>
-                                        <th>测试：</th>
-                                        <td>测试内容</td>
-                                    </tr>
-                                    <tr>
-                                        <th>测试：</th>
-                                        <td>测试内容</td>
-                                    </tr>
-                                    <tr>
-                                        <th>测试：</th>
-                                        <td>测试内容</td>
-                                    </tr>
-                                    <tr>
-                                        <th>测试：</th>
-                                        <td>测试内容</td>
-                                    </tr>
-                                    <tr>
-                                        <th>测试：</th>
-                                        <td>测试内容</td>
-                                    </tr>
-
-                                    <tr>
-                                        <th>测试：</th>
-                                        <td>测试内容</td>
-                                    </tr>
-                                    <tr>
-                                        <th>测试1：</th>
-                                        <td>测试内容1</td>
-                                    </tr>
-                                    <tr>
-                                        <th>测试：</th>
-                                        <td>测试内容</td>
-                                    </tr>
-                                    <tr>
-                                        <th>测试2：</th>
-                                        <td>测试内容2</td>
-                                    </tr>
-                                    <tr>
-                                        <th>测试：</th>
-                                        <td>测试内容</td>
-                                    </tr>
-                                    <tr>
-                                        <th>测试：</th>
-                                        <td>测试内容</td>
-                                    </tr>
-                                    <tr>
-                                        <th>测试：</th>
-                                        <td>测试内容</td>
-                                    </tr>
-                                    <tr>
-                                        <th>测试：</th>
-                                        <td>测试内容</td>
-                                    </tr>
-                                    <tr>
-                                        <th>测试：</th>
-                                        <td>测试内容</td>
-                                    </tr>
-                                    <tr>
-                                        <th>测试：</th>
-                                        <td>测试内容</td>
-                                    </tr>
-                                    <tr>
-                                        <th>测试：</th>
-                                        <td>测试内容</td>
-                                    </tr>
-                                    <tr>
-                                        <th>测试：</th>
-                                        <td>测试内容</td>
-                                    </tr>
-                                    <tr>
-                                        <th>测试：</th>
-                                        <td>测试内容</td>
-                                    </tr>
-
-                                    <!-- <template x-for="message in messageList">
+                                <!-- <table>
+                                    <template x-for="message in messageList">
                                         <tr>
                                             <th x-text="`${message.senderName}:`"></th>
                                             <td x-text="message.message"></td>
                                         </tr>
-                                    </template> -->
-                                </table>
+                                    </template>
+                                </table> -->
                             </div>
-                            <form class="formTextInput">
+                            <form class="formTextInput" @submit.prevent="submit">
                                 <input type="text" />
                             </form>
                         </div>
                     </div>
+                </div>
+
+                <div id="settingPageInnerBodyMiddle">
+                    <p><span style="font-size:2em;font-weight: bold;text-decoration: underline;">测试</span><span>将会设置游戏</span></p>
+                    <button>重选主机</button>
+                </div>
+
+                <div id="settingPageInnerBodyRightBar">
+
                 </div>
             </div>
         </div>

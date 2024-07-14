@@ -75,6 +75,7 @@ document.addEventListener('alpine:init', () => {
         ],
         selectPreset(preset){
             this.selectedPreset = preset
+            //todo: 同步选择的预设
         },
         useSelectedPreset(){
             if(this.selectedPreset??false)
@@ -99,10 +100,16 @@ document.addEventListener('alpine:init', () => {
         // 聊天框组件
         messageList:[],
         messageLog:[],
+        //todo，别忘了还有接收函数
         submit(){},
         clearMssagesList(){
             this.messageList = []
-        }
+        },
+
+        //todo
+        repickHost(){},
+
+
     }))
 
     function cloneDeep(o){

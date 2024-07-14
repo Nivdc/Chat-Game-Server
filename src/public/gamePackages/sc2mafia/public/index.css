@@ -293,4 +293,27 @@ button[disabled]:active{
 
 #settingPageInnerBodyRightBar{
     flex:auto;
+    display: flex;
+    margin-left: 15em;
+}
+
+.roleCatalog{
+    flex: auto;
+}
+
+#roleSettingButtonBar{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+#roleSettingButtonBar button{
+    border: none;
+    font-size: 1.2em;
+    flex:initial;
+    margin: 0.2em;
+}
+
+.roleSet{
+    flex: auto;
 }

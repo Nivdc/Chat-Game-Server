@@ -7,7 +7,7 @@
         <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" type="text/css">
         <link href="index.css" rel="stylesheet" type="text/css">
         <script defer src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.14.0/cdn.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
+        <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script> -->
         <script src="index.js"></script>
     </head>
 
@@ -172,11 +172,22 @@
 
                 <div id="settingPageInnerBodyMiddle">
                     <p><span style="font-size:2em;font-weight: bold;text-decoration: underline;">测试</span><span>将会设置游戏</span></p>
-                    <button>重选主机</button>
+                    <button @click="repickHost">重选主机</button>
                 </div>
 
                 <div id="settingPageInnerBodyRightBar">
-
+                    <div class="roleCatalog">
+                        <h3>角色目录</h3>
+                    </div>
+                    <div id="roleSettingButtonBar">
+                        <button>添加</button>
+                        <button>移除</button>
+                        <button>禁用</button>
+                        <button>恢复</button>
+                    </div>
+                    <div class="roleSet">
+                        <h3>角色列表</h3>
+                    </div>
                 </div>
             </div>
         </div>

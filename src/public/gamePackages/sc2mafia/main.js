@@ -1,20 +1,20 @@
 const gameDataPath = import.meta.dir + '/public/gameData/'
 let defaultSetting = {}
-let roleList = []
+let roleSet = []
 let majorFactions = new Set(["Town", "Mafia", "Triad", ])
 
 
 await init()
 async function init(){
     defaultSetting = await readJsonFile(gameDataPath+"defaultSetting.json")
-    roleList = await generateRoleList()
+    roleSet = await generateRoleSet()
 
     async function readJsonFile(path){
         return await Bun.file(path).json()
     }
 
-    async function generateRoleList(){
-        let roleList = []
+    async function generateRoleSet(){
+        let roleSet = []
         let roleData = await readJsonFile(gameDataPath+"roles.json")
         let categoriesData = await readJsonFile(gameDataPath+"categories.json")
 
@@ -34,10 +34,10 @@ async function init(){
                 r.categories.unshift("Neutral")
             }
 
-            roleList.push(r)
+            roleSet.push(r)
         }
 
-        return roleList
+        return roleSet
     }
 }
 
@@ -166,10 +166,10 @@ class Game{
         // todo:此处应有根据随机规则生成真正角色列表的逻辑
         // todo:检查玩家人数是否与角色列表匹配
         // todo:为没有自定义名字的玩家随机分配名字
-        shuffleArray(this.setting.roleSet)
+        shuffleArray(this.setting.roleList)
         shuffleArray(this.playerList)
         for(let [index, p] of this.playerList.entries()){
-            p.role = roleList.find( r => r.name === this.setting.roleSet[index] )
+            p.role = roleSet.find( r => r.name === this.setting.roleList[index] )
             p.isAlive = true
         }
 

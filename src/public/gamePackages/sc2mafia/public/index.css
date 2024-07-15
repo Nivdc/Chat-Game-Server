@@ -290,11 +290,16 @@ button[disabled]:active{
     margin: 0.5rem;
     background-color: green;
 }
+#settingPageInnerBodyMiddle button:hover{
+    background-color: #119111;
+}
 
 #settingPageInnerBodyRightBar{
     flex:auto;
     display: flex;
+    flex-direction: column;
     margin-left: 15em;
+    margin-right: 1em;
 }
 
 .roleCatalog{
@@ -316,4 +321,40 @@ button[disabled]:active{
 
 .roleSet{
     flex: auto;
+}
+
+#startInfoAndButton{
+    flex:initial;
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 1em;
+    width: 10em;
+    /* justify-content: center; */
+    /* align-items: center; */
+}
+#startInfoAndButton p{
+    text-align: right;
+}
+#startButton{
+    flex: auto;
+    font-size: 2em;
+}
+
+.background-success{
+    background-color: green;
+}
+.text-success{
+    color: green;
+}
+.background-danger{
+    background-color: red;
+}
+.text-danger{
+    color:red;
+}
+.background-warning{
+    background-color: yellow;
+}
+.text-warning{
+    color: yellow;
 }

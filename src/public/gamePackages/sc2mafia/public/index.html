@@ -176,17 +176,27 @@
                 </div>
 
                 <div id="settingPageInnerBodyRightBar">
-                    <div class="roleCatalog">
-                        <h3>角色目录</h3>
+                    <div style="display: flex;flex:auto;">
+                        <div class="roleCatalogContainer">
+                            <h3>角色目录</h3>
+                            <div id="roleAffiliation"></div>
+                        </div>
+                        <div id="roleSettingButtonBar">
+                            <button>添加</button>
+                            <button>移除</button>
+                            <button>禁用</button>
+                            <button>恢复</button>
+                        </div>
+                        <div class="roleListContainer">
+                            <h3>角色列表</h3>
+                        </div>
                     </div>
-                    <div id="roleSettingButtonBar">
-                        <button>添加</button>
-                        <button>移除</button>
-                        <button>禁用</button>
-                        <button>恢复</button>
-                    </div>
-                    <div class="roleSet">
-                        <h3>角色列表</h3>
+
+                    <div style="display: flex; flex-direction: row-reverse;">
+                        <div id="startInfoAndButton">
+                            <p>测试信息</p>
+                            <button id="startButton">开始</button>
+                        </div>
                     </div>
                 </div>
             </div>

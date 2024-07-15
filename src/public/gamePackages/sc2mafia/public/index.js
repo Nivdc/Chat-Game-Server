@@ -64,7 +64,7 @@ document.addEventListener('alpine:init', () => {
                     enableLastWord: true,
                     enablePrivateMessage: true,
                     
-                    roleSet: [
+                    roleList: [
                         "Citizen", "Citizen", "Citizen", "Citizen", "Citizen",
                         "Citizen", "Citizen",
                         "Sheriff", "Sheriff", "Sheriff", "Sheriff",
@@ -108,6 +108,10 @@ document.addEventListener('alpine:init', () => {
 
         //todo
         repickHost(){},
+
+        //角色目录与列表
+
+        //开始按钮
 
 
     }))

@@ -49,7 +49,7 @@ class Game{
     constructor(room){
         this.playerList = room.user_list.map(user => new Player(user))
         this.playerList.forEach((p) => {p.setPlayerList(this.playerList)})
-        this.host = room.host
+        this.host = this.playerList.find((p)=> p.user === room.host)
         this.room = room
         this.status = "init"
 
@@ -99,17 +99,22 @@ class Game{
 
     game_ws_message_router(ws, message){
         const event = JSON.parse(message)
-        let player = this.playerList.find(player => {return player.user?.uuid === ws.data.uuid})
+        let player = this.playerList.find(player => {return player.uuid === ws.data.uuid})
     
         if (player !== undefined){
+            console.log("recive <-", event)
             switch(event.type){
+                case "FrontendReady":
+                    this.sendInitData(player)
+                break
+
                 case "HostSetupGame":
-                    if(player.user?.uuid === this.host.uuid && this.status === "init")
+                    if(player.uuid === this.host.uuid && this.status === "init")
                         this.setup(event.data)
                 break
 
                 case "HostChangesGameSetting":
-                    if(player.user?.uuid === this.host.uuid && this.status === "init")
+                    if(player.uuid === this.host.uuid && this.status === "init")
                         this.sendEventToAll(event.type, event.data)
                 break
 
@@ -117,6 +122,10 @@ class Game{
                     if(this.status === "begin" && this.setting.enableCustomName){
                         player.name = event.data
                     }
+                break
+
+                case "RepickHost":
+                    //todo
                 break
 
                 case "ChatMessage":
@@ -159,6 +168,11 @@ class Game{
         playerGroup.forEach(player =>{
             player.sendEvent(eventType,data)
         })
+    }
+
+    sendInitData(p){
+        p.sendEvent("SetHost", this.host)
+        p.sendEvent("SetPlayerList", this.playerList)
     }
 
     setup(setting){
@@ -377,7 +391,7 @@ class Game{
             }
         }
 
-        this.sendEventToGroup(targetGroup, "Game:ChatMessage", {senderName:sender.name, message:data.message})
+        this.sendEventToGroup(targetGroup, "ChatMessage", {senderName:sender.name, message:data})
     }
 
     lynchVoteCheck(){
@@ -518,6 +532,10 @@ class Player{
         this.user = user
     }
 
+    get uuid(){
+        return this.user?.uuid
+    }
+
     get name(){
         return this.nickname !== undefined ? this.nickname : 
             this.user !== undefined ? this.user.name : "OfflinePlayer"
@@ -559,6 +577,7 @@ class Player{
     toJSON(){
         return {
             name: this.name,
+            index:this.index,
         }
     }
 }

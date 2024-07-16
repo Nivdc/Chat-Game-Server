@@ -1,24 +1,27 @@
 {
     "dayVoteType":"Majority",
-    "dayLength":1.2,
-    "enableTrial":true,
+    "dayLength":0.01,
+
+    "enableTrial":false,
     "enableTrialDefense":true,
-    "trialTime":0.8,
+    "trialTime":0.08,
+    "pauseDayTimerDuringTrial":true,
 
     "startAt":"day/No-Lynch",
 
     "nightType":"Classic",
-    "nightLength":0.6,
+    "nightLength":0.06,
 
     "enableDiscussion":true,
-    "discussionTime":0.3,
+    "discussionTime":0.03,
 
+    "revealPlayerRoleOnDeath":true,
+    "enableCustomName":true,
+    "enableKillMessage":true,
     "enableLastWord":true,
     "enablePrivateMessage":true,
 
-    "enableCustomName":true,
-
-    "roleSet":[
+    "roleList":[
         "Citizen","Citizen","Citizen","Citizen","Citizen",
         "Citizen","Citizen",
         "Sheriff","Sheriff","Sheriff","Sheriff",
@@ -26,9 +29,6 @@
     ],
 
     "roleModifier":[
-        {
-            "name":"Sheriff",
-            "enableNightChatAndVoting":true
-        }
+
     ]
 }

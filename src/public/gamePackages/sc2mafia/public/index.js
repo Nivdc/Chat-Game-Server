@@ -9,12 +9,13 @@ document.addEventListener('alpine:init', () => {
         async init() {
             this.setting = cloneDeep(this.presets[0].setting)
             this.socketInit()
+            sendEvent("FrontendReady")
             this.loading = false
 
             this.$watch('setting', (value, oldValue)=>{
                 if(this.watchIgnore === false){
-                    const event = {type:"HostChangesGameSetting",data:value}
-                    socket?.send(JSON.stringify(event))
+                    sendEvent("HostChangesGameSetting", value)
+                    
                 }else{
                     this.watchIgnore = false
                 }
@@ -32,6 +33,16 @@ document.addEventListener('alpine:init', () => {
             window.addEventListener('HostChangesGameSetting', (e) => {
                 this.watchIgnore = true
                 this.setting = e.detail
+            })
+            window.addEventListener('SetHost', (e) => {
+                this.host = e.detail
+            })
+            window.addEventListener('SetPlayerList', (e) => {
+                this.playerList = e.detail
+            })
+            window.addEventListener('ChatMessage', (e) => {
+                this.messageList.push(e.detail)
+                this.messageLog.push(e.detail)
             })
         },
 
@@ -97,21 +108,47 @@ document.addEventListener('alpine:init', () => {
             alert("导出结果为: \n\n" + exportString);
         },
 
-        // 聊天框组件
+        // 聊天框及玩家列表
         messageList:[],
         messageLog:[],
+        inputString:'',
+
+        playerList:[],
         //todo，别忘了还有接收函数
-        submit(){},
+        submit(){
+            if(/^\s*$/.test(this.inputString) === false){
+                if(/^-/.test(this.inputString) === false){
+                    sendEvent("ChatMessage", this.inputString)
+                }
+                else{
+                    let str = this.inputString.substring(1);
+                    [command, ...args] = str.split(" ")
+
+                    switch(command){
+                        case 'repick':
+                            this.repickHost(args.shift())
+                        break
+
+                        default:
+                            // sendEvent("rename", args.shift())
+                    }
+                }
+            }
+            this.inputString = ''
+        },
         clearMssagesList(){
             this.messageList = []
         },
 
         //todo
-        repickHost(){},
+        host:{},
+        repickHost(playerIndex){
+            sendEvent("RepickHost", playerIndex)
+        },
 
         //角色目录与列表
 
-        //开始按钮
+        //开始信息及按钮
 
 
     }))
@@ -123,5 +160,12 @@ document.addEventListener('alpine:init', () => {
     function onMessage(e){
         const event = JSON.parse(e.data)
         window.dispatchEvent(new CustomEvent(event.type, { detail:event.data }))
+        console.log(e)
+    }
+
+    function sendEvent(type, data){
+        const event = {type,data}
+        console.log(event)
+        socket?.send(JSON.stringify(event))
     }
 })

@@ -167,6 +167,10 @@ button[disabled]:active{
     flex:auto;
     max-height: 100%;
 }
+.chatMessageList p {
+    margin:0.2em;
+    word-break:break-all;
+}
 .chatMessageList table tr{
     display:flex;
 }
@@ -184,6 +188,7 @@ button[disabled]:active{
 .formTextInput input{
     border-top: solid;
     border-color: var(--secondary-content);
+    font-size: 1.0rem;
 }
 .formTextInput input:focus{
     border-color: var(--primary-content);

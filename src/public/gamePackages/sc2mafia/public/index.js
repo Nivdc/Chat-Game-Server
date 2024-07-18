@@ -44,6 +44,14 @@ document.addEventListener('alpine:init', () => {
                 this.messageList.push(e.detail)
                 this.messageLog.push(e.detail)
             })
+            window.addEventListener('HostSetupGame', (e) => {
+                this.addMessageStringWithoutLog("游戏将在15秒后开始")
+                this.startButtonToggle = false
+            })
+            window.addEventListener('HostCancelSetup', (e) => {
+                this.addMessageStringWithoutLog("主机取消了开始")
+                this.startButtonToggle = true
+            })
         },
 
         // 预设栏组件
@@ -112,6 +120,9 @@ document.addEventListener('alpine:init', () => {
         messageList:[],
         messageLog:[],
         inputString:'',
+        addMessageStringWithoutLog(string){
+            this.messageList.push({message:string})
+        },
 
         playerList:[],
         //todo，别忘了还有接收函数
@@ -149,7 +160,15 @@ document.addEventListener('alpine:init', () => {
         //角色目录与列表
 
         //开始信息及按钮
-
+        startInfo:"",
+        startButtonToggle:true,
+        start(){
+            if(this.startButtonToggle === true){
+                sendEvent("HostSetupGame", this.setting)
+            }else{
+                sendEvent("HostCancelSetup")
+            }
+        }
 
     }))
 

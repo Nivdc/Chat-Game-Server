@@ -56,14 +56,24 @@ class Game{
         // 异步函数的执行顺序和性能影响需要更多的观察
         class GameStage{
             constructor(game, name, durationMin){
-                this.promise = new Promise((resolve)=>{
+                this.name = name
+                this.controller = new AbortController()
+                this.promise = new Promise((resolve, reject)=>{
                     this.timer = new Timer(resolve, durationMin, true)
+                    this.controller.signal.addEventListener('abort', () => {
+                        this.timer.clear()
+                        reject(`GameStage:${this.name} aborted`);
+                    });
                 })
                 game.setStatus(name)
             }
 
             end(){
                 this.timer.tick()
+            }
+
+            abort(){
+                this.controller.abort()
             }
 
             then(...args){
@@ -109,8 +119,19 @@ class Game{
                 break
 
                 case "HostSetupGame":
-                    if(player.uuid === this.host.uuid && this.status === "init")
+                    if(player.uuid === this.host.uuid && this.status === "init"){
                         this.setup(event.data)
+                        this.sendEventToAll(event.type)
+                    }
+                break
+
+                case "HostCancelSetup":
+                    if(player.uuid === this.host.uuid && this.status === "setup"){
+                        this.gameStage.abort()
+                        this.gameStage = undefined
+                        this.status = "init"
+                        this.sendEventToAll(event.type)
+                    }
                 break
 
                 case "HostChangesGameSetting":
@@ -175,26 +196,33 @@ class Game{
         p.sendEvent("SetPlayerList", this.playerList)
     }
 
-    setup(setting){
-        this.setting = {...defaultSetting, ...setting}
-        // todo:此处应有根据随机规则生成真正角色列表的逻辑
-        // todo:检查玩家人数是否与角色列表匹配
-        // todo:为没有自定义名字的玩家随机分配名字
-        shuffleArray(this.setting.roleList)
-        shuffleArray(this.playerList)
-        for(let [index, p] of this.playerList.entries()){
-            p.role = roleSet.find( r => r.name === this.setting.roleList[index] )
-            p.isAlive = true
+    async setup(setting){
+        try{
+            await this.newGameStage("setup", 0.25)
+            console.log("start")
+            this.setting = {...defaultSetting, ...setting}
+            // todo:此处应有根据随机规则生成真正角色列表的逻辑
+            // todo:检查玩家人数是否与角色列表匹配
+            // todo:为没有自定义名字的玩家随机分配名字
+            shuffleArray(this.setting.roleList)
+            shuffleArray(this.playerList)
+            for(let [index, p] of this.playerList.entries()){
+                p.role = roleSet.find( r => r.name === this.setting.roleList[index] )
+                p.isAlive = true
+            }
+
+            // todo:向每名玩家发送自己的角色
+            // todo:向黑手党发送队友的信息
+
+            // 游戏环境变量初始化...可能不全，因为js可以随时添加上去，欸嘿
+            this.dayCount = 1
+
+            this.newGameStage("begin", 0.05)
+            this.gameStage.then(()=>{ this.begin() })
+        }catch(e){
+            if(e === "GameStage:setup aborted")
+                return
         }
-
-        // todo:向每名玩家发送自己的角色
-        // todo:向黑手党发送队友的信息
-
-        // 游戏环境变量初始化...可能不全，因为js可以随时添加上去，欸嘿
-        this.dayCount = 1
-
-        this.newGameStage("begin", 0.05)
-        this.gameStage.then(()=>{ this.begin() })
     }
 
     // 此处有一个比较反直觉的逻辑，我思考了很久
@@ -215,7 +243,7 @@ class Game{
         // console.log("Befor->",this.status)
 
         this.status = status
-        this.sendEventToAll("GameStatusUpdate", JSON.stringify(this))
+        this.sendEventToAll("GameStatusUpdate", this)
 
         console.log("After->",this.status)
     }
@@ -243,7 +271,9 @@ class Game{
         if(this.dayCount !== 1)
             await this.deathDeclare()
 
-        this.victoryCheck()
+        await this.victoryCheck()
+        if(this.status === 'end')
+            return
 
         if(this.setting.enableDiscussion)
             await this.newGameStage("day/discussion", this.setting.discussionTime)

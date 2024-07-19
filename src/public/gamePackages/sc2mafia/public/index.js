@@ -43,6 +43,7 @@ document.addEventListener('alpine:init', () => {
             window.addEventListener('ChatMessage', (e) => {
                 this.messageList.push(e.detail)
                 this.messageLog.push(e.detail)
+                console.log(this.messageList);
             })
             window.addEventListener('HostSetupGame', (e) => {
                 this.addMessageStringWithoutLog("游戏将在15秒后开始")

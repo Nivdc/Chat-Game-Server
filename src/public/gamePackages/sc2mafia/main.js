@@ -92,7 +92,7 @@ class Game{
     }
 
     get onlinePlayerList(){
-        return this.playerList.filter((p) => p.user !== undefined)
+        return this.playerList.filter((p) => p.isOnline === true)
     }
 
     get survivingPlayerList(){
@@ -127,10 +127,7 @@ class Game{
 
                 case "HostCancelSetup":
                     if(player.uuid === this.host.uuid && this.status === "setup"){
-                        this.gameStage.abort()
-                        this.gameStage = undefined
-                        this.status = "init"
-                        this.sendEventToAll(event.type)
+                        this.abortSetupStage()
                     }
                 break
 
@@ -146,7 +143,23 @@ class Game{
                 break
 
                 case "RepickHost":
-                    //todo
+                    if(player !== this.host){
+                        if(event.data){
+                            player.repickHostVoteTargetNumber = Number(event.data)
+                            console.log(player.index, 'vote to ', player.repickHostVoteTargetNumber)
+                        }
+                        else{
+                            player.repickHostVoteTargetNumber = -1
+                        }
+                        this.repickHostVoteCheck()
+                    }else{
+                        if(event.data)
+                            // fixme:如果主机指定一个非法的playerIndex...什么都不会发生吧...大概?
+                            this.repickHost(this.playerList[Number(event.data)])
+                        else{
+                            this.repickHost(this.getNewRandomHost())
+                        }
+                    }
                 break
 
                 case "ChatMessage":
@@ -234,7 +247,6 @@ class Game{
     // 总的来看，游戏可以有以下这几个阶段：
     // begin, day/deathDeclare, day/discussion, day/discussion/lynchVote, day/trial/defense, day/trial/discussion
     // day/execution/lastWord,day/execution/discussion, night/discussion, night/action, end
-    // 但是...累了累了，先搞完再说吧。
 
     // 我们说30秒后黑夜会到来，它真的会来吗？如来
     // 到底来没来？如来~
@@ -403,10 +415,19 @@ class Game{
     //     }
     // }
 
+    abortSetupStage(){
+        if(this.gameStage?.name === "setup"){
+            this.gameStage.abort()
+            this.gameStage = undefined
+            this.status = "init"
+            this.sendEventToAll("HostCancelSetup")
+        }
+    }
+
     sendChatMessage(sender, data){
         let targetGroup = undefined
 
-        if(this.status === "init" || this.status === "begin" || this.status === "end")
+        if(this.status === "init" || this.status === "setup" || this.status === "end")
             targetGroup = this.onlinePlayerList
         else{
             if(sender.isAlive === true){
@@ -426,8 +447,8 @@ class Game{
 
     lynchVoteCheck(){
         let spll = this.survivingPlayerList.length
-        let voteNeeded = spll % 2 === 0 ? ((spll / 2) + 1) : Math.ceil(spll / 2)
-        let lynchTarget = this.voteCheck('LynchVote', this.survivingPlayerList, voteNeeded)
+        const voteNeeded = spll % 2 === 0 ? ((spll / 2) + 1) : Math.ceil(spll / 2)
+        let lynchTarget = this.voteCheck('LynchVote', this.survivingPlayerList, this.survivingPlayerList, voteNeeded)
         if(lynchTarget !== undefined){
             if(this.setting.enableTrial){
                 this.trialCycle(lynchTarget)
@@ -440,29 +461,74 @@ class Game{
 
     mafiaKillVoteCheck(){
         // Note that when a tie vote occurs, there can be multiple targets
-        let killTargets = this.voteCheck('MafiaKillVote', this.querySurvivingPlayerByCategory('Mafia'))
+        let killTargets = this.voteCheck('MafiaKillVote', this.querySurvivingPlayerByCategory('Mafia'), this.survivingPlayerList)
         this.mafiaKillTargets = killTargets
         // todo:发往客户端的提示信息
     }
 
-    voteCheck(voteType, checkPlayers, voteNeeded = undefined){
+    // 首先检查是否有一半的玩家投票重选主机，如果有，随机选择一个主机
+    // 其次检查是否有一半的玩家都投票给某个特别的玩家，如果有，选择他为主机
+    repickHostVoteCheck(){
+        let opll = this.onlinePlayerList.length
+        // const voteNeeded = opll % 2 === 0 ? ((opll / 2) + 1) : Math.ceil(opll / 2)
+        const voteNeeded = Math.ceil(opll / 2)
+
+        const votedPlayerNumber = this.playerList.filter(p => p.repickHostVoteTargetNumber !== undefined ).length
+        if(votedPlayerNumber >= voteNeeded){
+            var randomHost = this.getNewRandomHost()
+        }
+
+        // 为接下来的检测排除干扰项
+        this.playerList.filter(p => p.repickHostVoteTargetNumber === -1).forEach(p => p.repickHostVoteTargetNumber = undefined)
+
+        let newHost = this.voteCheck('RepickHostVote', this.onlinePlayerList, this.onlinePlayerList, voteNeeded)
+
+        if(newHost !== undefined)
+            this.repickHost(newHost)
+        else if(randomHost !== undefined)
+            this.repickHost(randomHost)
+    }
+
+    getNewRandomHost(){
+        do{
+            var randomHost = getRandomElement(this.onlinePlayerList)
+        }while(randomHost === this.host && this.onlinePlayerList.length > 1)
+
+        // todo:如果只剩一个人了的话，主机可以给他呢
+
+        return randomHost
+    }
+
+    repickHost(newHost){
+        if(newHost?.isOnline){
+            this.host = newHost
+            this.sendEventToAll("SetHost", this.host)
+            this.abortSetupStage()
+            this.onlinePlayerList.forEach(p => p.repickHostVoteTargetNumber = undefined)
+        }
+    }
+
+    voteCheck(voteType, checkPlayers, voteTargets, voteNeeded){
         voteType = voteType.charAt(0).toLowerCase() + voteType.slice(1)
         let voteCount = Array(this.playerList.length).fill(0)
         for(const p of checkPlayers){
-            if(p[`${voteType}TargetNumber`] !== undefined)
+            if(p[`${voteType}TargetNumber`] !== undefined){
                 voteCount[p[`${voteType}TargetNumber`] - 1] += `${voteType}Weight` in p ? p[`${voteType}Weight`] : 1
+                console.log('vt', voteType, `${p.index}vt`, p[`${voteType}TargetNumber`] - 1)
+            }
         }
 
-        // if target isn't alive, vote count = 0
-        for(const index of voteCount.keys()){
-            if(this.playerList[index].isAlive === false)
-                voteCount[index] = 0
+        for(const player of this.playerList){
+            if(voteTargets.includes(player) === false){
+                voteCount[player.index] = 0
+            }
         }
 
         // 如果定义了最小票数，达到最小票数的玩家对象将被返回(lynchVote)
         // 否则得票最高的玩家将被返回，可以返回多个(MafiaKillVote)
         if(voteNeeded !== undefined){
             for(const [index, vc] of voteCount.entries()){
+                console.log(vc)
                 if(vc >= voteNeeded){
                     return this.playerList[index]
                 }
@@ -535,13 +601,16 @@ class Game{
     // }
 
     userQuit(user){
-        this.playerList.forEach((currentPlaer,index,list) =>{
-            if(currentPlaer.user === user){
-                currentPlaer.user = undefined
+        this.playerList.forEach((currentPlayer,index,list) =>{
+            if(currentPlayer.user === user){
+                currentPlayer.user = undefined
             }
         })
 
         // fixme: host quit, no one can setup game
+        if(user === this.host.user)
+            this.repickHost(this.getNewRandomHost())
+
     }
 }
 
@@ -577,6 +646,10 @@ class Player{
 
     get index(){
         return this.playerList.indexOf(this)
+    }
+
+    get isOnline(){
+        return this.user === undefined ? false : true
     }
 
     setPlayerList(playerList){

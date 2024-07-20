@@ -163,7 +163,11 @@
                                     </template>
                                 </table> -->
                                 <template x-for="message in messageList">
-                                    <p><span x-text="message.senderName ?  message.senderName+': ' : ''" style="font-weight: bold"></span><span x-text="message.message"></span></p>
+                                    <p>
+                                        <template x-for="messagePart in message.parts">
+                                            <span x-text="messagePart.text" :style="messagePart.style" :class="messagePart.class"></span>
+                                        </template>
+                                    </p>
                                 </template>
                             </div>
                             <form class="formTextInput" @submit.prevent="submit">
@@ -174,7 +178,7 @@
                 </div>
 
                 <div id="settingPageInnerBodyMiddle">
-                    <p><span style="font-size:1.5em;font-weight: bold;text-decoration: underline;" x-text="`${host?.index+1}.${host?.name}`">测试</span><span>将会设置游戏</span></p>
+                    <p><span :style="`font-size:1.5em;font-weight: bold;text-decoration:underline;color:#${host?.color}`" x-text="`${host?.index+1}.${host?.name}`">测试</span><span>将会设置游戏</span></p>
                     <button @click="repickHost()">重选主机</button>
                 </div>
 

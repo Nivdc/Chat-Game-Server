@@ -205,8 +205,8 @@ class Game{
     }
 
     sendInitData(p){
-        p.sendEvent("SetHost", this.host)
         p.sendEvent("SetPlayerList", this.playerList)
+        p.sendEvent("SetHost", this.host)
     }
 
     async setup(setting){
@@ -442,7 +442,7 @@ class Game{
             }
         }
 
-        this.sendEventToGroup(targetGroup, "ChatMessage", {senderName:sender.name, message:data})
+        this.sendEventToGroup(targetGroup, "ChatMessage", {sender, message:data})
     }
 
     lynchVoteCheck(){
@@ -606,7 +606,6 @@ class Game{
             }
         })
 
-        // fixme: host quit, no one can setup game
         if(user === this.host.user)
             this.repickHost(this.getNewRandomHost())
 

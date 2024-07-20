@@ -35,15 +35,30 @@ document.addEventListener('alpine:init', () => {
                 this.setting = e.detail
             })
             window.addEventListener('SetHost', (e) => {
-                this.host = e.detail
+                this.host = this.getPlayerByPlayerData(e.detail)
+                let message = {parts:[]}
+                message.parts.push(this.host.getNameMessagePart())
+                message.parts.push({text:' 是新的主机', class:'text-warning'})
+                this.addMessage(message)
             })
             window.addEventListener('SetPlayerList', (e) => {
-                this.playerList = e.detail
+                let playerDatas = e.detail
+                let playerColors = [
+                    "B4141E","0042FF","1CA7EA",
+                    "6900A1","EBE129","FE8A0E",
+                    "168000","CCA6FC","A633BF",
+                    "525494","168962","753F06",
+                    "96FF91","464646","E55BB0"
+                ];
+
+                this.playerList = playerDatas.map(pd => new Player(pd, playerColors[pd.index]))
             })
             window.addEventListener('ChatMessage', (e) => {
-                this.messageList.push(e.detail)
-                this.messageLog.push(e.detail)
-                console.log(this.messageList);
+                let message = {parts:[]}
+                let sender  = this.getPlayerByPlayerData(e.detail.sender)
+                message.parts.push(sender.getNameMessagePart())
+                message.parts.push({text:': '+e.detail.message})
+                this.addMessage(message)
             })
             window.addEventListener('HostSetupGame', (e) => {
                 this.addMessageStringWithoutLog("游戏将在15秒后开始")
@@ -53,6 +68,10 @@ document.addEventListener('alpine:init', () => {
                 this.addMessageStringWithoutLog("主机取消了开始")
                 this.startButtonToggle = true
             })
+        },
+
+        getPlayerByPlayerData(playerData){
+            return this.playerList.find(p => p.index === playerData.index)
         },
 
         // 预设栏组件
@@ -121,9 +140,24 @@ document.addEventListener('alpine:init', () => {
         messageList:[],
         messageLog:[],
         inputString:'',
-        addMessageStringWithoutLog(string){
-            this.messageList.push({message:string})
+        addMessage(message){
+            this.messageList.push(message)
+            this.messageLog.push(message)
         },
+        addMessageWithoutLog(message){
+            this.messageList.push(message)
+        },
+        addSystemWarningMessage(text, style, cssClass){
+            let message = {parts:[]}
+            message.parts.push({text, style, class:'text-warning'+cssClass})
+            this.addMessage(message)
+        },
+        // buildMessage(sender, text){
+        //     return {sender, text}
+        // },
+        // buildSystemWarningMessage(warningString){
+        //     return  this.buildMessage({name:'系统', hide:true}, {message:warningString, class:'text-warning'})
+        // },
 
         playerList:[],
         //todo，别忘了还有接收函数
@@ -189,3 +223,22 @@ document.addEventListener('alpine:init', () => {
         socket?.send(JSON.stringify(event))
     }
 })
+
+class Player{
+    constructor(playerData, color){
+        this.data   = playerData
+        this.color  = color
+    }
+
+    get name(){
+        return this.data.name
+    }
+
+    get index(){
+        return this.data.index
+    }
+
+    getNameMessagePart(){
+        return {text:this.name, style:`font-weight:bold;color:#${this.color}`}
+    }
+}

@@ -470,6 +470,7 @@ class Game{
     // 其次检查是否有一半的玩家都投票给某个特别的玩家，如果有，选择他为主机
     repickHostVoteCheck(){
         let opll = this.onlinePlayerList.length
+        // 尚且不确定哪种人数要求更好，一种不含半数，另一种含半数
         // const voteNeeded = opll % 2 === 0 ? ((opll / 2) + 1) : Math.ceil(opll / 2)
         const voteNeeded = Math.ceil(opll / 2)
 
@@ -481,10 +482,10 @@ class Game{
         // 为接下来的检测排除干扰项
         this.playerList.filter(p => p.repickHostVoteTargetNumber === -1).forEach(p => p.repickHostVoteTargetNumber = undefined)
 
-        let newHost = this.voteCheck('RepickHostVote', this.onlinePlayerList, this.onlinePlayerList, voteNeeded)
+        let specificHost = this.voteCheck('RepickHostVote', this.onlinePlayerList, this.onlinePlayerList, voteNeeded)
 
-        if(newHost !== undefined)
-            this.repickHost(newHost)
+        if(specificHost !== undefined)
+            this.repickHost(specificHost)
         else if(randomHost !== undefined)
             this.repickHost(randomHost)
     }
@@ -493,8 +494,6 @@ class Game{
         do{
             var randomHost = getRandomElement(this.onlinePlayerList)
         }while(randomHost === this.host && this.onlinePlayerList.length > 1)
-
-        // todo:如果只剩一个人了的话，主机可以给他呢
 
         return randomHost
     }

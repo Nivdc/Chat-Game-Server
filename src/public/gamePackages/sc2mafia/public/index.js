@@ -147,6 +147,12 @@ document.addEventListener('alpine:init', () => {
         addMessageWithoutLog(message){
             this.messageList.push(message)
         },
+        addMessageWithColor(text, color){
+            let message = {parts:[]}
+            message.parts.push({text, style, class:'text-warning'+cssClass})
+            this.addMessage(message)
+            this.addmessage
+        },
         addSystemWarningMessage(text, style, cssClass){
             let message = {parts:[]}
             message.parts.push({text, style, class:'text-warning'+cssClass})
@@ -223,6 +229,18 @@ document.addEventListener('alpine:init', () => {
         socket?.send(JSON.stringify(event))
     }
 })
+
+class MessagePart{
+    constructor(text, style, cssClass){
+        this.text  = text
+        this.style = style
+        this.class = cssClass
+    }
+
+    toString(){
+        return this.text
+    }
+}
 
 class Player{
     constructor(playerData, color){

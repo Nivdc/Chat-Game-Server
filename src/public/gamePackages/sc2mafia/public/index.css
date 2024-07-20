@@ -363,3 +363,8 @@ button[disabled]:active{
 .text-warning{
     color: yellow;
 }
+
+a:link {color:var(--primary-content);text-decoration:underline;}      /* 未访问链接*/
+a:visited {color:var(--primary-content);text-decoration:underline;}  /* 已访问链接 */
+a:hover {color:var(--primary-content);text-decoration:underline;}  /* 鼠标移动到链接上 */
+a:active {color:var(--primary-content);text-decoration:underline;}  /* 鼠标点击时 */

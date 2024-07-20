@@ -600,15 +600,14 @@ class Game{
     // }
 
     userQuit(user){
+        if(user === this.host.user)
+            this.repickHost(this.getNewRandomHost())
+
         this.playerList.forEach((currentPlayer,index,list) =>{
             if(currentPlayer.user === user){
                 currentPlayer.user = undefined
             }
         })
-
-        if(user === this.host.user)
-            this.repickHost(this.getNewRandomHost())
-
     }
 }
 

@@ -162,15 +162,14 @@
                                         </tr>
                                     </template>
                                 </table> -->
-                                <p style="color:YellowGreen;">你好，欢迎体验星际2黑手党的网页...抢先体验版！<br/>
+                                <p style="color:YellowGreen;background-color: rgba(0, 0, 0, 0.1);">你好，欢迎体验星际2黑手党网页版...抢先体验版！<br/>
                                     如果您在游玩过程中发现了bug，或是有任何意见、建议，<br/>
                                     请加入QQ群：256373733 或是在 <a href="https://github.com/Nivdc/lobby" target="_blank">项目主页</a> 反馈。<br>
                                     <br>
                                     祝您游戏愉快。
                                 </p>
-                                <br/>
                                 <template x-for="message in messageList">
-                                    <p>
+                                    <p :style="message.style" :class="message.class">
                                         <template x-for="messagePart in message.parts">
                                             <span x-text="messagePart.text" :style="messagePart.style" :class="messagePart.class"></span>
                                         </template>
@@ -185,7 +184,7 @@
                 </div>
 
                 <div id="settingPageInnerBodyMiddle">
-                    <p><span :style="`font-size:1.5em;font-weight: bold;text-decoration:underline;color:#${host?.color}`" x-text="`${host?.index+1}.${host?.name}`">测试</span><span>将会设置游戏</span></p>
+                    <p><span :style="`font-size:1.5em;font-weight: bold;text-decoration:underline;color:${host?.color}`" x-text="`${host?.index+1}.${host?.name}`">测试</span><span>将会设置游戏</span></p>
                     <button @click="repickHost()">重选主机</button>
                 </div>
 

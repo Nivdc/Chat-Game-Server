@@ -363,6 +363,9 @@ button[disabled]:active{
 .text-warning{
     color: yellow;
 }
+.text-emphasized-content{
+    color: var(--emphasized-content);
+}
 
 a:link {color:var(--primary-content);text-decoration:underline;}      /* 未访问链接*/
 a:visited {color:var(--primary-content);text-decoration:underline;}  /* 已访问链接 */

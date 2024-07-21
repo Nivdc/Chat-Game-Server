@@ -191,8 +191,17 @@
                 <div id="settingPageInnerBodyRightBar">
                     <div style="display: flex;flex:auto;">
                         <div class="roleCatalogContainer">
-                            <h3>角色目录</h3>
-                            <div id="roleAffiliation"></div>
+                            <h3 style="margin-bottom: 0.2em;">角色目录</h3>
+                            <div id="roleAffiliationSet">
+                                <template x-for="affiliation in affiliationSet" :key="affiliation.name">
+                                    <span x-text="affiliation.nameZh??affiliation.name" :style="`color:${affiliation.color};background-color:${selectedAffiliation===affiliation? '#012845':'none'};`" @click="selectAffiliation(affiliation)"></span>
+                                </template>
+                            </div>
+                            <div id="roleSet" x-show="selectedAffiliation" x-transition>
+                                <template x-for="role in getRoleSetByAffiliationName(selectedAffiliation?.name)">
+                                    <span x-text="role.nameZh??role.name" :style="`color:${role.affiliation.color};background-color:${selectedRole===role? '#012845':'none'};`" @click="selectRole(role)"></span>
+                                </template>
+                            </div>
                         </div>
                         <div id="roleSettingButtonBar">
                             <button>添加</button>
@@ -201,14 +210,14 @@
                             <button>恢复</button>
                         </div>
                         <div class="roleListContainer">
-                            <h3>角色列表</h3>
+                            <h3 style="margin-bottom: 0.2em;">角色列表</h3>
                         </div>
                     </div>
 
                     <div style="display: flex; flex-direction: row-reverse;">
                         <div id="startInfoAndButton">
                             <p x-text="startInfo">测试信息</p>
-                            <button id="startButton" x-text="startButtonToggle ? '开始':'取消' " @click="start()" :class="startButtonToggle ? 'background-success':'background-danger'">开始</button>
+                            <button id="startButton" x-text="startButtonToggle ? '开始':'取消' " @click="start()" :class="startButtonToggle ? 'background-success background-success-hover':'background-danger background-danger-hover'">开始</button>
                         </div>
                     </div>
                 </div>

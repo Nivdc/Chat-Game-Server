@@ -213,6 +213,64 @@ document.addEventListener('alpine:init', () => {
         },
 
         //角色目录与列表
+        affiliationSet:[
+            {
+                name:"Town",
+                nameZh:"城镇",
+                color:"lime",
+            },
+            {
+                name:"Mafia",
+                nameZh:"黑手党",
+                color:"red",
+            },
+            {
+                name:"Random",
+                nameZh:"随机",
+                color:"#00ccff",
+            },
+        ],
+        selectedAffiliation:undefined,
+        selectAffiliation(affiliation){
+            this.selectedAffiliation = affiliation
+        },
+        getAffiliationByName(affiliationName){
+            return this.affiliationSet.find( a => a.name === affiliationName )
+        },
+
+        roleSet:[
+            {
+                name:"Citizen",
+                nameZh:"市民",
+                affiliationName:"Town",
+            },
+            {
+                name:"Sheriff",
+                nameZh:"警长",
+                affiliationName:"Town",
+            },
+            {
+                name:"Doctor",
+                nameZh:"医生",
+                affiliationName:"Town",
+            },
+            {
+                name:"Mafioso",
+                nameZh:"党徒",
+                affiliationName:"Mafia",
+            },
+        ],
+        getRoleSetByAffiliationName(affiliationName){
+            return  this.roleSet.filter(r => r.affiliationName === affiliationName)
+                                .map(r => {
+                                    r.affiliation = this.affiliationSet.find(a => a.name === r.affiliationName)
+                                    return r
+                                })
+        },
+        selectedRole:undefined,
+        selectRole(role){
+            this.selectedRole = role
+        },
 
         //开始信息及按钮
         startInfo:"",

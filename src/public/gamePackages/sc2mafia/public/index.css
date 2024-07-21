@@ -36,7 +36,7 @@ html,body{height:100%;}
 
 
     /* 以下是sc2mafia玩家的默认配色，以1-15的顺序排列 */
-    --red:         red;
+    /* --red:         red;
     --blue:        blue;
     --teal:        #87CEFA;
     --purple:      purple;
@@ -50,7 +50,7 @@ html,body{height:100%;}
     --brown:       #8B4513;
     --light-green: #98FB98;
     --black:       #696969;
-    --pink:        fuchsia;
+    --pink:        fuchsia; */
 }
 
 body{
@@ -299,6 +299,14 @@ button[disabled]:active{
     background-color: #119111;
 }
 
+.background-success-hover:hover{
+    background-color: #119111;
+}
+
+.background-danger-hover:hover{
+    background-color: #ff1111;
+}
+
 #settingPageInnerBodyRightBar{
     flex:auto;
     display: flex;
@@ -343,6 +351,23 @@ button[disabled]:active{
 #startButton{
     flex: auto;
     font-size: 2em;
+}
+
+#roleAffiliationSet{
+    display: flex;
+    flex-direction: column;
+}
+#roleAffiliationSet span:hover{
+    background-color: #123956;
+    cursor:pointer;
+}
+#roleSet{
+    display: flex;
+    flex-direction: column;
+}
+#roleSet span:hover{
+    background-color: #123956;
+    cursor:pointer;
 }
 
 .background-success{

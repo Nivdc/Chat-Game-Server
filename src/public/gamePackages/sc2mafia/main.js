@@ -499,7 +499,7 @@ class Game{
     }
 
     repickHost(newHost){
-        if(newHost?.isOnline){
+        if(newHost?.isOnline && newHost !== this.host){
             this.host = newHost
             this.sendEventToAll("SetHost", this.host)
             this.abortSetupStage()

@@ -162,7 +162,7 @@
                                         </tr>
                                     </template>
                                 </table> -->
-                                <p style="color:YellowGreen;background-color: rgba(0, 0, 0, 0.1);">你好，欢迎体验星际2黑手党网页版...抢先体验版！<br/>
+                                <p style="color:YellowGreen;background-color: rgba(0, 0, 0, 0.1);">你好，欢迎体验星际2黑手党网页版的...抢先体验版！<br/>
                                     如果您在游玩过程中发现了bug，或是有任何意见、建议，<br/>
                                     请加入QQ群：256373733 或是在 <a href="https://github.com/Nivdc/lobby" target="_blank">项目主页</a> 反馈。<br>
                                     <br>
@@ -189,28 +189,47 @@
                 </div>
 
                 <div id="settingPageInnerBodyRightBar">
-                    <div style="display: flex;flex:auto;">
-                        <div class="roleCatalogContainer">
-                            <h3 style="margin-bottom: 0.2em;">角色目录</h3>
-                            <div id="roleAffiliationSet">
-                                <template x-for="affiliation in affiliationSet" :key="affiliation.name">
-                                    <span x-text="affiliation.nameZh??affiliation.name" :style="`color:${affiliation.color};background-color:${selectedAffiliation===affiliation? '#012845':'none'};`" @click="selectAffiliation(affiliation)"></span>
-                                </template>
+                    <div style="display: flex;flex:auto;margin-bottom: 2em;">
+                        <div style="display: flex;flex-direction: column;position: relative;flex: auto;">
+                            <h3 style="margin-bottom: 0.2em;flex: initial;">角色目录</h3>
+                            <div style="display: flex;flex-direction: column;flex: auto;">
+                                <div id="roleAffiliationSet" class="roleContainer">
+                                    <template x-for="affiliation in affiliationSet" :key="affiliation.name">
+                                        <span x-text="affiliation.nameZh??affiliation.name" :style="`color:${affiliation.color};background-color:${selectedAffiliation===affiliation? '#012845':'none'};`" @click="selectAffiliation(affiliation)"></span>
+                                    </template>
+                                </div>
+                                <div id="roleSet" x-show="selectedAffiliation" class="roleContainer" x-transition>
+                                    <template x-for="role in getRoleSetByAffiliationName(selectedAffiliation?.name)" :key="role.name">
+                                        <span x-text="role.nameZh??role.name" :style="`color:${role.affiliation.color};background-color:${selectedRole===role? '#012845':'none'};`" @click="selectRole(role)"></span>
+                                    </template>
+                                </div>
                             </div>
-                            <div id="roleSet" x-show="selectedAffiliation" x-transition>
-                                <template x-for="role in getRoleSetByAffiliationName(selectedAffiliation?.name)">
-                                    <span x-text="role.nameZh??role.name" :style="`color:${role.affiliation.color};background-color:${selectedRole===role? '#012845':'none'};`" @click="selectRole(role)"></span>
-                                </template>
+                            <div id="roleDescriptionSection" x-show="selectedRole">
+                                <h3 x-text="selectedRole?.nameZh??selectedRole?.name" :style="`color:${selectedRole?.affiliation.color}`"></h3>
+                                <p x-text="selectedRole?.descriptionZh??selectedRole?.description" style="color:var(--optional-emphasized-content)"></p>
+                                <p x-text="selectedRole?.abilityDescriptionZh??selectedRole?.abilityDescription" style="color:deepskyblue"></p>
+                                <p x-show="selectedRole?.otherDescriptionZh" x-text="selectedRole?.otherDescriptionZh??selectedRole?.otherDescription"></p>
                             </div>
                         </div>
                         <div id="roleSettingButtonBar">
-                            <button>添加</button>
-                            <button>移除</button>
-                            <button>禁用</button>
-                            <button>恢复</button>
+                            <button @click="addSelectedRole()">添加</button>
+                            <button @click="removeSelectedRole()">移除</button>
+                            <!-- <button>禁用</button>
+                            <button>恢复</button> -->
                         </div>
-                        <div class="roleListContainer">
-                            <h3 style="margin-bottom: 0.2em;">角色列表</h3>
+                        <div style="display:flex;flex: auto;flex-direction: column;">
+                            <h3 style="margin-bottom: 0.2em;flex: initial;">角色列表</h3>
+                            <div id="roleList" class="roleContainer">
+                                <template x-for="role in getRoleListFromData(setting.roleList)">
+                                    <span x-text="role.nameZh??role.name" :style="`color:${role.affiliation.color};background-color:${selectedRole===role? '#012845':'none'};`" @click="selectRole(role)"></span>
+                                </template>
+                            </div>
+                            <!-- <h3 style="margin-bottom: 0.2em;flex: initial;">禁用列表</h3>
+                            <div id="roleList" class="roleContainer">
+                                <template x-for="role in getRoleListFromData(setting.bannedRoleList)">
+                                    <span x-text="role.nameZh??role.name" :style="`color:${role.affiliation.color};background-color:${selectedRole===role? '#012845':'none'};`" @click="selectRole(role)"></span>
+                                </template>
+                            </div> -->
                         </div>
                     </div>
 

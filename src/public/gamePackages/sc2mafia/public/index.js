@@ -10,6 +10,10 @@ document.addEventListener('alpine:init', () => {
             this.setting = cloneDeep(this.presets[0].setting)
             this.socketInit()
             sendEvent("FrontendReady")
+            this.roleSet.map(r => {
+                r.affiliation = this.affiliationSet.find(a => a.name === r.affiliationName)
+                return r
+            })
             this.loading = false
 
             this.$watch('setting', (value, oldValue)=>{
@@ -233,6 +237,7 @@ document.addEventListener('alpine:init', () => {
         selectedAffiliation:undefined,
         selectAffiliation(affiliation){
             this.selectedAffiliation = affiliation
+            this.selectedRole = undefined
         },
         getAffiliationByName(affiliationName){
             return this.affiliationSet.find( a => a.name === affiliationName )
@@ -243,33 +248,54 @@ document.addEventListener('alpine:init', () => {
                 name:"Citizen",
                 nameZh:"市民",
                 affiliationName:"Town",
+                descriptionZh:"一个相信真理和正义的普通人",
+                abilityDescriptionZh:"市民默认没有任何特殊能力",
+                // victoryGoalDescriptionZh:"",
+                otherDescriptionZh:"市民在这个游戏中默认为最为普遍的角色"
             },
             {
                 name:"Sheriff",
                 nameZh:"警长",
                 affiliationName:"Town",
+                descriptionZh:"一个执法机构的成员，迫于谋杀的威胁而身处隐匿。",
+                abilityDescriptionZh:"这个角色有每晚侦查一人有无犯罪活动的能力。",
             },
             {
                 name:"Doctor",
                 nameZh:"医生",
                 affiliationName:"Town",
+                descriptionZh:"一个熟练于医治外伤的秘密外科医生。",
+                abilityDescriptionZh:"这个角色有每晚救治一人，使其免受一次死亡的能力。",
             },
             {
                 name:"Mafioso",
                 nameZh:"党徒",
                 affiliationName:"Mafia",
+                descriptionZh:"一个犯罪组织的成员。",
+                abilityDescriptionZh:"这个角色有在夜晚与其他黑手党合作杀人的能力。",
             },
         ],
         getRoleSetByAffiliationName(affiliationName){
             return  this.roleSet.filter(r => r.affiliationName === affiliationName)
-                                .map(r => {
-                                    r.affiliation = this.affiliationSet.find(a => a.name === r.affiliationName)
-                                    return r
-                                })
         },
         selectedRole:undefined,
         selectRole(role){
             this.selectedRole = role
+            this.selectedAffiliation = role.affiliation
+        },
+
+        addSelectedRole(){
+            if(this.selectedRole !== undefined)
+                this.setting.roleList.push(this.selectedRole?.name)
+        },
+        removeSelectedRole(){
+            let roleIndex = this.setting.roleList.lastIndexOf(this.selectedRole?.name)
+            if(roleIndex !== -1)
+                this.setting.roleList.splice(roleIndex, 1)
+        },
+
+        getRoleListFromData(roleListData){
+            return roleListData.map(rd => this.roleSet.find(r => r.name === rd))
         },
 
         //开始信息及按钮

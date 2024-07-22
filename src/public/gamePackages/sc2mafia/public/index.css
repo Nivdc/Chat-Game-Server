@@ -337,7 +337,7 @@ button[disabled]:active{
     border-color: rgba(255, 255, 255, 0.1);
     border-radius: 0.5em;
     padding: 0.1em;
-    max-height: 100%;
+    overflow: auto;
 }
 .roleContainer span:hover{
     background-color: #123956;
@@ -395,6 +395,7 @@ button[disabled]:active{
     flex-direction: column;
     width: auto;
     flex: auto;
+    height: 0px;
 }
 
 .background-success{

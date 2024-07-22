@@ -42,7 +42,7 @@ document.addEventListener('alpine:init', () => {
                 this.host = this.getPlayerByPlayerData(e.detail)
                 let message = {parts:[]}
                 message.parts.push(this.host.getNameMessagePart())
-                message.parts.push({text:' 是新的主机', class:'text-warning'})
+                message.parts.push({text:'  是新的主机', class:'text-warning'})
                 this.addMessage(message)
             })
             window.addEventListener('SetPlayerList', (e) => {
@@ -153,11 +153,12 @@ document.addEventListener('alpine:init', () => {
         messageLog:[],
         inputString:'',
         addMessage(message){
-            this.messageList.push(message)
+            this.addMessageWithoutLog(message)
             this.messageLog.push(message)
         },
         addMessageWithoutLog(message){
             this.messageList.push(message)
+            this.$nextTick(()=>{scrollToBottom('chatMessageList')})
         },
         addMessageWithColor(text, color){
             color = color.toLowerCase()
@@ -325,6 +326,11 @@ document.addEventListener('alpine:init', () => {
         const event = {type,data}
         console.log(event)
         socket?.send(JSON.stringify(event))
+    }
+
+    function scrollToBottom(elementClass) {
+        const content = document.querySelector(`.${elementClass}`);
+        content.scrollTop = content.scrollHeight;
     }
 })
 

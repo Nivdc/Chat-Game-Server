@@ -204,7 +204,7 @@
                                     </template>
                                 </div>
                             </div>
-                            <div id="roleDescriptionSection" x-show="selectedRole">
+                            <div id="roleDescriptionSection" x-show="selectedRole" x-transition>
                                 <h3 x-text="selectedRole?.nameZh??selectedRole?.name" :style="`color:${selectedRole?.affiliation.color}`"></h3>
                                 <p x-text="selectedRole?.descriptionZh??selectedRole?.description" style="color:var(--optional-emphasized-content)"></p>
                                 <p x-text="selectedRole?.abilityDescriptionZh??selectedRole?.abilityDescription" style="color:deepskyblue"></p>
@@ -219,7 +219,7 @@
                         </div>
                         <div style="display:flex;flex: auto;flex-direction: column;">
                             <h3 style="margin-bottom: 0.2em;flex: initial;">角色列表</h3>
-                            <div id="roleList" class="roleContainer">
+                            <div id="roleList" class="roleContainer scrollbar">
                                 <template x-for="role in getRoleListFromData(setting.roleList)">
                                     <span x-text="role.nameZh??role.name" :style="`color:${role.affiliation.color};background-color:${selectedRole===role? '#012845':'none'};`" @click="selectRole(role)"></span>
                                 </template>

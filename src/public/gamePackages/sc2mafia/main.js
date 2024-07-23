@@ -213,9 +213,10 @@ class Game{
     }
 
     sendEventToGroup(playerGroup, eventType, data){
-        playerGroup.forEach(player =>{
-            player.sendEvent(eventType,data)
-        })
+        if(playerGroup !== undefined)
+            playerGroup.forEach(player =>{
+                player.sendEvent(eventType,data)
+            })
     }
 
     sendInitData(p){
@@ -455,8 +456,8 @@ class Game{
                 targetGroup = this.deadPlayerList
             }
         }
-
-        this.sendEventToGroup(targetGroup, "ChatMessage", {sender, message:data})
+        if(this.targetGroup !== undefined)
+            this.sendEventToGroup(targetGroup, "ChatMessage", {sender, message:data})
     }
 
     lynchVoteCheck(){

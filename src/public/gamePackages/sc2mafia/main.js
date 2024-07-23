@@ -207,12 +207,12 @@ class Game{
     sendInitData(p){
         p.sendEvent("SetPlayerList", this.playerList)
         p.sendEvent("SetHost", this.host)
+        p.sendEvent("SetStatus", this.status)
     }
 
     async setup(setting){
         try{
             await this.newGameStage("setup", 0.25)
-            console.log("start")
             this.setting = {...defaultSetting, ...setting}
             // todo:此处应有根据随机规则生成真正角色列表的逻辑
             // todo:检查玩家人数是否与角色列表匹配
@@ -255,9 +255,9 @@ class Game{
         // console.log("Befor->",this.status)
 
         this.status = status
-        this.sendEventToAll("GameStatusUpdate", this)
+        this.sendEventToAll("SetStatus", this.status)
 
-        console.log("After->",this.status)
+        console.log("SetStatus->",this.status)
     }
 
     newGameStage(name, durationMin){
@@ -600,14 +600,12 @@ class Game{
     // }
 
     userQuit(user){
+        this.sendEventToGroup(this.onlinePlayerList, "PlayerQuit", player)
         if(user === this.host.user)
             this.repickHost(this.getNewRandomHost())
 
-        this.playerList.forEach((currentPlayer,index,list) =>{
-            if(currentPlayer.user === user){
-                currentPlayer.user = undefined
-            }
-        })
+        let player = this.playerList.find(p => p.user === user)
+        player.user = undefined
     }
 }
 

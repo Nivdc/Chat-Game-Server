@@ -24,8 +24,6 @@ document.addEventListener('alpine:init', () => {
                     this.watchIgnore = false
                 }
             })
-
-            this.createTimer('begin', 0.5, ()=>{console.log('timeOut!')})
         },
         socketInit(){
             socket = window.top.socket
@@ -68,11 +66,11 @@ document.addEventListener('alpine:init', () => {
                 this.addMessage(message)
             })
             window.addEventListener('HostSetupGame', (e) => {
-                this.addMessageWithColor("游戏将在15秒后开始", 'LawnGreen')
+                this.addMessage({text:"游戏将在15秒后开始", style:"color:LawnGreen;"})
                 this.startButtonToggle = false
             })
             window.addEventListener('HostCancelSetup', (e) => {
-                this.addMessageWithColor("主机取消了开始", 'yellow')
+                this.addMessage({text:"主机取消了开始", style:"color:yellow;"})
                 this.startButtonToggle = true
             })
             window.addEventListener('PlayerQuit', (e) => {
@@ -85,10 +83,30 @@ document.addEventListener('alpine:init', () => {
             window.addEventListener('SetStatus', (e) => {
                 this.status = e.detail
                 console.log(this.status)
-                if(this.status === 'begin')
+                if(this.status === 'begin'){
                     this.createTimer('begin', 0.5)
+                    this.clearMssagesList()
+                }
             })
-            
+            window.addEventListener('PlayerRename', (e) => {
+                this.addMessage({text:`${e.detail.newName} 进入了城镇`, style:"color:lime;"})
+            })
+            window.addEventListener('RepickHost', (e) => {
+                let message = {parts:[]}
+                let player  = this.playerList[e.detail.player.index]
+                message.parts.push(player.getNameMessagePart())
+                console.log(e.detail)
+                console.log(e.detail.targetIndex)
+                console.log(e.detail.targetIndex === undefined)
+                if(e.detail.targetIndex === undefined)
+                    message.parts.push({text:' 提议重选主机', style:'color:yellow'})
+                else{
+                    let target = this.playerList[e.detail.targetIndex]
+                    message.parts.push({text:' 提议重选主机为 ', style:'color:yellow'})
+                    message.parts.push(target.getNameMessagePart())
+                }
+                this.addMessage(message)
+            })
         },
 
         getPlayerByPlayerData(playerData){
@@ -169,29 +187,6 @@ document.addEventListener('alpine:init', () => {
             this.messageList.push(message)
             this.$nextTick(()=>{scrollToBottom('chatMessageList')})
         },
-        addMessageWithColor(text, color){
-            color = color.toLowerCase()
-            let style = `color:${html5ColorHexMap[color]??`${color}`}`
-            let message = {parts:[], style}
-            message.parts.push({text})
-            this.addMessage(message)
-        },
-        addMessageWithClass(text, cssClass){
-            let message = {parts:[], class:cssClass}
-            message.parts.push({text})
-            this.addMessage(message)
-        },
-        addSystemWarningMessage(text, style, cssClass){
-            let message = {parts:[]}
-            message.parts.push({text, style, class:'text-warning'+cssClass})
-            this.addMessage(message)
-        },
-        // buildMessage(sender, text){
-        //     return {sender, text}
-        // },
-        // buildSystemWarningMessage(warningString){
-        //     return  this.buildMessage({name:'系统', hide:true}, {message:warningString, class:'text-warning'})
-        // },
 
         playerList:[],
         //todo，别忘了还有接收函数
@@ -202,15 +197,16 @@ document.addEventListener('alpine:init', () => {
                 }
                 else{
                     let str = this.inputString.substring(1);
-                    [command, ...args] = str.split(" ")
+                    if(this.status === 'begin' && this.setting.enableCustomName)
+                        sendEvent("PlayerRename", str)
+                    else{
+                        [command, ...args] = str.split(" ")
 
-                    switch(command){
-                        case 'repick':
-                            this.repickHost(args.shift())
-                        break
-
-                        default:
-                            // sendEvent("rename", args.shift())
+                        switch(command){
+                            case 'repick':
+                                this.repickHost(args.shift())
+                            break
+                        }
                     }
                 }
             }
@@ -343,7 +339,6 @@ document.addEventListener('alpine:init', () => {
                             callback()
                         return
                     }
-                    console.log('1sec')
 
                     // 首次运行
                     if(this.timerId === undefined){
@@ -365,12 +360,12 @@ document.addEventListener('alpine:init', () => {
     function onMessage(e){
         const event = JSON.parse(e.data)
         window.dispatchEvent(new CustomEvent(event.type, { detail:event.data }))
-        console.log(e)
+        // console.log(e)
     }
 
     function sendEvent(type, data){
         const event = {type,data}
-        console.log(event)
+        // console.log(event)
         socket?.send(JSON.stringify(event))
     }
 

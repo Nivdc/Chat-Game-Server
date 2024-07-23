@@ -138,27 +138,34 @@ class Game{
 
                 case "PlayerRename":
                     if(this.status === "begin" && this.setting.enableCustomName){
+                        this.sendEventToAll(event.type, {player, newName:event.data})
                         player.name = event.data
                     }
                 break
 
                 case "RepickHost":
-                    if(player !== this.host){
-                        if(event.data){
-                            player.repickHostVoteTargetNumber = Number(event.data)
-                            console.log(player.index, 'vote to ', player.repickHostVoteTargetNumber)
+                    if(['init', 'setup'].includes(this.status)){
+                        if(player !== this.host){
+                            if(event.data){
+                                player.repickHostVoteTargetNumber = Number(event.data)
+                                console.log(player.index, 'vote to ', player.repickHostVoteTargetNumber)
+                            }
+                            else{
+                                player.repickHostVoteTargetNumber = -1
+                            }
+                            this.repickHostVoteCheck()
+                        }else{
+                            if(event.data)
+                                // fixme:如果主机指定一个非法的playerIndex...什么都不会发生吧...大概?
+                                this.repickHost(this.playerList[(Number(event.data)-1)])
+                            else{
+                                this.repickHost(this.getNewRandomHost())
+                            }
                         }
-                        else{
-                            player.repickHostVoteTargetNumber = -1
-                        }
-                        this.repickHostVoteCheck()
-                    }else{
-                        if(event.data)
-                            // fixme:如果主机指定一个非法的playerIndex...什么都不会发生吧...大概?
-                            this.repickHost(this.playerList[Number(event.data)])
-                        else{
-                            this.repickHost(this.getNewRandomHost())
-                        }
+                        console.log(event.data)
+                        console.log((Number(event.data)-1))
+                        console.log(JSON.stringify({player, targetIndex:(Number(event.data)-1)}))
+                        this.sendEventToAll(event.type, {player, targetIndex:(Number(event.data)-1)})
                     }
                 break
 
@@ -185,6 +192,13 @@ class Game{
                         this.mafiaKillVoteCheck()
                     }
                 break
+
+                // case "AuxiliaryOfficerVote":
+                //     if(player.role.affiliation === "Mafia"){
+                //         player.mafiaKillVoteTargetNumber = Number(event.data)
+                //         this.mafiaKillVoteCheck()
+                //     }
+                // break
 
                 case "UseAbility":
                         player.abilityTargetNumber = Number(event.data)
@@ -230,7 +244,7 @@ class Game{
             // 游戏环境变量初始化...可能不全，因为js可以随时添加上去，欸嘿
             this.dayCount = 1
 
-            this.newGameStage("begin", 0.05)
+            this.newGameStage("begin", 0.5)
             this.gameStage.then(()=>{ this.begin() })
         }catch(e){
             if(e === "GameStage:setup aborted")
@@ -600,11 +614,11 @@ class Game{
     // }
 
     userQuit(user){
+        let player = this.playerList.find(p => p.user === user)
         this.sendEventToGroup(this.onlinePlayerList, "PlayerQuit", player)
         if(user === this.host.user)
             this.repickHost(this.getNewRandomHost())
 
-        let player = this.playerList.find(p => p.user === user)
         player.user = undefined
     }
 }
@@ -637,6 +651,10 @@ class Player{
 
     set name(name){
         this.nickname = name
+    }
+
+    get hasCustomName(){
+        return 'nickname' in this
     }
 
     get index(){
@@ -676,6 +694,7 @@ class Player{
         return {
             name: this.name,
             index:this.index,
+            hasCustomName:this.hasCustomName,
         }
     }
 }

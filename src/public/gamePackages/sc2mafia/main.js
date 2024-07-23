@@ -456,7 +456,8 @@ class Game{
                 targetGroup = this.deadPlayerList
             }
         }
-        if(this.targetGroup !== undefined)
+
+        if(targetGroup !== undefined)
             this.sendEventToGroup(targetGroup, "ChatMessage", {sender, message:data})
     }
 

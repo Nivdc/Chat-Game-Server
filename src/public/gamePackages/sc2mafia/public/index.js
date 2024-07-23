@@ -89,7 +89,11 @@ document.addEventListener('alpine:init', () => {
                 }
             })
             window.addEventListener('PlayerRename', (e) => {
-                this.addMessage({text:`${e.detail.newName} 进入了城镇`, style:"color:lime;"})
+                if(e.detail.player.hasCustomName === false)
+                    this.addMessage({text:`${e.detail.newName} 进入了城镇`, style:"color:lime;"})
+                else
+                    this.addMessage({text:`${e.detail.player.name} 将名字改为 ${e.detail.newName}`, style:"color:lime;"})
+
             })
             window.addEventListener('RepickHost', (e) => {
                 let message = {parts:[]}

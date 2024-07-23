@@ -399,6 +399,10 @@ button[disabled]:active{
     height: 0px;
 }
 
+#beginPage{
+    display: flex;
+}
+
 .background-success{
     background-color: green;
 }

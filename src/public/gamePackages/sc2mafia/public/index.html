@@ -246,5 +246,31 @@
                 </div>
             </div>
         </div>
+
+        <!-- x-show="status.split.includes('begin')" -->
+        <div id="beginPage" style="display: flex;justify-content: center;">
+            <p style="position: absolute;top: 20%;" x-text="setting?.enableCustomName?`输入 '-名字' 来选择你想要使用的名字( 例如 '-好人' )`:`未启用自定义名称，请等待游戏开始`">一些信息...</p>
+            <p style="position: absolute;top:5%;right: 5%;padding: 0.5em;background-color: rgba(0, 0, 0, 0.2);" class="border" x-show="true" x-text="`准备阶段剩余: ${timer?.durationSec} 秒`"></p>
+            <div class="chatForm border" style="margin:1em; position: absolute;bottom: 0px;left: 0px;flex: none;">
+                <div class="chatMessageList scrollbar">
+                    <template x-for="message in messageList">
+                        <p :style="message.style" :class="message.class">
+                            <template x-for="messagePart in message.parts">
+                                <span x-text="messagePart.text" :style="messagePart.style" :class="messagePart.class"></span>
+                            </template>
+                        </p>
+                    </template>
+                </div>
+                <form class="formTextInput" @submit.prevent="submit">
+                    <input type="text"  x-model="inputString"/>
+                </form>
+            </div>
+        </div>
+
+        <!-- <div id="gamePage">
+            <div id="gamePageHead">
+
+            </div>
+        </div> -->
     </body>
 </html>

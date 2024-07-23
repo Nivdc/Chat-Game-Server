@@ -24,10 +24,13 @@ document.addEventListener('alpine:init', () => {
                     this.watchIgnore = false
                 }
             })
+
+            this.createTimer('begin', 0.5, ()=>{console.log('timeOut!')})
         },
         socketInit(){
             socket = window.top.socket
             window.top.game_onmessage = onMessage
+
         
             if(socket === undefined){
                 console.log("调试模式，事件将不会被发送到服务器。")
@@ -82,6 +85,8 @@ document.addEventListener('alpine:init', () => {
             window.addEventListener('SetStatus', (e) => {
                 this.status = e.detail
                 console.log(this.status)
+                if(this.status === 'begin')
+                    this.createTimer('begin', 0.5)
             })
             
         },
@@ -323,8 +328,34 @@ document.addEventListener('alpine:init', () => {
             }else{
                 sendEvent("HostCancelSetup")
             }
-        }
+        },
 
+        //计时器组件
+        timer:undefined,
+        createTimer(name, durationMin, callback){
+            this.timer = {
+                name,
+                durationSec: 60 * durationMin,
+                update(){
+                    if(this.durationSec === 0){
+                        clearTimeout(this.timerId)
+                        if(callback??false)
+                            callback()
+                        return
+                    }
+                    console.log('1sec')
+
+                    // 首次运行
+                    if(this.timerId === undefined){
+                        this.timerId = setTimeout(()=>{this.update()}, 1000)
+                    }else{
+                        this.durationSec --
+                        this.timerId = setTimeout(()=>{this.update()}, 1000)
+                    }
+                },
+            }
+            this.timer.update()
+        }
     }))
 
     function cloneDeep(o){

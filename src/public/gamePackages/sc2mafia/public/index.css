@@ -160,6 +160,7 @@ button[disabled]:active{
     flex: auto;
     display: flex;
     flex-direction: column;
+    min-height: 18em;
 }
 
 .chatMessageList{

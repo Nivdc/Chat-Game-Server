@@ -47,14 +47,6 @@ document.addEventListener('alpine:init', () => {
             })
             window.addEventListener('SetPlayerList', (e) => {
                 let playerDatas = e.detail
-                // let playerColors = [
-                //     "B4141E","0042FF","1CA7EA",
-                //     "6900A1","EBE129","FE8A0E",
-                //     "168000","CCA6FC","A633BF",
-                //     "525494","168962","753F06",
-                //     "96FF91","464646","E55BB0"
-                // ];
-
                 let playerColors = [
                     "red", "blue", "87CEFA",
                     "purple", "yellow", "FF6811",
@@ -80,6 +72,18 @@ document.addEventListener('alpine:init', () => {
                 this.addMessageWithColor("主机取消了开始", 'yellow')
                 this.startButtonToggle = true
             })
+            window.addEventListener('PlayerQuit', (e) => {
+                let message = {parts:[], style:'background-color:darkred'}
+                let player  = this.getPlayerByPlayerData(e.detail)
+                message.parts.push(player.getNameMessagePart())
+                message.parts.push({text:' 退出了游戏'})
+                this.addMessage(message)
+            })
+            window.addEventListener('SetStatus', (e) => {
+                this.status = e.detail
+                console.log(this.status)
+            })
+            
         },
 
         getPlayerByPlayerData(playerData){
@@ -110,16 +114,16 @@ document.addEventListener('alpine:init', () => {
                     discussionTime: 0.3,
                     
                     revealPlayerRoleOnDeath: true,
+                    protectCitizensMode:true,
                     enableCustomName: true,
                     enableKillMessage: true,
                     enableLastWord: true,
                     enablePrivateMessage: true,
                     
                     roleList: [
-                        "Citizen", "Citizen", "Citizen", "Citizen", "Citizen",
                         "Citizen", "Citizen",
-                        "Sheriff", "Sheriff", "Sheriff", "Sheriff",
-                        "Mafioso", "Mafioso", "Mafioso", "Mafioso"
+                        "AuxiliaryOfficer", "AuxiliaryOfficer", 
+                        "Mafioso", "Mafioso", 
                     ],
                 }
             }
@@ -229,11 +233,11 @@ document.addEventListener('alpine:init', () => {
                 nameZh:"黑手党",
                 color:"red",
             },
-            {
-                name:"Random",
-                nameZh:"随机",
-                color:"#00ccff",
-            },
+            // {
+            //     name:"Random",
+            //     nameZh:"随机",
+            //     color:"#00ccff",
+            // },
         ],
         selectedAffiliation:undefined,
         selectAffiliation(affiliation){
@@ -254,20 +258,27 @@ document.addEventListener('alpine:init', () => {
                 // victoryGoalDescriptionZh:"",
                 otherDescriptionZh:"市民在这个游戏中默认为最为普遍的角色"
             },
+            // {
+            //     name:"Sheriff",
+            //     nameZh:"警长",
+            //     affiliationName:"Town",
+            //     descriptionZh:"一个执法机构的成员，迫于谋杀的威胁而身处隐匿。",
+            //     abilityDescriptionZh:"这个角色有每晚侦查一人有无犯罪活动的能力。",
+            // },
             {
-                name:"Sheriff",
-                nameZh:"警长",
+                name:"AuxiliaryOfficer",
+                nameZh:"辅警",
                 affiliationName:"Town",
-                descriptionZh:"一个执法机构的成员，迫于谋杀的威胁而身处隐匿。",
-                abilityDescriptionZh:"这个角色有每晚侦查一人有无犯罪活动的能力。",
+                descriptionZh:"一名与同僚熟络的辅助警员。",
+                abilityDescriptionZh:"这个角色有在夜晚与其他辅警合作侦查的能力。",
             },
-            {
-                name:"Doctor",
-                nameZh:"医生",
-                affiliationName:"Town",
-                descriptionZh:"一个熟练于医治外伤的秘密外科医生。",
-                abilityDescriptionZh:"这个角色有每晚救治一人，使其免受一次死亡的能力。",
-            },
+            // {
+            //     name:"Doctor",
+            //     nameZh:"医生",
+            //     affiliationName:"Town",
+            //     descriptionZh:"一个熟练于医治外伤的秘密外科医生。",
+            //     abilityDescriptionZh:"这个角色有每晚救治一人，使其免受一次死亡的能力。",
+            // },
             {
                 name:"Mafioso",
                 nameZh:"党徒",
@@ -286,8 +297,12 @@ document.addEventListener('alpine:init', () => {
         },
 
         addSelectedRole(){
-            if(this.selectedRole !== undefined)
+            if(this.selectedRole !== undefined){
                 this.setting.roleList.push(this.selectedRole?.name)
+                this.setting.roleList.sort((a,b)=>{
+                    return this.roleSet.indexOf(this.roleSet.find(r => r.name === a)) - this.roleSet.indexOf(this.roleSet.find(r => r.name === b))
+                })
+            }
         },
         removeSelectedRole(){
             let roleIndex = this.setting.roleList.lastIndexOf(this.selectedRole?.name)

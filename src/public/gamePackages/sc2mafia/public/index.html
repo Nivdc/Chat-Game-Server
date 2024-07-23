@@ -14,7 +14,7 @@
     <body x-data="game">
         <div id="loading" x-show="loading"><i class="fa-solid fa-spinner"></i> 加载中...</div>
 
-        <div id="settingPage">
+        <div id="settingPage" x-show="['init', 'setup'].includes(status)" x-transition>
             <div id="settingPageTopBar">
                 <!-- 游戏设置项 -->
                 <div id="settingForm" class="border">
@@ -29,9 +29,13 @@
                                 </template>
                             </select>
                         </div>
-                        <div>
+                        <!-- <div>
                             <label>死亡后揭示玩家角色</label>
                             <input type="checkbox" x-model="setting.revealPlayerRoleOnDeath" />
+                        </div> -->
+                        <div>
+                            <label>保护市民模式</label>
+                            <input type="checkbox" x-model="setting.protectCitizensMode" />
                         </div>
                         <div>
                             <label>启用自设名字</label>

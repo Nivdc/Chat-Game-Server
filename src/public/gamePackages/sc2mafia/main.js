@@ -145,6 +145,10 @@ class Game{
 
                 case "RepickHost":
                     if(['init', 'setup'].includes(this.status)){
+                        if(event.data !== undefined && isValidIndex((Number(event.data)-1), this.playerList.length) === false)
+                            return
+
+                        this.sendEventToAll(event.type, {player, targetIndex:(Number(event.data)-1)})
                         if(player !== this.host){
                             if(event.data){
                                 player.repickHostVoteTargetNumber = Number(event.data)
@@ -156,16 +160,11 @@ class Game{
                             this.repickHostVoteCheck()
                         }else{
                             if(event.data)
-                                // fixme:如果主机指定一个非法的playerIndex...什么都不会发生吧...大概?
                                 this.repickHost(this.playerList[(Number(event.data)-1)])
                             else{
                                 this.repickHost(this.getNewRandomHost())
                             }
                         }
-                        console.log(event.data)
-                        console.log((Number(event.data)-1))
-                        console.log(JSON.stringify({player, targetIndex:(Number(event.data)-1)}))
-                        this.sendEventToAll(event.type, {player, targetIndex:(Number(event.data)-1)})
                     }
                 break
 
@@ -635,6 +634,10 @@ function shuffleArray(array) {
         const j = Math.floor(Math.random() * (i + 1));
         [array[i], array[j]] = [array[j], array[i]];
     }
+}
+
+function isValidIndex(index, arrayLength) {
+    return Number.isInteger(index) && index >= 0 && index < arrayLength;
 }
 
 class Player{

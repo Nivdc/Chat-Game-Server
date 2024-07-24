@@ -99,10 +99,7 @@ document.addEventListener('alpine:init', () => {
                 let message = {parts:[]}
                 let player  = this.playerList[e.detail.player.index]
                 message.parts.push(player.getNameMessagePart())
-                console.log(e.detail)
-                console.log(e.detail.targetIndex)
-                console.log(e.detail.targetIndex === undefined)
-                if(e.detail.targetIndex === undefined)
+                if(e.detail.targetIndex == null)
                     message.parts.push({text:' 提议重选主机', style:'color:yellow'})
                 else{
                     let target = this.playerList[e.detail.targetIndex]
@@ -364,7 +361,7 @@ document.addEventListener('alpine:init', () => {
     function onMessage(e){
         const event = JSON.parse(e.data)
         window.dispatchEvent(new CustomEvent(event.type, { detail:event.data }))
-        // console.log(e)
+        console.log('recive <-', e)
     }
 
     function sendEvent(type, data){

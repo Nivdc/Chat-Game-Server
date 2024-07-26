@@ -10,10 +10,7 @@ document.addEventListener('alpine:init', () => {
             this.setting = cloneDeep(this.presets[0].setting)
             this.socketInit()
             sendEvent("FrontendReady")
-            this.roleSet.map(r => {
-                r.affiliation = this.affiliationSet.find(a => a.name === r.affiliationName)
-                return r
-            })
+            this.roleSetInit()
             this.loading = false
 
             this.$watch('setting', (value, oldValue)=>{
@@ -84,7 +81,7 @@ document.addEventListener('alpine:init', () => {
                 this.status = e.detail
                 console.log(this.status)
                 if(this.status === 'begin'){
-                    this.createTimer('begin', 0.5)
+                    this.createTimer('begin', 0.5, ()=>{this.timer = undefined})
                     this.clearMssagesList()
                 }
             })
@@ -107,6 +104,13 @@ document.addEventListener('alpine:init', () => {
                     message.parts.push(target.getNameMessagePart())
                 }
                 this.addMessage(message)
+            })
+            window.addEventListener('SetRole', (e) => {
+                this.myRole = this.roleSet.find(r=>r.name === e.detail.name)
+                this.gamePageTipMessage = {}
+                this.gamePageTipMessage.class = `animation-fadeIn-1s`
+                this.gamePageTipMessage.parts = [{text:"您将要扮演的角色是 ... "}, this.myRole.getNameMessagePart()]
+                console.log(this.gamePageTipMessage)
             })
         },
 
@@ -217,7 +221,7 @@ document.addEventListener('alpine:init', () => {
             this.messageList = []
         },
 
-        //todo
+        // 主机和重选主机按钮
         host:{},
         repickHost(playerIndex){
             sendEvent("RepickHost", playerIndex)
@@ -289,6 +293,31 @@ document.addEventListener('alpine:init', () => {
                 abilityDescriptionZh:"这个角色有在夜晚与其他黑手党合作杀人的能力。",
             },
         ],
+        roleSetInit(){
+            this.setRoleAffiliation()
+            this.setRoleColor()
+            this.roleSet.forEach(r=>{
+                r.getNameMessagePart = (additionalString)=>{
+                    return {text:r.nameZh+(additionalString??''), style:`color:${r.color}`}
+                }
+            })
+        },
+        setRoleAffiliation(){
+            this.roleSet.forEach(r => {
+                r.affiliation = this.affiliationSet.find(a => a.name === r.affiliationName)
+            })
+        },
+        setRoleColor(){
+            this.roleSet.forEach(r =>{
+                Object.defineProperty(r, 'color', {
+                    get: function() {
+                      return this.affiliation?.color
+                    },
+                    enumerable: true,
+                    configurable: true
+                })
+            })
+        },
         getRoleSetByAffiliationName(affiliationName){
             return  this.roleSet.filter(r => r.affiliationName === affiliationName)
         },
@@ -351,7 +380,14 @@ document.addEventListener('alpine:init', () => {
                 },
             }
             this.timer.update()
-        }
+        },
+
+        // 游戏页面中心的提示
+        gamePageTipMessage:undefined,
+
+        // 一些游戏数据
+        myRole:undefined,
+        myTeam:undefined,
     }))
 
     function cloneDeep(o){
@@ -375,18 +411,6 @@ document.addEventListener('alpine:init', () => {
         content.scrollTop = content.scrollHeight;
     }
 })
-
-class MessagePart{
-    constructor(text, style, cssClass){
-        this.text  = text
-        this.style = style
-        this.class = cssClass
-    }
-
-    toString(){
-        return this.text
-    }
-}
 
 class Player{
     constructor(playerData, color){

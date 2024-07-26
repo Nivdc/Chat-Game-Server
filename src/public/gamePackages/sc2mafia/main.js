@@ -226,8 +226,9 @@ class Game{
 
     async setup(setting){
         try{
-            await this.newGameStage("setup", 0.25)
+            await this.newGameStage("setup", 0.025)
             this.setting = {...defaultSetting, ...setting}
+            await this.newGameStage("begin", 0.05)
             // todo:此处应有根据随机规则生成真正角色列表的逻辑
             // todo:检查玩家人数是否与角色列表匹配
             // todo:为没有自定义名字的玩家随机分配名字
@@ -240,12 +241,21 @@ class Game{
 
             // todo:向每名玩家发送自己的角色
             // todo:向黑手党发送队友的信息
+            this.playerList.forEach(p=>{
+                p.sendEvent("SetRole", p.role)
+                if(p.role.affiliation === "Mafia")
+                    p.sendEvent("SetTeam", this.querySurvivingPlayerByCategory("Mafia").map(p=>p.toJSON_includeRole()))
+                else if(p.role.name === "AuxiliaryOfficer")
+                    p.sendEvent("SetTeam", this.querySurvivingPlayerByRoleName("AuxiliaryOfficer").map(p=>p.toJSON_includeRole()))
+
+            })
+
 
             // 游戏环境变量初始化...可能不全，因为js可以随时添加上去，欸嘿
             this.dayCount = 1
 
-            this.newGameStage("begin", 0.5)
-            this.gameStage.then(()=>{ this.begin() })
+            await this.newGameStage("animation", 0.1)
+            this.begin()
         }catch(e){
             if(e === "GameStage:setup aborted")
                 return
@@ -687,13 +697,13 @@ class Player{
         }
     }
 
-    // toJSON_self(){
-    //     return {
-    //         name: this.name,
-    //         affiliation: this.affiliation, 
-    //         roleName: this.roleName
-    //     }
-    // }
+    toJSON_includeRole(){
+        return {
+            name: this.name,
+            affiliation: this.affiliation, 
+            role:this.role
+        }
+    }
 
     toJSON(){
         return {

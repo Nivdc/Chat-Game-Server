@@ -118,6 +118,11 @@ button[disabled]:active{
     transform: none;
 }
 
+ul{
+    list-style-type: "- ";
+    list-style-position:inside;
+}
+
 .boxLabel{
     position: absolute;
     top: -1em;
@@ -139,10 +144,8 @@ button[disabled]:active{
     color: var(--optional-emphasized-content);
 }
 
-.buttonBar{
-    margin-left: 1em;
-    width: 10em;
-}
+/* .buttonBar{
+} */
 .buttonBar button{
     font-size: 1.1em;
     padding: 0.1em;
@@ -155,18 +158,16 @@ button[disabled]:active{
 }
 
 .chatForm{
-    width: 30em;
-    /* height: 100%; */
+    max-width: 30em;
     flex: auto;
     display: flex;
     flex-direction: column;
-    min-height: 18em;
 }
 
 .chatMessageList{
     overflow: auto; 
     flex:auto;
-    max-height: 100%;
+    height: 0px;
 }
 .chatMessageList p {
     margin:0.2em;
@@ -283,7 +284,6 @@ button[disabled]:active{
     flex: auto;
     margin:1em;
     width: 30em;
-    height: 18em;
 }
 
 #settingPageInnerBodyMiddle{
@@ -391,10 +391,9 @@ button[disabled]:active{
     padding: 0.2em;
 }
 
-#roleList{
+.roleList{
     display: flex;
     flex-direction: column;
-    width: auto;
     flex: auto;
     height: 0px;
 }
@@ -441,6 +440,25 @@ button[disabled]:active{
 @keyframes fadeOut {
     from { opacity: 1; }
     to { opacity: 0; }
+}
+
+.playerList{
+    min-height: 22em;
+}
+.playerList table,
+.playerList table tbody{
+    display: flex;
+    flex:auto;
+    flex-direction: column;
+    overflow: auto;
+}
+.playerList table tbody{
+    height: 0px;
+}
+.playerList table tr{
+    flex: initial;
+    display: flex;
+    justify-content: space-between;
 }
 
 a:link {color:var(--primary-content);text-decoration:underline;}      /* 未访问链接*/

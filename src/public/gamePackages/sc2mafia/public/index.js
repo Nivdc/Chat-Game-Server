@@ -108,9 +108,14 @@ document.addEventListener('alpine:init', () => {
             window.addEventListener('SetRole', (e) => {
                 this.myRole = this.roleSet.find(r=>r.name === e.detail.name)
                 this.gamePageTipMessage = {}
-                this.gamePageTipMessage.class = `animation-fadeIn-1s`
-                this.gamePageTipMessage.parts = [{text:"您将要扮演的角色是 ... "}, this.myRole.getNameMessagePart()]
-                console.log(this.gamePageTipMessage)
+                this.gamePageTipMessage.class = 'animation-fadeIn-1s'
+                this.gamePageTipMessage.parts = [{text:"您将要扮演的角色是 ... "}]
+                let mrnmp = this.myRole.getNameMessagePart()
+                mrnmp.style += 'font-weight:bold;'
+                this.gamePageTipMessage.parts.push(mrnmp)
+                setTimeout(()=>{
+                    this.gamePageTipMessage.class = 'animation-fadeOut-2s'
+                }, 3000)
             })
         },
 
@@ -233,11 +238,14 @@ document.addEventListener('alpine:init', () => {
                 name:"Town",
                 nameZh:"城镇",
                 color:"lime",
+                goalDescriptionZh:"处死所有罪犯和恶人。"
             },
             {
                 name:"Mafia",
                 nameZh:"黑手党",
                 color:"red",
+                goalDescriptionZh:"杀光城镇以及所有想要对抗你们的人。"
+
             },
             // {
             //     name:"Random",
@@ -262,7 +270,9 @@ document.addEventListener('alpine:init', () => {
                 descriptionZh:"一个相信真理和正义的普通人",
                 abilityDescriptionZh:"市民默认没有任何特殊能力",
                 // victoryGoalDescriptionZh:"",
-                otherDescriptionZh:"市民在这个游戏中默认为最为普遍的角色"
+                otherDescriptionZh:"市民在这个游戏中默认为最为普遍的角色",
+                abilityDetails:["你没有任何特殊能力。"],
+                featureDetails:["如果所有市民死亡，则城镇输掉这场游戏。"]
             },
             // {
             //     name:"Sheriff",
@@ -277,6 +287,12 @@ document.addEventListener('alpine:init', () => {
                 affiliationName:"Town",
                 descriptionZh:"一名与同僚熟络的辅助警员。",
                 abilityDescriptionZh:"这个角色有在夜晚与其他辅警合作侦查的能力。",
+                abilityDetails:["每晚投票调查一人的阵营。"],
+                featureDetails:[
+                    "在晚上你可以与其他辅警交谈。",
+                    "你知道其他辅警的身份。" ,
+                    "辅警团队可以投票派出一人调查某人的阵营，调查结果全团可知。"
+                ]
             },
             // {
             //     name:"Doctor",
@@ -291,6 +307,10 @@ document.addEventListener('alpine:init', () => {
                 affiliationName:"Mafia",
                 descriptionZh:"一个犯罪组织的成员。",
                 abilityDescriptionZh:"这个角色有在夜晚与其他黑手党合作杀人的能力。",
+                abilityDetails:["每晚投票杀死一人。"],
+                featureDetails:[
+                    "在晚上你可以与其他黑手党成员交谈",
+                ]
             },
         ],
         roleSetInit(){
@@ -298,7 +318,7 @@ document.addEventListener('alpine:init', () => {
             this.setRoleColor()
             this.roleSet.forEach(r=>{
                 r.getNameMessagePart = (additionalString)=>{
-                    return {text:r.nameZh+(additionalString??''), style:`color:${r.color}`}
+                    return {text:r.nameZh+(additionalString??''), style:`color:${r.color};`}
                 }
             })
         },
@@ -427,7 +447,7 @@ class Player{
     }
 
     getNameMessagePart(additionalString){
-        return {text:this.name+(additionalString??''), style:`font-weight:bold;color:${this.color}`}
+        return {text:this.name+(additionalString??''), style:`font-weight:bold;color:${this.color};`}
     }
 }
 

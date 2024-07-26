@@ -146,7 +146,7 @@
                             </div>
                         </div>
 
-                        <div id="presetButtonBar" class="buttonBar">
+                        <div id="presetButtonBar" class="buttonBar" style="margin-left: 1em;">
                             <button @click="useSelectedPreset">采用</button>
                             <!-- <button @click="saveSelectedPreset">保存</button>
                             <button @click="deleteSelectedPreset">删除</button> -->
@@ -213,7 +213,7 @@
                                 <h3 x-text="selectedRole?.nameZh??selectedRole?.name" :style="`color:${selectedRole?.affiliation.color}`"></h3>
                                 <p x-text="selectedRole?.descriptionZh??selectedRole?.description" style="color:var(--optional-emphasized-content)"></p>
                                 <p x-text="selectedRole?.abilityDescriptionZh??selectedRole?.abilityDescription" style="color:deepskyblue"></p>
-                                <p x-show="selectedRole?.otherDescriptionZh" x-text="selectedRole?.otherDescriptionZh??selectedRole?.otherDescription"></p>
+                                <p x-text="selectedRole?.otherDescriptionZh??selectedRole?.otherDescription"></p>
                             </div>
                         </div>
                         <div id="roleSettingButtonBar">
@@ -224,7 +224,7 @@
                         </div>
                         <div style="display:flex;flex: auto;flex-direction: column;">
                             <h3 style="margin-bottom: 0.2em;flex: initial;">角色列表</h3>
-                            <div id="roleList" class="roleContainer scrollbar">
+                            <div class="roleList roleContainer scrollbar">
                                 <template x-for="role in getRoleListFromData(setting.roleList)">
                                     <span x-text="role.nameZh??role.name" :style="`color:${role.affiliation.color};background-color:${selectedRole===role? '#012845':'none'};`" @click="selectRole(role)"></span>
                                 </template>
@@ -251,7 +251,7 @@
         <div id="beginPage" style="justify-content: center;" x-show="status?.split('/').includes('begin')">
             <p style="position: absolute;top: 20%;" x-text="setting?.enableCustomName?`输入 '-名字' 来选择你想要使用的名字( 例如 '-好人' )`:`未启用自定义名称，请等待游戏开始`"></p>
             <p style="position: absolute;top:5%;right: 5%;padding: 0.5em;background-color: rgba(0, 0, 0, 0.2);" class="border" x-show="timer" x-text="`游戏即将开始: ${timer?.durationSec} 秒`"></p>
-            <div class="chatForm border" style="margin:1em; position: absolute;bottom: 0px;left: 0px;flex: none;">
+            <div class="chatForm border" style="margin:1em; position: absolute;bottom: 0px;left: 0px;flex: none;height: 20em;">
                 <div class="chatMessageList scrollbar">
                     <template x-for="message in messageList">
                         <p :style="message.style" :class="message.class">
@@ -268,16 +268,94 @@
             </div>
         </div>
 
-        <div id="gamePage" style="display: flex;height: 100%; justify-content: center;">
+        <div id="gamePage" style="display: flex;flex-direction:column;height: 100%;align-items: center;">
             <p id="gamePageTipMessage" style="position: absolute;top: 20%;" :class="gamePageTipMessage?.class">
                 <span x-text="gamePageTipMessage?.text"></span>
                 <template x-for="messagePart in gamePageTipMessage?.parts">
                     <span x-text="messagePart.text" :style="messagePart.style" :class="messagePart.class"></span>
                 </template>
             </p>
+
             <!-- <div id="gamePageHead">
 
             </div> -->
+
+            <div id="gamePageBody" style="display: flex;flex: auto;width: 100%;">
+                <div id="gamePageBodyRight"style="display:flex;flex-direction:column;flex:1;margin:1em;">
+                    <div id ="graveyardAndRoleList" style="display: flex;flex: auto;margin-bottom: 1em;">
+                        <div id="graveyard"style="flex:initial;width: 10em;margin-right:1em;background-color: rgba(0, 0, 0, 0.1);">
+                            <h3>墓地</h3>
+                        </div>
+                        <div style="display: flex;flex-direction: column;position: relative;flex: initial;width: 10em;background-color: rgba(0, 0, 0, 0.1);">
+                            <h3 style="margin-bottom: 0.2em;flex: initial;">角色列表</h3>
+                            <div class="roleList scrollbar">
+                                <template x-for="role in getRoleListFromData(setting.roleList)">
+                                    <span x-text="role.nameZh??role.name" :style="`color:${role.affiliation.color};`"></span>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="gamePageButtonBar" class="buttonBar" style="display: flex;margin-bottom: 1em;column-gap: 0.5em;">
+                        <button>遗言</button>
+                        <button>日志</button>
+                        <button>跳过白天</button>
+                    </div>
+                    <div class="chatForm border">
+                        <div class="chatMessageList scrollbar">
+                            <template x-for="message in messageList">
+                                <p :style="message.style" :class="message.class">
+                                    <span x-text="message.text"></span>
+                                    <template x-for="messagePart in message.parts">
+                                        <span x-text="messagePart.text" :style="messagePart.style" :class="messagePart.class"></span>
+                                    </template>
+                                </p>
+                            </template>
+                        </div>
+                        <form class="formTextInput" @submit.prevent="submit">
+                            <input type="text"  x-model="inputString"/>
+                        </form>
+                    </div>
+                </div>
+                    
+                <div id="gamePageBodyMiddle" style="flex:1;display: flex;flex-direction: column;">
+                    <!-- <div style="height: 20em;display: flex;flex-direction: column;justify-content: center;text-align: center;">
+                        <p>xxxxx，你被指控密谋对抗城镇，你还有什么要说的吗？</p>
+                        <div>
+                            <button>有罪</button>
+                            <button>无罪</button>
+                        </div>
+                    </div> -->
+                </div>
+
+                <div id="gamePageBodyLeft" style="flex:1;display: flex;flex-direction: column-reverse;">
+                    <div style="display: flex;flex-direction: column;margin: 1em;">
+                        <div style="height:15em;background-color: rgba(0, 0, 0, 0.1);flex: initial;margin-bottom: 1em;">
+                            <h3 x-text="myRole?.nameZh??myRole?.name" :style="`color:${myRole?.affiliation.color}`"></h3>
+                            <p style="color:plum">阵营：</p>
+                            <p style="color:LightSkyBlue">能力：
+                                <ul>
+                                    <li>一些东西</li>
+                                </ul>
+                            </p>
+                            <p style="color:LightGreen">特性：</p>
+                            <p style="color:LightSalmon">目标：
+                                <span  style="color: var(--emphasized-content);"></span>
+                            </p>
+                        </div>
+                        <div class="playerList scrollbar" style="display:flex;flex: auto;background-color: rgba(0, 0, 0, 0.1);">
+                            <table>
+                                <tr><td>一些</td><td><button>按钮</button></td></tr>
+                                <tr><td>一些</td><td><button>按钮</button></td></tr>
+                                <tr><td>一些</td><td><button>按钮</button></td></tr>
+                                <tr><td>一些</td><td><button>按钮</button></td></tr>
+                                <tr><td>一些</td><td><button>按钮</button></td></tr>
+                                <tr><td>一些</td><td><button>按钮</button></td></tr>
+
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </body>
 </html>

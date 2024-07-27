@@ -113,8 +113,11 @@ document.addEventListener('alpine:init', () => {
                 let mrnmp = this.myRole.getNameMessagePart()
                 mrnmp.style += 'font-weight:bold;'
                 this.gamePageTipMessage.parts.push(mrnmp)
+                document.getElementById('gamePage').style.display = 'flex'
                 setTimeout(()=>{
                     this.gamePageTipMessage.class = 'animation-fadeOut-2s'
+                    document.getElementById('gamePageBody').classList.add('animation-fadeIn-3s')
+                    document.getElementById('gamePageBody').style.display = 'flex'
                 }, 3000)
             })
         },
@@ -291,7 +294,8 @@ document.addEventListener('alpine:init', () => {
                 featureDetails:[
                     "在晚上你可以与其他辅警交谈。",
                     "你知道其他辅警的身份。" ,
-                    "辅警团队可以投票派出一人调查某人的阵营，调查结果全团可知。"
+                    "辅警团队在晚上可以投票（随机）派出一人调查某人的阵营。",
+                    "调查结果全团可知，但如果调查人被杀，则没有结果。"
                 ]
             },
             // {

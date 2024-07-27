@@ -158,7 +158,7 @@ ul{
 }
 
 .chatForm{
-    max-width: 30em;
+    width: 30em;
     flex: auto;
     display: flex;
     flex-direction: column;

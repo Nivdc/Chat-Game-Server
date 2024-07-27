@@ -248,6 +248,7 @@
             </div>
         </div>
 
+        <!-- <div div id="beginPage" style="justify-content: center;"> -->
         <div id="beginPage" style="justify-content: center;" x-show="status?.split('/').includes('begin')">
             <p style="position: absolute;top: 20%;" x-text="setting?.enableCustomName?`输入 '-名字' 来选择你想要使用的名字( 例如 '-好人' )`:`未启用自定义名称，请等待游戏开始`"></p>
             <p style="position: absolute;top:5%;right: 5%;padding: 0.5em;background-color: rgba(0, 0, 0, 0.2);" class="border" x-show="timer" x-text="`游戏即将开始: ${timer?.durationSec} 秒`"></p>
@@ -280,8 +281,8 @@
 
             </div> -->
 
-            <div id="gamePageBody" style="display: flex;flex: auto;width: 100%;">
-                <div id="gamePageBodyRight"style="display:flex;flex-direction:column;flex:1;margin:1em;">
+            <div id="gamePageBody" style="display: flex;flex: auto;width: 100%;opacity: 1;">
+                <div id="gamePageBodyLeft"style="display:flex;flex-direction:column;flex:1;margin:1em;">
                     <div id ="graveyardAndRoleList" style="display: flex;flex: auto;margin-bottom: 1em;">
                         <div id="graveyard"style="flex:initial;width: 10em;margin-right:1em;background-color: rgba(0, 0, 0, 0.1);">
                             <h3>墓地</h3>
@@ -318,28 +319,35 @@
                 </div>
                     
                 <div id="gamePageBodyMiddle" style="flex:1;display: flex;flex-direction: column;">
-                    <!-- <div style="height: 20em;display: flex;flex-direction: column;justify-content: center;text-align: center;">
+                    <div style="height: 20em;display: flex;flex-direction: column;justify-content: center;text-align: center;">
                         <p>xxxxx，你被指控密谋对抗城镇，你还有什么要说的吗？</p>
                         <div>
                             <button>有罪</button>
                             <button>无罪</button>
                         </div>
-                    </div> -->
+                    </div>
                 </div>
 
-                <div id="gamePageBodyLeft" style="flex:1;display: flex;flex-direction: column-reverse;">
+                <div id="gamePageBodyRight" style="flex:1;display: flex;flex-direction: column-reverse;">
                     <div style="display: flex;flex-direction: column;margin: 1em;">
-                        <div style="height:15em;background-color: rgba(0, 0, 0, 0.1);flex: initial;margin-bottom: 1em;">
+                        <div style="height:15em;background-color: rgba(0, 0, 0, 0.1);flex: initial;margin-bottom: 1em;display: flex;flex-direction: column;row-gap:0.2em;">
                             <h3 x-text="myRole?.nameZh??myRole?.name" :style="`color:${myRole?.affiliation.color}`"></h3>
-                            <p style="color:plum">阵营：</p>
-                            <p style="color:LightSkyBlue">能力：
-                                <ul>
-                                    <li>一些东西</li>
-                                </ul>
-                            </p>
+                            <p style="color:plum">阵营：<span :style="`color: ${myRole?.affiliation.color};`" x-text="myRole?.affiliation.nameZh??myRole?.affiliation.name"></span></p>
+                            <p style="color:LightSkyBlue">能力：</p>
+                            <ul style="color: var(--emphasized-content);">
+                                <template x-for="abilityDetail in myRole?.abilityDetails">
+                                    <li x-text ="abilityDetail"></li>
+                                </template>
+                            </ul>
                             <p style="color:LightGreen">特性：</p>
-                            <p style="color:LightSalmon">目标：
-                                <span  style="color: var(--emphasized-content);"></span>
+                            <ul style="color: var(--emphasized-content);">
+                                <template x-for="featureDetail in myRole?.featureDetails">
+                                    <li x-text ="featureDetail"></li>
+                                </template>
+                            </ul>
+                            <p style="color:LightSalmon">
+                                目标：
+                                <span  style="color: var(--emphasized-content);" x-text="myRole?.affiliation.goalDescriptionZh"></span>
                             </p>
                         </div>
                         <div class="playerList scrollbar" style="display:flex;flex: auto;background-color: rgba(0, 0, 0, 0.1);">

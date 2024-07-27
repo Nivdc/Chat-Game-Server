@@ -439,7 +439,7 @@ document.addEventListener('alpine:init', () => {
 class Player{
     constructor(playerData, color){
         this.data   = playerData
-        this.color  = html5ColorHexMap[color]??color
+        this.color  = html5ColorHexMap[color]??(color.startsWith('#')? color:`#${color}`)
     }
 
     get name(){

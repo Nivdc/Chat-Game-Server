@@ -331,8 +331,10 @@
                 <div id="gamePageBodyRight" style="flex:1;display: flex;flex-direction: column-reverse;">
                     <div style="display: flex;">
                         <div style="flex: auto;display: flex;align-items: center;" >
-                            <div style="background-color: rgba(0, 0, 0, 0.1);">
-                                <p>一些信息</p>
+                            <div style="background-color: rgba(0, 0, 0, 0.1);width: 100%;height: 10em;padding: 0.5em;">
+                                <template x-for="player in myTeam">
+                                    <p x-text="`${player.index}.${player.name} (${player.role.nameZh})`"></p>
+                                </template>
                             </div>
                         </div>
                         <div style="flex:auto;display: flex;flex-direction: column;margin: 1em;">

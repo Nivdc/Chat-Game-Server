@@ -93,7 +93,7 @@ document.addEventListener('alpine:init', () => {
 
             })
             window.addEventListener('RepickHost', (e) => {
-                let message = {parts:[]}
+                let message = new MagicString()
                 let player  = this.playerList[e.detail.player.index]
                 message.parts.push(player.getNameMessagePart())
                 if(e.detail.targetIndex == null)
@@ -119,6 +119,14 @@ document.addEventListener('alpine:init', () => {
                     document.getElementById('gamePageBody').classList.add('animation-fadeIn-3s')
                     document.getElementById('gamePageBody').style.display = 'flex'
                 }, 3000)
+            })
+            window.addEventListener('SetTeam', (e) => {
+                let teamPlayers = e.detail.map(pd => this.playerList.find(p => p.name === pd.name))
+                teamPlayers.forEach(p => {
+                    let playerRoleData = e.detail.find(pd => pd.name === p.name).role
+                    p.role = this.roleSet.find(r => r.name === playerRoleData.name)
+                })
+                this.myTeam = teamPlayers
             })
         },
 
@@ -452,6 +460,24 @@ class Player{
 
     getNameMessagePart(additionalString){
         return {text:this.name+(additionalString??''), style:`font-weight:bold;color:${this.color};`}
+    }
+}
+
+class MagicString{
+    constructor({text, style, cssClass, parts} = {parts:[]}){
+        this.text   = text      ?? ""
+        this.style  = style     ?? ""
+        this.class  = cssClass  ?? ""
+        this.parts  = parts     ?? []
+    }
+
+    toString(){
+        let partStrings = this.parts?.map(p => p.text).join()
+        return this.text + partStrings
+    }
+
+    addColor(color){
+        this.style += `color:${color}`
     }
 }
 

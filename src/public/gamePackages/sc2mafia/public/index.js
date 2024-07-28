@@ -81,8 +81,34 @@ document.addEventListener('alpine:init', () => {
                 this.status = e.detail
                 console.log(this.status)
                 if(this.status === 'begin'){
-                    this.createTimer('begin', 0.5, ()=>{this.timer = undefined})
                     this.clearMssagesList()
+                    this.createTimer('准备', 0.5, ()=>{this.timer = undefined})
+                }
+                else if(this.status === 'day/discussion'){
+                    this.clearMssagesList()
+                    this.createTimer('讨论', this.setting.discussionTime, ()=>{this.timer = undefined})
+                }
+                else if(this.status === 'day/discussion/lynchVote'){
+                    if(!this.setting.enableDiscussion)
+                        this.clearMssagesList()
+                    this.createTimer('投票', this.setting.dayLength, ()=>{this.timer = undefined})
+                }
+                else if(this.status === 'day/trial/defense'){
+                    this.timer.clear()
+                    this.createTimer('审判辩护', this.setting.trialTime/2, ()=>{this.timer = undefined})
+                }
+                else if(this.status === 'day/discussion/trial/trialVote'){
+                    this.createTimer('审判投票', this.setting.trialTime/2, ()=>{this.timer = undefined})
+                }
+                else if(this.status === 'day/execution/lastWord'){
+                    // this.createTimer('行刑遗言', this.setting.trialTime/2, ()=>{this.timer = undefined})
+                }
+                else if(this.status === 'day/execution/discussion'){
+                    // this.createTimer('行刑追悼', this.setting.trialTime/2, ()=>{this.timer = undefined})
+                }
+                else if(this.status === 'night/discussion'){
+                    this.clearMssagesList()
+                    this.createTimer('夜晚', this.setting.nightLength, ()=>{this.timer = undefined})
                 }
             })
             window.addEventListener('PlayerRename', (e) => {
@@ -128,6 +154,10 @@ document.addEventListener('alpine:init', () => {
                 })
                 this.myTeam = teamPlayers
             })
+        },
+
+        get isRunning(){
+            return this.status?.startsWith('day') || this.status?.startsWith('night') || this.status === 'animation'
         },
 
         getPlayerByPlayerData(playerData){
@@ -217,7 +247,7 @@ document.addEventListener('alpine:init', () => {
                     sendEvent("ChatMessage", this.inputString)
                 }
                 else{
-                    let str = this.inputString.substring(1);
+                    let str = this.inputString.substring(1); // remove '-'
                     if(this.status === 'begin' && this.setting.enableCustomName)
                         sendEvent("PlayerRename", str)
                     else{
@@ -240,7 +270,7 @@ document.addEventListener('alpine:init', () => {
         // 主机和重选主机按钮
         host:{},
         repickHost(playerIndex){
-            sendEvent("RepickHost", playerIndex)
+            sendEvent("RepickHost", playerIndex?playerIndex-1:undefined)
         },
 
         //角色目录与列表
@@ -391,6 +421,8 @@ document.addEventListener('alpine:init', () => {
         //计时器组件
         timer:undefined,
         createTimer(name, durationMin, callback){
+            this.timer?.clear()
+            this.timer = undefined
             this.timer = {
                 name,
                 durationSec: 60 * durationMin,
@@ -410,6 +442,9 @@ document.addEventListener('alpine:init', () => {
                         this.timerId = setTimeout(()=>{this.update()}, 1000)
                     }
                 },
+                clear(){
+                    clearTimeout(this.timerId)
+                },
             }
             this.timer.update()
         },
@@ -420,6 +455,11 @@ document.addEventListener('alpine:init', () => {
         // 一些游戏数据
         myRole:undefined,
         myTeam:undefined,
+
+        // 玩家列表...的按钮
+        clickTempButton(player){
+
+        }
     }))
 
     function cloneDeep(o){

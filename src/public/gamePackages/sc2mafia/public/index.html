@@ -269,7 +269,8 @@
             </div>
         </div>
 
-        <div id="gamePage" style="display: flex;flex-direction:column;height: 100%;align-items: center;">
+        <div id="gamePage" style="display: flex;flex-direction:column;height: 100%;align-items: center;" class="flex" x-show="isRunning">
+            <p style="position: absolute;top:3%;right: 1%;padding: 0.5em;background-color: rgba(0, 0, 0, 0.2);" class="border" x-show="timer" x-text="`${timer?.name} 阶段剩余: ${timer?.durationSec} 秒`"></p>
             <p id="gamePageTipMessage" style="position: absolute;top: 20%;" :class="gamePageTipMessage?.class">
                 <span x-text="gamePageTipMessage?.text"></span>
                 <template x-for="messagePart in gamePageTipMessage?.parts">
@@ -319,21 +320,21 @@
                 </div>
                     
                 <div id="gamePageBodyMiddle" style="flex:1;display: flex;flex-direction: column;">
-                    <div style="height: 20em;display: flex;flex-direction: column;justify-content: center;text-align: center;">
+                    <!-- <div style="height: 20em;display: flex;flex-direction: column;justify-content: center;text-align: center;">
                         <p>xxxxx，你被指控密谋对抗城镇，你还有什么要说的吗？</p>
                         <div>
                             <button>有罪</button>
                             <button>无罪</button>
                         </div>
-                    </div>
+                    </div> -->
                 </div>
 
                 <div id="gamePageBodyRight" style="flex:1;display: flex;flex-direction: column-reverse;">
                     <div style="display: flex;">
-                        <div style="flex: auto;display: flex;align-items: center;" >
+                        <div style="flex: auto;align-items: center;" class="flex" x-show="myTeam" >
                             <div style="background-color: rgba(0, 0, 0, 0.1);width: 100%;height: 10em;padding: 0.5em;">
                                 <template x-for="player in myTeam">
-                                    <p x-text="`${player.index}.${player.name} (${player.role.nameZh})`"></p>
+                                    <p x-text="`${player.index+1}.${player.name} (${player.role.nameZh})`"></p>
                                 </template>
                             </div>
                         </div>
@@ -360,16 +361,9 @@
                             </div>
                             <div class="playerList scrollbar" style="display:flex;flex: auto;background-color: rgba(0, 0, 0, 0.1);">
                                 <table>
-                                    <tr><td>一些</td><td><button>按钮</button></td><td><button>按钮</button></td><td><button>按钮</button></td></tr>
-                                    <tr><td>一些</td><td><button>按钮</button></td></tr>
-                                    <tr><td>一些</td><td><button>按钮</button></td></tr>
-                                    <tr><td>一些</td><td><button>按钮</button></td></tr>
-                                    <tr><td>一些</td><td><button>按钮</button></td></tr>
-                                    <tr><td>一些</td><td><button>按钮</button></td></tr>
                                     <template x-for="player in playerList">
-                                        <tr><td x-text="player.name" :style="`color:${player.color}`"></td></tr>
+                                        <tr><td x-text="player.name" :style="`color:${player.color}`"></td><td><button @click="clickTempButton(player)">临时按钮</button></td></tr>
                                     </template>
-
                                 </table>
                             </div>
                         </div>

@@ -145,22 +145,22 @@ class Game{
 
                 case "RepickHost":
                     if(['init', 'setup'].includes(this.status)){
-                        if(event.data !== undefined && isValidIndex((Number(event.data)-1), this.playerList.length) === false)
+                        if(event.data !== undefined && isValidIndex((Number(event.data)), this.playerList.length) === false)
                             return
 
-                        this.sendEventToAll(event.type, {player, targetIndex:(Number(event.data)-1)})
+                        this.sendEventToAll(event.type, {player, targetIndex:(Number(event.data))})
                         if(player !== this.host){
                             if(event.data){
-                                player.repickHostVoteTargetNumber = Number(event.data)
-                                console.log(player.index, 'vote to ', player.repickHostVoteTargetNumber)
+                                player.repickHostVoteTargetIndex = Number(event.data)
+                                console.log(player.index, 'vote to ', player.repickHostVoteTargetIndex)
                             }
                             else{
-                                player.repickHostVoteTargetNumber = -1
+                                player.repickHostVoteTargetIndex = -1
                             }
                             this.repickHostVoteCheck()
                         }else{
                             if(event.data)
-                                this.repickHost(this.playerList[(Number(event.data)-1)])
+                                this.repickHost(this.playerList[(Number(event.data))])
                             else{
                                 this.repickHost(this.getNewRandomHost())
                             }
@@ -179,7 +179,7 @@ class Game{
                     // todo:发送投票信息
                     if(this.status.split('/').includes('lynchVote')){
                         if(event.data !== undefined){
-                            player.lynchVoteTargetNumber = Number(event.data)
+                            player.lynchVoteTargetIndex = Number(event.data)
                             this.lynchVoteCheck()
                         }
                     }
@@ -187,20 +187,20 @@ class Game{
                 
                 case "MafiaKillVote":
                     if(player.role.affiliation === "Mafia"){
-                        player.mafiaKillVoteTargetNumber = Number(event.data)
+                        player.mafiaKillVoteTargetIndex = Number(event.data)
                         this.mafiaKillVoteCheck()
                     }
                 break
 
                 // case "AuxiliaryOfficerVote":
                 //     if(player.role.affiliation === "Mafia"){
-                //         player.mafiaKillVoteTargetNumber = Number(event.data)
+                //         player.mafiaKillVoteTargetIndex = Number(event.data)
                 //         this.mafiaKillVoteCheck()
                 //     }
                 // break
 
                 case "UseAbility":
-                        player.abilityTargetNumber = Number(event.data)
+                        player.abilityTargetIndex = Number(event.data)
                 break
             }
     
@@ -269,8 +269,13 @@ class Game{
 
     // 感觉从下方的代码可以抽出一个gameStage的数据对象出来...
     // 总的来看，游戏可以有以下这几个阶段：
-    // begin, day/deathDeclare, day/discussion, day/discussion/lynchVote, day/trial/defense, day/trial/discussion
-    // day/execution/lastWord,day/execution/discussion, night/discussion, night/action, end
+    // begin, day/deathDeclare（animation）, day/discussion, day/discussion/lynchVote, 
+    // day/trial/defense, day/discussion/trial/trialVote
+    // day/execution/lastWord, day/execution/discussion, night/discussion, night/action（animation）, end
+    // 除此之外，还有两个不在游戏循环内的阶段：
+    // init, setup
+    // 前端可能会播放动画，因此后端要等待动画播放完毕还有一个阶段：
+    // animation
 
     // 我们说30秒后黑夜会到来，它真的会来吗？如来
     // 到底来没来？如来~
@@ -369,9 +374,8 @@ class Game{
 
         // SoloPlayer
         for(const p of this.playerList){
-            if(p.abilityTargetNumber !== undefined){
-                let targetPlayrerIndex = p.abilityTargetNumber - 1
-                let targetPlayer = this.playerList[targetPlayrerIndex]
+            if(p.abilityTargetIndex !== undefined){
+                let targetPlayer = this.playerList[p.abilityTargetIndex]
                 let actionType = undefined
 
                 switch(p.role.name){
@@ -475,6 +479,7 @@ class Game{
         const voteNeeded = spll % 2 === 0 ? ((spll / 2) + 1) : Math.ceil(spll / 2)
         let lynchTarget = this.voteCheck('LynchVote', this.survivingPlayerList, this.survivingPlayerList, voteNeeded)
         if(lynchTarget !== undefined){
+            this.sendEventToAll("SetLynchTarget", lynchTarget)
             if(this.setting.enableTrial){
                 this.trialCycle(lynchTarget)
             }else{
@@ -499,13 +504,13 @@ class Game{
         // const voteNeeded = opll % 2 === 0 ? ((opll / 2) + 1) : Math.ceil(opll / 2)
         const voteNeeded = Math.ceil(opll / 2)
 
-        const votedPlayerNumber = this.playerList.filter(p => p.repickHostVoteTargetNumber !== undefined ).length
+        const votedPlayerNumber = this.playerList.filter(p => p.repickHostVoteTargetIndex !== undefined ).length
         if(votedPlayerNumber >= voteNeeded){
             var randomHost = this.getNewRandomHost()
         }
 
         // 为接下来的检测排除干扰项
-        this.playerList.filter(p => p.repickHostVoteTargetNumber === -1).forEach(p => p.repickHostVoteTargetNumber = undefined)
+        this.playerList.filter(p => p.repickHostVoteTargetIndex === -1).forEach(p => p.repickHostVoteTargetIndex = undefined)
 
         let specificHost = this.voteCheck('RepickHostVote', this.onlinePlayerList, this.onlinePlayerList, voteNeeded)
 
@@ -528,7 +533,7 @@ class Game{
             this.host = newHost
             this.sendEventToAll("SetHost", this.host)
             this.abortSetupStage()
-            this.onlinePlayerList.forEach(p => p.repickHostVoteTargetNumber = undefined)
+            this.onlinePlayerList.forEach(p => p.repickHostVoteTargetIndex = undefined)
         }
     }
 
@@ -536,9 +541,9 @@ class Game{
         voteType = voteType.charAt(0).toLowerCase() + voteType.slice(1)
         let voteCount = Array(this.playerList.length).fill(0)
         for(const p of checkPlayers){
-            if(p[`${voteType}TargetNumber`] !== undefined){
-                voteCount[p[`${voteType}TargetNumber`] - 1] += `${voteType}Weight` in p ? p[`${voteType}Weight`] : 1
-                console.log('vt', voteType, `${p.index}vt`, p[`${voteType}TargetNumber`] - 1)
+            if(p[`${voteType}TargetIndex`] !== undefined){
+                voteCount[p[`${voteType}TargetIndex`]] += `${voteType}Weight` in p ? p[`${voteType}Weight`] : 1
+                console.log('vt', voteType, `${p.index}vt`, p[`${voteType}TargetIndex`])
             }
         }
 
@@ -569,15 +574,16 @@ class Game{
     }
 
     async execution(player){
-        let executionLenght = 0.4
+        let executionLenght = 0.4 // 0.4 * 60 = 24s
 
         // "day" stage end
         this.gameStage.end()
+        this.sendEventToAll("SetExecutionTarget", player)
         await this.newGameStage("day/execution/lastWord", executionLenght/2)
         player.isAlive = false
         player.deathReason = "Execution"
 
-        //todo:向所有玩家发送处决消息和玩家遗言
+        //todo:向所有玩家发送玩家遗言
 
         await this.newGameStage("day/execution/discussion", executionLenght/2)
         await this.victoryCheck()
@@ -690,9 +696,9 @@ class Player{
     }
 
     resetCommonProperties(){
-        // this.lynchVoteTargetNumber = undefined
+        // this.lynchVoteTargetIndex = undefined
         for (const key of Object.keys(this)) {
-            if(key.endsWith("TargetNumber"))
+            if(key.endsWith("TargetIndex"))
                 this[key] = undefined
         }
     }

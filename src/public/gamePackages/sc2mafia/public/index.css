@@ -424,6 +424,10 @@ ul{
     color: var(--emphasized-content);
 }
 
+.flex{
+    display: flex;
+}
+
 .animation-fadeIn-3s {
     animation: fadeIn 3s forwards;
 }

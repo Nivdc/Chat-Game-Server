@@ -175,6 +175,12 @@ class Game{
 
             if(player.isAlive ?? false)
             switch(event.type){
+                case 'SetLastWill':
+                    if(this.setting.enableLastWill){
+                        player.lastWill = event.data
+                        player.sendEvent("SetLastWill", player.lastWill)
+                    }
+                break
                 case "LynchVote":
                     // todo:发送投票信息
                     if(this.status.split('/').includes('lynchVote')){

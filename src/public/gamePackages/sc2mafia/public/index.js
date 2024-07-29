@@ -191,7 +191,7 @@ document.addEventListener('alpine:init', () => {
                     protectCitizensMode:true,
                     enableCustomName: true,
                     enableKillMessage: true,
-                    enableLastWord: true,
+                    enableLastWill: true,
                     enablePrivateMessage: true,
                     
                     roleList: [
@@ -240,7 +240,6 @@ document.addEventListener('alpine:init', () => {
         },
 
         playerList:[],
-        //todo，别忘了还有接收函数
         submit(){
             if(/^\s*$/.test(this.inputString) === false){
                 if(/^-/.test(this.inputString) === false){
@@ -256,6 +255,15 @@ document.addEventListener('alpine:init', () => {
                         switch(command){
                             case 'repick':
                                 this.repickHost(args.shift())
+                            break
+
+                            case 'lw':
+                            case 'lastWill':
+                                if(this.setting.enableLastWill){
+                                    sendEvent("SetLastWill", this.myLastWill)
+                                }else{
+                                    
+                                }
                             break
                         }
                     }

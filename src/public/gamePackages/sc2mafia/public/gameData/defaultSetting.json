@@ -16,9 +16,10 @@
     "discussionTime":0.03,
 
     "revealPlayerRoleOnDeath":true,
+    "protectCitizensMode":true,
     "enableCustomName":true,
     "enableKillMessage":true,
-    "enableLastWord":true,
+    "enableLastWill":true,
     "enablePrivateMessage":true,
 
     "roleList":[

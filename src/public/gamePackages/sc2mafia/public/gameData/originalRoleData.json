@@ -1,0 +1,45 @@
+{
+    "roles":[
+        {
+            "name":"Citizen"
+        },
+        {
+            "name":"Sheriff"
+        },
+        {
+            "name":"Doctor"
+        },
+        {
+            "name":"AuxiliaryOfficer"
+        },
+    
+        {
+            "name":"Mafioso"
+        }
+    ],
+    "categories":[
+        {
+            "name":"Town",
+            "isFaction":true,
+            "includeRoles":[
+                "Citizen",
+                "Sheriff",
+                "Doctor",
+                "AuxiliaryOfficer"
+            ]
+        },
+        {
+            "name":"Mafia",
+            "isFaction":true,
+            "includeRoles":[
+                "Mafioso"
+            ]
+        },
+        {
+            "name":"Killing",
+            "includeRoles":[
+                "Mafioso"
+            ]
+        }
+    ]
+}

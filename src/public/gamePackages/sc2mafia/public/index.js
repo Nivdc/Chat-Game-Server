@@ -55,6 +55,11 @@ document.addEventListener('alpine:init', () => {
 
                 this.playerList = playerDatas.map(pd => new Player(pd, playerColors[pd.index]))
             })
+            // window.addEventListener('SetRoleSet', (e)=>{
+            // })
+            window.addEventListener('InitCompleted', (e)=>{
+                // this.loading = false
+            })
             window.addEventListener('ChatMessage', (e) => {
                 let message = {parts:[]}
                 let sender  = this.getPlayerByPlayerData(e.detail.sender)
@@ -82,33 +87,37 @@ document.addEventListener('alpine:init', () => {
                 console.log(this.status)
                 if(this.status === 'begin'){
                     this.clearMssagesList()
-                    this.createTimer('准备', 0.5, ()=>{this.timer = undefined})
+                    this.createTimer('准备', 0.5)
                 }
                 else if(this.status === 'day/discussion'){
                     this.clearMssagesList()
-                    this.createTimer('讨论', this.setting.discussionTime, ()=>{this.timer = undefined})
+                    this.createTimer('讨论', this.setting.discussionTime)
                 }
                 else if(this.status === 'day/discussion/lynchVote'){
-                    if(!this.setting.enableDiscussion)
+                    if(this.setting.enableDiscussion === false)
                         this.clearMssagesList()
-                    this.createTimer('投票', this.setting.dayLength, ()=>{this.timer = undefined})
+                    this.createTimer('投票', this.setting.dayLength)
                 }
                 else if(this.status === 'day/trial/defense'){
                     this.timer.clear()
-                    this.createTimer('审判辩护', this.setting.trialTime/2, ()=>{this.timer = undefined})
+                    this.createTimer('审判辩护', this.setting.trialTime/2)
                 }
                 else if(this.status === 'day/discussion/trial/trialVote'){
-                    this.createTimer('审判投票', this.setting.trialTime/2, ()=>{this.timer = undefined})
+                    this.createTimer('审判投票', this.setting.trialTime/2)
                 }
                 else if(this.status === 'day/execution/lastWord'){
-                    // this.createTimer('行刑遗言', this.setting.trialTime/2, ()=>{this.timer = undefined})
+                    // this.createTimer('行刑遗言', this.setting.trialTime/2)
                 }
                 else if(this.status === 'day/execution/discussion'){
-                    // this.createTimer('行刑追悼', this.setting.trialTime/2, ()=>{this.timer = undefined})
+                    // this.createTimer('行刑追悼', this.setting.trialTime/2)
                 }
                 else if(this.status === 'night/discussion'){
                     this.clearMssagesList()
-                    this.createTimer('夜晚', this.setting.nightLength, ()=>{this.timer = undefined})
+                    this.createTimer('夜晚', this.setting.nightLength)
+                }
+                else if(this.status === 'end'){
+                    this.createTimer('谢幕', 0.2)
+                    this.addSystemWarningText("本局游戏已结束，将在12秒后返回大厅。")
                 }
             })
             window.addEventListener('PlayerRename', (e) => {
@@ -123,17 +132,17 @@ document.addEventListener('alpine:init', () => {
                 let player  = this.playerList[e.detail.player.index]
                 message.parts.push(player.getNameMessagePart())
                 if(e.detail.targetIndex == null)
-                    message.parts.push({text:' 提议重选主机', style:'color:yellow'})
+                    message.parts.push({text:' 提议重选主机', style:'color:yellow;'})
                 else{
                     let target = this.playerList[e.detail.targetIndex]
-                    message.parts.push({text:' 提议重选主机为 ', style:'color:yellow'})
+                    message.parts.push({text:' 提议重选主机为 ', style:'color:yellow;'})
                     message.parts.push(target.getNameMessagePart())
                 }
                 this.addMessage(message)
             })
             window.addEventListener('SetRole', (e) => {
                 this.myRole = this.roleSet.find(r=>r.name === e.detail.name)
-                this.gamePageTipMessage = {}
+                this.gamePageTipMessage = new MagicString()
                 this.gamePageTipMessage.class = 'animation-fadeIn-1s'
                 this.gamePageTipMessage.parts = [{text:"您将要扮演的角色是 ... "}]
                 let mrnmp = this.myRole.getNameMessagePart()
@@ -154,10 +163,38 @@ document.addEventListener('alpine:init', () => {
                 })
                 this.myTeam = teamPlayers
             })
+            window.addEventListener('SetWinner', (e)=>{
+                let data = e.detail
+                let winningFaction = this.affiliationSet.find(a => a.name === data.winningFactionName)
+                let winners = data.winners.map(dw => this.playerList[dw.index])
+
+                this.gamePageTipMessage = new MagicString()
+                this.gamePageTipMessage.addText("我们得到的结果是 ... ")
+                this.gamePageTipMessage.append(this.buildAffiliationNameMagicString(winningFaction))
+                this.gamePageTipMessage.addText(" 胜利！")
+                this.gamePageTipMessage.class = 'animation-fadeIn-1s'
+            })
+            window.addEventListener('SetCast', (e)=>{
+                let data = e.detail
+
+                this.cast = data.map(pd => {
+                    let ms = new MagicString
+                    ms.append(this.playerList[pd.index].getNameMagicString())
+                    ms.addText(" 扮演 ")
+                    ms.append(this.roleSet.find(r => r.name === pd.role.name).getNameMessagePart())
+                    return ms
+                })
+
+                document.getElementById('cast').classList.add('animation-fadeIn-1s')
+            })
         },
 
         get isRunning(){
-            return this.status?.startsWith('day') || this.status?.startsWith('night') || this.status === 'animation'
+            return this.status?.startsWith('day') || this.status?.startsWith('night') || this.status === 'end' || this.status === 'animation'
+        },
+
+        get isRunningAndNoAnimation(){
+            return this.isRunning && this.status !== 'animation'
         },
 
         getPlayerByPlayerData(playerData){
@@ -238,6 +275,9 @@ document.addEventListener('alpine:init', () => {
             this.messageList.push(message)
             this.$nextTick(()=>{scrollToBottom('chatMessageList')})
         },
+        addSystemWarningText(text){
+            this.addMessageWithoutLog({text, style:'color:NavajoWhite;background-color:rgba(0, 0, 0, 0.1);'})
+        },
 
         playerList:[],
         submit(){
@@ -259,10 +299,14 @@ document.addEventListener('alpine:init', () => {
 
                             case 'lw':
                             case 'lastWill':
-                                if(this.setting.enableLastWill){
-                                    sendEvent("SetLastWill", this.myLastWill)
+                                if(this.isRunningAndNoAnimation){
+                                    if(this.setting.enableLastWill){
+                                        sendEvent("SetLastWill", args.shift())
+                                    }else{
+                                        this.addSystemWarningText("本局游戏没有启用遗言")
+                                    }
                                 }else{
-                                    
+                                    this.addSystemWarningText("当前阶段不允许设置遗言")
                                 }
                             break
                         }
@@ -309,6 +353,9 @@ document.addEventListener('alpine:init', () => {
         },
         getAffiliationByName(affiliationName){
             return this.affiliationSet.find( a => a.name === affiliationName )
+        },
+        buildAffiliationNameMagicString(affiliation){
+            return new MagicString({text:affiliation.nameZh, style:`color:${affiliation.color}`})
         },
 
         roleSet:[
@@ -467,7 +514,10 @@ document.addEventListener('alpine:init', () => {
         // 玩家列表...的按钮
         clickTempButton(player){
 
-        }
+        },
+
+        // 游戏结束后显示的演员表
+        cast:undefined
     }))
 
     function cloneDeep(o){
@@ -509,6 +559,10 @@ class Player{
     getNameMessagePart(additionalString){
         return {text:this.name+(additionalString??''), style:`font-weight:bold;color:${this.color};`}
     }
+
+    getNameMagicString(){
+        return new MagicString({text:this.name, style:`color:${this.color};`})
+    }
 }
 
 class MagicString{
@@ -526,6 +580,14 @@ class MagicString{
 
     addColor(color){
         this.style += `color:${color}`
+    }
+
+    addText(text){
+        this.parts.push({text})
+    }
+
+    append(newPart){
+        this.parts.push(newPart)
     }
 }
 

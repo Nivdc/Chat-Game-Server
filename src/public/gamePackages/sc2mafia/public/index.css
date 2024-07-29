@@ -305,7 +305,7 @@ ul{
 }
 
 .background-danger-hover:hover{
-    background-color: #ff1111;
+    background-color: red;
 }
 
 #settingPageInnerBodyRightBar{
@@ -409,7 +409,7 @@ ul{
     color: green;
 }
 .background-danger{
-    background-color: red;
+    background-color: darkred;
 }
 .text-danger{
     color:red;

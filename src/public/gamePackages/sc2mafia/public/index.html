@@ -42,8 +42,8 @@
                             <input type="checkbox" x-model="setting.enableCustomName" />
                         </div>
                         <div>
-                            <label>启用遗嘱</label>
-                            <input type="checkbox" x-model="setting.enableLastWord" />
+                            <label>启用遗言</label>
+                            <input type="checkbox" x-model="setting.enableLastWill" />
                         </div>
                         <div>
                             <label>启用击杀留言</label>
@@ -270,7 +270,7 @@
         </div>
 
         <div id="gamePage" style="display: flex;flex-direction:column;height: 100%;align-items: center;" class="flex" x-show="isRunning">
-            <p style="position: absolute;top:3%;right: 1%;padding: 0.5em;background-color: rgba(0, 0, 0, 0.2);" class="border" x-show="timer" x-text="`${timer?.name} 阶段剩余: ${timer?.durationSec} 秒`"></p>
+            <p style="position: absolute;top:1%;right: 1%;padding: 0.5em;background-color: rgba(0, 0, 0, 0.2);" class="border" x-text="`${timer?.name} 阶段剩余: ${timer?.durationSec} 秒`"></p>
             <p id="gamePageTipMessage" style="position: absolute;top: 20%;" :class="gamePageTipMessage?.class">
                 <span x-text="gamePageTipMessage?.text"></span>
                 <template x-for="messagePart in gamePageTipMessage?.parts">
@@ -282,7 +282,7 @@
 
             </div> -->
 
-            <div id="gamePageBody" style="display: flex;flex: auto;width: 100%;opacity: 1;">
+            <div id="gamePageBody" style="display: flex;flex: auto;width: 100%;opacity: 0;">
                 <div id="gamePageBodyLeft"style="display:flex;flex-direction:column;flex:1;margin:1em;">
                     <div id ="graveyardAndRoleList" style="display: flex;flex: auto;margin-bottom: 1em;">
                         <div id="graveyard"style="flex:initial;width: 10em;margin-right:1em;background-color: rgba(0, 0, 0, 0.1);">
@@ -323,8 +323,8 @@
                     <!-- <div style="height: 20em;display: flex;flex-direction: column;justify-content: center;text-align: center;">
                         <p>xxxxx，你被指控密谋对抗城镇，你还有什么要说的吗？</p>
                         <div>
-                            <button>有罪</button>
-                            <button>无罪</button>
+                            <button style="margin: 1em;font-size: 1.1em;padding: 0.5em 2em;" class="background-danger  background-danger-hover">有罪</button>
+                            <button style="margin: 1em;font-size: 1.1em;padding: 0.5em 2em;" class="background-success background-success-hover">无罪</button>
                         </div>
                     </div> -->
                 </div>
@@ -339,7 +339,7 @@
                             </div>
                         </div>
                         <div style="flex:auto;display: flex;flex-direction: column;margin: 1em;">
-                            <div style="height:15em;background-color: rgba(0, 0, 0, 0.1);flex: initial;margin-bottom: 1em;display: flex;flex-direction: column;row-gap:0.2em;">
+                            <div style="min-height:15em;background-color: rgba(0, 0, 0, 0.1);flex: initial;margin-bottom: 1em;display: flex;flex-direction: column;row-gap:0.2em;">
                                 <h3 x-text="myRole?.nameZh??myRole?.name" :style="`color:${myRole?.affiliation.color}`"></h3>
                                 <p style="color:plum">阵营：<span :style="`color: ${myRole?.affiliation.color};`" x-text="myRole?.affiliation.nameZh??myRole?.affiliation.name"></span></p>
                                 <p style="color:LightSkyBlue">能力：</p>
@@ -369,7 +369,23 @@
                         </div>
                     </div>
                 </div>
+
             </div>
+
+            <!-- 演员表 -->
+            <div id="cast" style="background-color: rgba(0, 0, 0, 0.2);bottom: 5%;position:absolute;height: 30em;width: 15em;z-index: 99;padding:1em;opacity: 0;" x-show="cast">
+                <h2 style="width: 100%;text-align: center;margin-bottom: 1em;">倾情出演</h2>
+                <template x-for="magicString in cast">
+                    <p :class="magicString.class" :style="magicString.style">
+                        <span x-text="magicString.text"></span>
+                        <template x-for="part in magicString.parts">
+                            <span x-text="part.text" :style="part.style" :class="part.class"></span>
+                        </template>
+                    </p>
+                </template>
+            </div>
+
         </div>
+
     </body>
 </html>

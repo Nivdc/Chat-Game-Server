@@ -32,19 +32,30 @@ document.addEventListener('alpine:init', () => {
                 socket = {send:console.log}
             }
 
-            window.addEventListener('HostChangesGameSetting', (e) => {
+            for(const eventName in this.eventHandler){
+                window.addEventListener(eventName, (e)=>{
+                    this.eventHandler[eventName].call(this, e.detail)
+                })
+            }
+        },
+
+        eventHandler:{
+            'HostChangesGameSetting':function(data){
                 this.watchIgnore = true
-                this.setting = e.detail
-            })
-            window.addEventListener('SetHost', (e) => {
-                this.host = this.getPlayerByPlayerData(e.detail)
+                this.setting = data
+            },
+
+            "SetHost":function (data){
+                console.log(this)
+                this.host = this.getPlayerByPlayerData(data)
                 let message = {parts:[]}
                 message.parts.push(this.host.getNameMessagePart())
                 message.parts.push({text:'  是新的主机', class:'text-warning'})
                 this.addMessage(message)
-            })
-            window.addEventListener('SetPlayerList', (e) => {
-                let playerDatas = e.detail
+            },
+
+            'SetPlayerList':function(data){
+                let playerDatas = data
                 let playerColors = [
                     "red", "blue", "87CEFA",
                     "purple", "yellow", "FF6811",
@@ -54,36 +65,39 @@ document.addEventListener('alpine:init', () => {
                 ];
 
                 this.playerList = playerDatas.map(pd => new Player(pd, playerColors[pd.index]))
-            })
-            // window.addEventListener('SetRoleSet', (e)=>{
-            // })
-            window.addEventListener('InitCompleted', (e)=>{
-                // this.loading = false
-            })
-            window.addEventListener('ChatMessage', (e) => {
+            },
+
+            // 'SetRoleSet':function(data){},
+            // 'InitCompleted':function(data){this.loading = false},
+            
+            'ChatMessage':function(data){
                 let message = {parts:[]}
-                let sender  = this.getPlayerByPlayerData(e.detail.sender)
+                let sender  = this.getPlayerByPlayerData(data.sender)
                 message.parts.push(sender.getNameMessagePart(': '))
-                message.parts.push({text:e.detail.message})
+                message.parts.push({text:data.message})
                 this.addMessage(message)
-            })
-            window.addEventListener('HostSetupGame', (e) => {
-                this.addMessage({text:"游戏将在15秒后开始", style:"color:LawnGreen;"})
+            },
+
+            'HostSetupGame':function(){
+                this.addMessageWithoutLog({text:"游戏将在15秒后开始", style:"color:LawnGreen;"})
                 this.startButtonToggle = false
-            })
-            window.addEventListener('HostCancelSetup', (e) => {
-                this.addMessage({text:"主机取消了开始", style:"color:yellow;"})
+            },
+
+            'HostCancelSetup':function(data){
+                this.addMessageWithoutLog({text:"主机取消了开始", style:"color:yellow;"})
                 this.startButtonToggle = true
-            })
-            window.addEventListener('PlayerQuit', (e) => {
+            },
+
+            'PlayerQuit':function(data){
                 let message = {parts:[], style:'background-color:darkred'}
-                let player  = this.getPlayerByPlayerData(e.detail)
+                let player  = this.playerList[data.index]
                 message.parts.push(player.getNameMessagePart())
                 message.parts.push({text:' 退出了游戏'})
                 this.addMessage(message)
-            })
-            window.addEventListener('SetStatus', (e) => {
-                this.status = e.detail
+            },
+
+            'SetStatus':function(data){
+                this.status = data
                 console.log(this.status)
                 if(this.status === 'begin'){
                     this.clearMssagesList()
@@ -119,29 +133,31 @@ document.addEventListener('alpine:init', () => {
                     this.createTimer('谢幕', 0.2)
                     this.addSystemWarningText("本局游戏已结束，将在12秒后返回大厅。")
                 }
-            })
-            window.addEventListener('PlayerRename', (e) => {
-                if(e.detail.player.hasCustomName === false)
-                    this.addMessage({text:`${e.detail.newName} 进入了城镇`, style:"color:lime;"})
-                else
-                    this.addMessage({text:`${e.detail.player.name} 将名字改为 ${e.detail.newName}`, style:"color:lime;"})
+            },
 
-            })
-            window.addEventListener('RepickHost', (e) => {
+            'PlayerRename':function(data){
+                if(data.player.hasCustomName === false)
+                    this.addMessage({text:`${data.newName} 进入了城镇`, style:"color:lime;"})
+                else
+                    this.addMessage({text:`${data.player.name} 将名字改为 ${data.newName}`, style:"color:lime;"})
+            },
+
+            'RepickHost':function(data){
                 let message = new MagicString()
-                let player  = this.playerList[e.detail.player.index]
+                let player  = this.playerList[data.player.index]
                 message.parts.push(player.getNameMessagePart())
-                if(e.detail.targetIndex == null)
+                if(data.targetIndex == null)
                     message.parts.push({text:' 提议重选主机', style:'color:yellow;'})
                 else{
-                    let target = this.playerList[e.detail.targetIndex]
+                    let target = this.playerList[data.targetIndex]
                     message.parts.push({text:' 提议重选主机为 ', style:'color:yellow;'})
                     message.parts.push(target.getNameMessagePart())
                 }
                 this.addMessage(message)
-            })
-            window.addEventListener('SetRole', (e) => {
-                this.myRole = this.roleSet.find(r=>r.name === e.detail.name)
+            },
+
+            'SetRole':function(data){
+                this.myRole = this.roleSet.find(r=>r.name === data.name)
                 this.gamePageTipMessage = new MagicString()
                 this.gamePageTipMessage.class = 'animation-fadeIn-1s'
                 this.gamePageTipMessage.parts = [{text:"您将要扮演的角色是 ... "}]
@@ -154,17 +170,18 @@ document.addEventListener('alpine:init', () => {
                     document.getElementById('gamePageBody').classList.add('animation-fadeIn-3s')
                     document.getElementById('gamePageBody').style.display = 'flex'
                 }, 3000)
-            })
-            window.addEventListener('SetTeam', (e) => {
-                let teamPlayers = e.detail.map(pd => this.playerList.find(p => p.name === pd.name))
+            },
+
+            'SetTeam':function(data){
+                let teamPlayers = data.map(pd => this.playerList.find(p => p.name === pd.name))
                 teamPlayers.forEach(p => {
-                    let playerRoleData = e.detail.find(pd => pd.name === p.name).role
+                    let playerRoleData = data.find(pd => pd.name === p.name).role
                     p.role = this.roleSet.find(r => r.name === playerRoleData.name)
                 })
                 this.myTeam = teamPlayers
-            })
-            window.addEventListener('SetWinner', (e)=>{
-                let data = e.detail
+            },
+
+            'SetWinner':function(data){
                 let winningFaction = this.affiliationSet.find(a => a.name === data.winningFactionName)
                 let winners = data.winners.map(dw => this.playerList[dw.index])
 
@@ -173,10 +190,9 @@ document.addEventListener('alpine:init', () => {
                 this.gamePageTipMessage.append(this.buildAffiliationNameMagicString(winningFaction))
                 this.gamePageTipMessage.addText(" 胜利！")
                 this.gamePageTipMessage.class = 'animation-fadeIn-1s'
-            })
-            window.addEventListener('SetCast', (e)=>{
-                let data = e.detail
+            },
 
+            'SetCast':function(data){
                 this.cast = data.map(pd => {
                     let ms = new MagicString
                     ms.append(this.playerList[pd.index].getNameMagicString())
@@ -186,7 +202,7 @@ document.addEventListener('alpine:init', () => {
                 })
 
                 document.getElementById('cast').classList.add('animation-fadeIn-1s')
-            })
+            },
         },
 
         get isRunning(){
@@ -563,6 +579,11 @@ class Player{
     getNameMagicString(){
         return new MagicString({text:this.name, style:`color:${this.color};`})
     }
+    
+    getNameMagicStringWithAdditionalContent({text:adtext, style:adstyle}){
+        return new MagicString({text:this.name+adtext, style:`color:${this.color};`+adstyle})
+    }
+
 }
 
 class MagicString{

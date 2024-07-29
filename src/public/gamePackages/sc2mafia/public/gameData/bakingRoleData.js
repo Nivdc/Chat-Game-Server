@@ -1,7 +1,9 @@
 const gameDataPath = import.meta.dir+'/'
 
-await init()
-async function init(){
+if(require.main)
+    await generateGameData()
+
+export async function generateGameData(){
     let roleSet = await generateRoleSet()
     await Bun.write(gameDataPath+"roleData.json", JSON.stringify(roleSet, null, 4));
 

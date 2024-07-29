@@ -1,44 +1,14 @@
+import { generateGameData } from "./public/gameData/bakingRoleData"
+
 const gameDataPath = import.meta.dir + '/public/gameData/'
-let defaultSetting = {}
-let roleSet = []
-let majorFactions = new Set(["Town", "Mafia", "Triad", ])
+if(await Bun.file(gameDataPath+'roleData.json').exists() === false)
+    await generateGameData()
 
+let defaultSetting = await readJsonFile(gameDataPath+"defaultSetting.json")
+let roleSet = await readJsonFile(gameDataPath+"roleData.json")
 
-await init()
-async function init(){
-    defaultSetting = await readJsonFile(gameDataPath+"defaultSetting.json")
-    roleSet = await generateRoleSet()
-
-    async function readJsonFile(path){
-        return await Bun.file(path).json()
-    }
-
-    async function generateRoleSet(){
-        let roleSet = []
-        let roleData = await readJsonFile(gameDataPath+"roles.json")
-        let categoriesData = await readJsonFile(gameDataPath+"categories.json")
-
-        for(let r of roleData){
-            r.categories = []
-            for(const c of categoriesData){
-                if(c.includeRole.includes(r.name))
-                    r.categories.push(c.name)
-            }
-
-            // 设置角色的从属关系，不属于“城镇”、“黑手党”、“三合会”的角色会被设置为中立
-            let f = r.categories.filter(c => majorFactions.has(c))
-            if (f){
-                r.affiliation = f.pop()
-            }else{
-                r.affiliation = "Neutral"
-                r.categories.unshift("Neutral")
-            }
-
-            roleSet.push(r)
-        }
-
-        return roleSet
-    }
+async function readJsonFile(path){
+    return await Bun.file(path).json()
 }
 
 export function start(room){
@@ -228,6 +198,8 @@ class Game{
         p.sendEvent("SetPlayerList", this.playerList)
         p.sendEvent("SetHost", this.host)
         p.sendEvent("SetStatus", this.status)
+        // p.sendEvent("SetRoleSet", this.roleSet)
+        p.sendEvent("InitCompleted")
     }
 
     async setup(setting){
@@ -549,7 +521,7 @@ class Game{
         for(const p of checkPlayers){
             if(p[`${voteType}TargetIndex`] !== undefined){
                 voteCount[p[`${voteType}TargetIndex`]] += `${voteType}Weight` in p ? p[`${voteType}Weight`] : 1
-                console.log('vt', voteType, `${p.index}vt`, p[`${voteType}TargetIndex`])
+                console.log('voteType', voteType, `${p.index} voteTo`, p[`${voteType}TargetIndex`])
             }
         }
 
@@ -611,7 +583,10 @@ class Game{
         }
         
         if(this.winningFaction !== undefined){
-            await this.newGameStage("end", 0.02)
+            this.sendEventToAll("SetWinner", {winningFactionName:this.winningFaction, winners:this.winners})
+            this.sendEventToAll("SetCast", this.playerList.map(p => p.toJSON_includeRole()))
+
+            await this.newGameStage("end", 0.2)
             this.room.endGame()
         }
     }
@@ -712,7 +687,7 @@ class Player{
     toJSON_includeRole(){
         return {
             name: this.name,
-            affiliation: this.affiliation, 
+            index:this.index,
             role:this.role
         }
     }

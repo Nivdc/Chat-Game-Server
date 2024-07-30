@@ -100,37 +100,81 @@ document.addEventListener('alpine:init', () => {
                 console.log(this.status)
                 if(this.status === 'begin'){
                     this.clearMssagesList()
-                    this.createTimer('试镜', 0.5)
+                    this.createTimer('试镜', 0.5, ()=>{this.timer = undefined})
+                }
+                else if(this.status === 'animation/begin'){
+                    this.timer?.clear()
+                    this.timer = undefined
+                    this.gamePageTipMessage = new MagicString()
+                    this.gamePageTipMessage.addText("您将要扮演的角色是 ... ")
+                    let mrnmp = this.myRole.getNameMessagePart()
+                    mrnmp.style += 'font-weight:bold;'
+                    this.gamePageTipMessage.parts.push(mrnmp)
+                    this.gamePageTipMessage.class = 'animation-fadeIn-1s'
+                    document.getElementById('gamePage').style.display = 'flex'
+                    setTimeout(()=>{
+                        this.gamePageTipMessage.class = 'animation-fadeOut-2s'
+                        document.getElementById('gamePageBody').classList.add('animation-fadeIn-3s')
+                        document.getElementById('gamePageBody').style.display = 'flex'
+                        if(this.setting.startAt.startsWith('day'))
+                            document.getElementById('gamePage').classList.add('animation-nightToDay')
+                    }, 3000)
+                }
+                else if(this.status === 'animation/nightToDay'){
+                    document.getElementById('gamePage').classList.remove('animation-dayToNight')
+                    document.getElementById('gamePage').classList.add('animation-nightToDay')
                 }
                 else if(this.status === 'day/discussion'){
                     this.clearMssagesList()
-                    this.createTimer('讨论', this.setting.discussionTime)
+                    this.createTimer('讨论', this.setting.discussionTime, ()=>{this.timer = undefined})
                 }
                 else if(this.status === 'day/discussion/lynchVote'){
                     if(this.setting.enableDiscussion === false)
                         this.clearMssagesList()
-                    this.createTimer('投票', this.setting.dayLength)
+                    this.createTimer('投票', this.setting.dayLength, ()=>{this.timer = undefined})
                 }
                 else if(this.status === 'day/trial/defense'){
-                    this.createTimer('审判辩护', this.setting.trialTime/2)
+                    this.createTimer('审判辩护', this.setting.trialTime/2, ()=>{this.timer = undefined})
                 }
                 else if(this.status === 'day/discussion/trial/trialVote'){
-                    this.createTimer('审判投票', this.setting.trialTime/2)
+                    this.createTimer('审判投票', this.setting.trialTime/2, ()=>{this.timer = undefined})
                 }
                 else if(this.status === 'day/execution/lastWord'){
-                    this.createTimer('临终遗言', 0.4/2)
+                    this.gamePageTipMessage = new MagicString()
+                    this.gamePageTipMessage.append(this.executionTarget.getNameMagicString())
+                    this.gamePageTipMessage.addText(" 你还有什么遗言吗？")
+                    this.gamePageTipMessage.class = 'animation-fadeIn-1s'
+
+                    this.createTimer('临终遗言', 0.4/2, ()=>{this.timer = undefined})
                 }
                 else if(this.status === 'day/execution/discussion'){
-                    this.createTimer('行刑追悼', 0.4/2)
+                    this.gamePageTipMessage = new MagicString()
+                    this.gamePageTipMessage.append(this.executionTarget.getNameMagicString())
+                    this.gamePageTipMessage.addText(" 愿你安息")
+                    this.executionTarget = undefined
+                    setTimeout(()=>{
+                        this.gamePageTipMessage.class = 'animation-fadeOut-2s'
+                    }, 3000)
+                    this.createTimer('行刑追悼', 0.4/2, ()=>{this.timer = undefined})
+                }
+                else if(this.status === 'animation/dayToNight'){
+                    this.gamePageTipMessage = new MagicString({text:"不幸的是，再讨论下去太晚了..."})
+                    this.gamePageTipMessage.class = 'animation-fadeIn-1s'
+                    // document.getElementById('gamePage').classList.replace('animation-nightToDay', 'animation-dayToNight')
+                    document.getElementById('gamePage').classList.remove('animation-nightToDay')
+                    document.getElementById('gamePage').classList.add('animation-dayToNight')
+                    setTimeout(()=>{
+                        this.gamePageTipMessage.class = 'animation-fadeOut-2s'
+                    }, 3000)
                 }
                 else if(this.status === 'night/discussion'){
                     this.executionTarget = undefined
                     this.clearMssagesList()
-                    this.createTimer('夜晚', this.setting.nightLength)
+                    this.createTimer('夜晚', this.setting.nightLength, ()=>{this.timer = undefined})
                 }
                 else if(this.status === 'end'){
                     this.createTimer('谢幕', 0.2)
-                    this.addSystemWarningText("本局游戏已结束，将在12秒后返回大厅。")
+                    this.addSystemHintText("本局游戏已结束，将在12秒后返回大厅。")
                 }
             },
 
@@ -157,18 +201,6 @@ document.addEventListener('alpine:init', () => {
 
             'SetRole':function(data){
                 this.myRole = this.roleSet.find(r=>r.name === data.name)
-                this.gamePageTipMessage = new MagicString()
-                this.gamePageTipMessage.class = 'animation-fadeIn-1s'
-                this.gamePageTipMessage.parts = [{text:"您将要扮演的角色是 ... "}]
-                let mrnmp = this.myRole.getNameMessagePart()
-                mrnmp.style += 'font-weight:bold;'
-                this.gamePageTipMessage.parts.push(mrnmp)
-                document.getElementById('gamePage').style.display = 'flex'
-                setTimeout(()=>{
-                    this.gamePageTipMessage.class = 'animation-fadeOut-2s'
-                    document.getElementById('gamePageBody').classList.add('animation-fadeIn-3s')
-                    document.getElementById('gamePageBody').style.display = 'flex'
-                }, 3000)
             },
 
             'SetTeam':function(data){
@@ -239,10 +271,10 @@ document.addEventListener('alpine:init', () => {
                         if(this.setting.enableLastWill){
                             sendEvent("SetLastWill", args.shift())
                         }else{
-                            this.addSystemWarningText("本局游戏没有启用遗言")
+                            this.addSystemHintText("本局游戏没有启用遗言")
                         }
                     }else{
-                        this.addSystemWarningText("当前阶段不允许设置遗言")
+                        this.addSystemHintText("当前阶段不允许设置遗言")
                     }
                 break
             }
@@ -330,7 +362,7 @@ document.addEventListener('alpine:init', () => {
             this.messageList.push(message)
             this.$nextTick(()=>{scrollToBottom('chatMessageList')})
         },
-        addSystemWarningText(text){
+        addSystemHintText(text){
             this.addMessageWithoutLog({text, style:'color:NavajoWhite;background-color:rgba(0, 0, 0, 0.1);'})
         },
 

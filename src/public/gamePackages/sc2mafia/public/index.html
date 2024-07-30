@@ -249,7 +249,7 @@
         </div>
 
         <!-- <div div id="beginPage" style="justify-content: center;"> -->
-        <div id="beginPage" style="justify-content: center;" x-show="status?.split('/').includes('begin')">
+        <div id="beginPage" style="justify-content: center;" x-show="status === 'begin' ">
             <p style="position: absolute;top: 20%;" x-text="setting?.enableCustomName?`输入 '-名字' 来选择你想要使用的名字( 例如 '-好人' )`:`未启用自定义名称，请等待游戏开始`"></p>
             <p style="position: absolute;top:5%;right: 5%;padding: 0.5em;background-color: rgba(0, 0, 0, 0.2);" class="border" x-show="timer" x-text="`游戏即将开始: ${timer?.durationSec} 秒`"></p>
             <div class="chatForm border" style="margin:1em; position: absolute;bottom: 0px;left: 0px;flex: none;height: 20em;">
@@ -269,7 +269,7 @@
             </div>
         </div>
         <div id="gamePage" style="display: flex;flex-direction:column;height: 100%;align-items: center;" class="flex" x-show="isRunning">
-            <p style="position: absolute;top:1%;right: 1%;padding: 0.5em;background-color: rgba(0, 0, 0, 0.2);" class="border" x-text="`${timer?.name} 阶段剩余: ${timer?.durationSec} 秒`"></p>
+            <p style="position: absolute;top:1%;right: 1%;padding: 0.5em;background-color: rgba(0, 0, 0, 0.2);" class="border" x-text="`${timer?.name} 阶段剩余: ${timer?.durationSec} 秒`" x-show="timer" x-transition></p>
             <p id="gamePageTipMessage" style="position: absolute;top: 10%;" :class="gamePageTipMessage?.class">
                 <span x-text="gamePageTipMessage?.text"></span>
                 <template x-for="messagePart in gamePageTipMessage?.parts">

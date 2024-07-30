@@ -465,6 +465,24 @@ ul{
     justify-content: space-between;
 }
 
+.animation-dayToNight {
+    animation: dayToNight 6s forwards;
+}
+.animation-nightToDay {
+    animation: nightToDay 6s forwards;
+}
+
+@keyframes dayToNight {
+  0% { background-color: var(--background-highlights); }
+  50% { background-color: linear-gradient(90deg,#073642 0%,#002B36 100%); }
+  100% { background-color: var(--background); }
+}
+@keyframes nightToDay {
+    0% { background-color: var(--background); }
+    50% { background-color: linear-gradient(90deg,#002B36 0%,#073642 100%); }
+    100% { background-color: var(--background-highlights); }
+}s
+
 a:link {color:var(--primary-content);text-decoration:underline;}      /* 未访问链接*/
 a:visited {color:var(--primary-content);text-decoration:underline;}  /* 已访问链接 */
 a:hover {color:var(--primary-content);text-decoration:underline;}  /* 鼠标移动到链接上 */

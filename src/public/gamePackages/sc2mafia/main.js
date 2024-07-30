@@ -217,8 +217,6 @@ class Game{
                 p.isAlive = true
             }
 
-            // todo:向每名玩家发送自己的角色
-            // todo:向黑手党发送队友的信息
             this.playerList.forEach(p=>{
                 p.sendEvent("SetRole", p.role)
                 if(p.role.affiliation === "Mafia")
@@ -232,7 +230,7 @@ class Game{
             // 游戏环境变量初始化...可能不全，因为js可以随时添加上去，欸嘿
             this.dayCount = 1
 
-            await this.newGameStage("animation", 0.1)
+            await this.newGameStage("animation/begin", 0.1)
             this.begin()
         }catch(e){
             if(e === "GameStage:setup aborted")
@@ -287,12 +285,16 @@ class Game{
         this.playerList.forEach((p) => p.resetCommonProperties())
         this.dayOver = false
 
-        if(this.dayCount !== 1)
+        if(this.dayCount !== 1){
+            await this.newGameStage("animation/nightToDay", 0.1)
             await this.deathDeclare()
+        }
 
         await this.victoryCheck()
         if(this.status === 'end')
             return
+
+        if(this.dayCount !== 1)
 
         if(this.setting.enableDiscussion)
             await this.newGameStage("day/discussion", this.setting.discussionTime)
@@ -315,6 +317,7 @@ class Game{
         this.nightActionSequence = []
         this.recentlyDeadPlayers = []
 
+        await this.newGameStage("animation/dayToNight", 0.1)
         await this.newGameStage("night/discussion", this.setting.nightLength)
 
         this.dayCount ++

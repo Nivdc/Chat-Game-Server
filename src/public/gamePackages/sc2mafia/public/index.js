@@ -218,6 +218,35 @@ document.addEventListener('alpine:init', () => {
                 this.executionTarget = this.playerList[data.index]
             }
         },
+        commandHandler(commandString){
+            [command, ...args] = commandString.split(" ")
+
+            switch(command){
+                case 'repick':
+                    let playerIndex = Number(args.shift())
+                    console.log(playerIndex)
+                    sendEvent("RepickHost", playerIndex?playerIndex-1:undefined)
+                break
+
+                case 'rename':
+                    if(this.status === 'begin' && this.setting.enableCustomName)
+                        sendEvent("PlayerRename", args.shift())
+                break
+
+                case 'lw':
+                case 'lastWill':
+                    if(this.isRunningAndNoAnimation){
+                        if(this.setting.enableLastWill){
+                            sendEvent("SetLastWill", args.shift())
+                        }else{
+                            this.addSystemWarningText("本局游戏没有启用遗言")
+                        }
+                    }else{
+                        this.addSystemWarningText("当前阶段不允许设置遗言")
+                    }
+                break
+            }
+        },
 
         get isRunning(){
             return this.status?.startsWith('day') || this.status?.startsWith('night') || this.status === 'end' || this.status === 'animation'
@@ -314,29 +343,9 @@ document.addEventListener('alpine:init', () => {
                 else{
                     let str = this.inputString.substring(1); // remove '-'
                     if(this.status === 'begin' && this.setting.enableCustomName)
-                        sendEvent("PlayerRename", str)
-                    else{
-                        [command, ...args] = str.split(" ")
-
-                        switch(command){
-                            case 'repick':
-                                this.repickHost(args.shift())
-                            break
-
-                            case 'lw':
-                            case 'lastWill':
-                                if(this.isRunningAndNoAnimation){
-                                    if(this.setting.enableLastWill){
-                                        sendEvent("SetLastWill", args.shift())
-                                    }else{
-                                        this.addSystemWarningText("本局游戏没有启用遗言")
-                                    }
-                                }else{
-                                    this.addSystemWarningText("当前阶段不允许设置遗言")
-                                }
-                            break
-                        }
-                    }
+                        this.commandHandler(`rename ${str}`)
+                    else
+                        this.commandHandler(str)
                 }
             }
             this.inputString = ''
@@ -347,8 +356,8 @@ document.addEventListener('alpine:init', () => {
 
         // 主机和重选主机按钮
         host:{},
-        repickHost(playerIndex){
-            sendEvent("RepickHost", playerIndex?playerIndex-1:undefined)
+        repickHost(){
+            this.commandHandler(`repick`)
         },
 
         //角色目录与列表

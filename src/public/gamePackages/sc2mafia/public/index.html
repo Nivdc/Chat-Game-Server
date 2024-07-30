@@ -268,10 +268,9 @@
                 </form>
             </div>
         </div>
-
         <div id="gamePage" style="display: flex;flex-direction:column;height: 100%;align-items: center;" class="flex" x-show="isRunning">
             <p style="position: absolute;top:1%;right: 1%;padding: 0.5em;background-color: rgba(0, 0, 0, 0.2);" class="border" x-text="`${timer?.name} 阶段剩余: ${timer?.durationSec} 秒`"></p>
-            <p id="gamePageTipMessage" style="position: absolute;top: 20%;" :class="gamePageTipMessage?.class">
+            <p id="gamePageTipMessage" style="position: absolute;top: 10%;" :class="gamePageTipMessage?.class">
                 <span x-text="gamePageTipMessage?.text"></span>
                 <template x-for="messagePart in gamePageTipMessage?.parts">
                     <span x-text="messagePart.text" :style="messagePart.style" :class="messagePart.class"></span>
@@ -331,14 +330,19 @@
 
                 <div id="gamePageBodyRight" style="flex:1;display: flex;flex-direction: column-reverse;">
                     <div style="display: flex;">
-                        <div style="flex: auto;align-items: center;" class="flex" x-show="myTeam" >
+                        <div style="flex: 1;align-items: center;" class="flex" x-show="myTeam" >
                             <div style="background-color: rgba(0, 0, 0, 0.1);width: 100%;height: 10em;padding: 0.5em;">
-                                <template x-for="player in myTeam">
-                                    <p x-text="`${player.index+1}.${player.name} (${player.role.nameZh})`"></p>
+                                <h3>团队</h3>
+                                <template x-for="magicString in myTeam?.getMagicStrings">
+                                    <p :class="magicString.class" :style="magicString.style">
+                                        <span x-text="magicString.text"></span>
+                                        <template x-for="part in magicString.parts">
+                                            <span x-text="part.text" :style="part.style" :class="part.class"></span>
+                                        </template>
                                 </template>
                             </div>
                         </div>
-                        <div style="flex:auto;display: flex;flex-direction: column;margin: 1em;">
+                        <div style="flex:2;display: flex;flex-direction: column;margin: 1em;max-width: 30em;">
                             <div style="min-height:15em;background-color: rgba(0, 0, 0, 0.1);flex: initial;margin-bottom: 1em;display: flex;flex-direction: column;row-gap:0.2em;">
                                 <h3 x-text="myRole?.nameZh??myRole?.name" :style="`color:${myRole?.affiliation.color}`"></h3>
                                 <p style="color:plum">阵营：<span :style="`color: ${myRole?.affiliation.color};`" x-text="myRole?.affiliation.nameZh??myRole?.affiliation.name"></span></p>
@@ -373,16 +377,23 @@
             </div>
 
             <!-- 演员表 -->
-            <div id="cast" style="background-color: rgba(0, 0, 0, 0.2);bottom: 5%;position:absolute;height: 30em;width: 15em;z-index: 99;padding:1em;opacity: 0;" x-show="cast">
-                <h2 style="width: 100%;text-align: center;margin-bottom: 1em;">倾情出演</h2>
-                <template x-for="magicString in cast">
-                    <p :class="magicString.class" :style="magicString.style">
-                        <span x-text="magicString.text"></span>
-                        <template x-for="part in magicString.parts">
-                            <span x-text="part.text" :style="part.style" :class="part.class"></span>
-                        </template>
-                    </p>
-                </template>
+            <div id="cast" style="background-color: rgba(0, 0, 0, 0.2);bottom: 1em;position:absolute;height: 35em;width: 15em;z-index: 99;padding:1em;opacity: 0;flex-direction: column;align-content: space-between;" class="flex" x-show="cast">
+                <div style="flex: auto;">
+                    <h2 style="width: 100%;text-align: center;margin-bottom: 1em;">倾情出演</h2>
+                    <template x-for="magicString in cast">
+                        <p :class="magicString.class" :style="magicString.style">
+                            <span x-text="magicString.text"></span>
+                            <template x-for="part in magicString.parts">
+                                <span x-text="part.text" :style="part.style" :class="part.class"></span>
+                            </template>
+                        </p>
+                    </template>
+                </div>
+                <!-- <div style="flex: auto;">
+                    <h3 style="width: 100%;text-align: center;margin-bottom: 1em;">特别鸣谢</h3>
+                    <p>Dark.Revenant（原作者）</p>
+                    <p>国士无双</p>
+                </div> -->
             </div>
 
         </div>

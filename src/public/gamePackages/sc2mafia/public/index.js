@@ -46,8 +46,7 @@ document.addEventListener('alpine:init', () => {
             },
 
             "SetHost":function (data){
-                console.log(this)
-                this.host = this.getPlayerByPlayerData(data)
+                this.host = this.playerList[data.index]
                 let message = {parts:[]}
                 message.parts.push(this.host.getNameMessagePart())
                 message.parts.push({text:'  是新的主机', class:'text-warning'})
@@ -72,7 +71,7 @@ document.addEventListener('alpine:init', () => {
             
             'ChatMessage':function(data){
                 let message = {parts:[]}
-                let sender  = this.getPlayerByPlayerData(data.sender)
+                let sender  = this.playerList[data.sender.index]
                 message.parts.push(sender.getNameMessagePart(': '))
                 message.parts.push({text:data.message})
                 this.addMessage(message)
@@ -101,7 +100,7 @@ document.addEventListener('alpine:init', () => {
                 console.log(this.status)
                 if(this.status === 'begin'){
                     this.clearMssagesList()
-                    this.createTimer('准备', 0.5)
+                    this.createTimer('试镜', 0.5)
                 }
                 else if(this.status === 'day/discussion'){
                     this.clearMssagesList()
@@ -113,19 +112,19 @@ document.addEventListener('alpine:init', () => {
                     this.createTimer('投票', this.setting.dayLength)
                 }
                 else if(this.status === 'day/trial/defense'){
-                    this.timer.clear()
                     this.createTimer('审判辩护', this.setting.trialTime/2)
                 }
                 else if(this.status === 'day/discussion/trial/trialVote'){
                     this.createTimer('审判投票', this.setting.trialTime/2)
                 }
                 else if(this.status === 'day/execution/lastWord'){
-                    // this.createTimer('行刑遗言', this.setting.trialTime/2)
+                    this.createTimer('临终遗言', 0.4/2)
                 }
                 else if(this.status === 'day/execution/discussion'){
-                    // this.createTimer('行刑追悼', this.setting.trialTime/2)
+                    this.createTimer('行刑追悼', 0.4/2)
                 }
                 else if(this.status === 'night/discussion'){
+                    this.executionTarget = undefined
                     this.clearMssagesList()
                     this.createTimer('夜晚', this.setting.nightLength)
                 }
@@ -173,12 +172,23 @@ document.addEventListener('alpine:init', () => {
             },
 
             'SetTeam':function(data){
+                this.myTeam = {}
                 let teamPlayers = data.map(pd => this.playerList.find(p => p.name === pd.name))
                 teamPlayers.forEach(p => {
                     let playerRoleData = data.find(pd => pd.name === p.name).role
                     p.role = this.roleSet.find(r => r.name === playerRoleData.name)
                 })
-                this.myTeam = teamPlayers
+                this.myTeam.playerList = teamPlayers
+                this.myTeam.getMagicStrings = function(){
+                    return this.playerList.map(p => {
+                        let ms = new MagicString()
+                        ms.append(p.getIndexAndNameMagicString())
+                        ms.addText(' (')
+                        ms.append(p.role.getNameMessagePart())
+                        ms.addText(')')
+                        return ms
+                    })
+                }
             },
 
             'SetWinner':function(data){
@@ -196,13 +206,17 @@ document.addEventListener('alpine:init', () => {
                 this.cast = data.map(pd => {
                     let ms = new MagicString
                     ms.append(this.playerList[pd.index].getNameMagicString())
-                    ms.addText(" 扮演 ")
+                    ms.addText(" 饰演 ")
                     ms.append(this.roleSet.find(r => r.name === pd.role.name).getNameMessagePart())
                     return ms
                 })
 
                 document.getElementById('cast').classList.add('animation-fadeIn-1s')
             },
+
+            'SetExecutionTarget':function(data){
+                this.executionTarget = this.playerList[data.index]
+            }
         },
 
         get isRunning(){
@@ -211,10 +225,6 @@ document.addEventListener('alpine:init', () => {
 
         get isRunningAndNoAnimation(){
             return this.isRunning && this.status !== 'animation'
-        },
-
-        getPlayerByPlayerData(playerData){
-            return this.playerList.find(p => p.index === playerData.index)
         },
 
         // 预设栏组件
@@ -570,6 +580,10 @@ class Player{
 
     get index(){
         return this.data.index
+    }
+
+    getIndexAndNameMagicString(){
+        return new MagicString({text:`${this.index+1}.${this.name}`, style:`color:${this.color};`})
     }
 
     getNameMessagePart(additionalString){

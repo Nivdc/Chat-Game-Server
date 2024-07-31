@@ -88,7 +88,7 @@
                         </tr>
                         <template x-for="room in roomList" :key="room.id">
                             <tr @click="select(room)" :class=" selectedRoom === room ? 'selected':'' ">
-                                <td x-text="room.selectedGamePackage.name"></td>
+                                <td x-text="room.selectedGamePackage.nameZh"></td>
                                 <td x-text="room.host.name"></td>
                                 <td x-text="room.name"></td>
                                 <td x-text="room.userList.length"></td>
@@ -125,9 +125,8 @@
                     <div>
                         <span>选择游戏：</span>
                         <select x-model="roomCreationData.selectedGameName" disabled>
-                            <!-- <option value="" disabled>请选择游戏</option> -->
                             <template x-for="gamePackage in gamePackageList">
-                                <option x-text="gamePackage.name"></option>
+                                <option x-text="gamePackage.nameZh??gamePackage.name" :value="gamePackage.name" :selected="gamePackage.name === roomCreationData.selectedGameName"></option>
                             </template>
                         </select>
                     </div>

@@ -149,11 +149,12 @@ let lobbyCreateRoom = {
     roomCreationData: {
         name: "未命名",
         status: "open",
-        selectedGameName:undefined,
+        selectedGameName:'sc2mafia',
     },
 
     close(){this.showUp = false},
     submit(){
+        console.log(JSON.stringify(this.roomCreationData))
         lobbyConsole.inputHandler(`CreateRoom ${JSON.stringify(this.roomCreationData)}`)
         this.close()
     },
@@ -175,7 +176,7 @@ let lobbyRoom = {
         this.host = room.host
         this.status = room.status
         this.userList = room.userList
-        this.selectedGameName = room.selectedGamePackage.name
+        this.selectedGameName = room.selectedGamePackage.nameZh??room.selectedGamePackage.name
         this.selectedGamePackage = room.selectedGamePackage
 
         this.showUp = true

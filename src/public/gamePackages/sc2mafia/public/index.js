@@ -12,6 +12,17 @@ document.addEventListener('alpine:init', () => {
             sendEvent("FrontendReady")
             this.roleSetInit()
             this.loading = false
+            // this.playAnimation('begin')
+            // setTimeout(()=>{
+            //     this.playAnimation('dayToNight')
+            //     setTimeout(()=>{
+            //         this.playAnimation('nightToDay')
+            //         setTimeout(()=>{
+            //             this.playAnimation('dayToNight')
+            //         }, 10000)
+            //     }, 10000)
+            // }, 10000)
+
 
             this.$watch('setting', (value, oldValue)=>{
                 if(this.watchIgnore === false){
@@ -105,24 +116,10 @@ document.addEventListener('alpine:init', () => {
                 else if(this.status === 'animation/begin'){
                     this.timer?.clear()
                     this.timer = undefined
-                    this.gamePageTipMessage = new MagicString()
-                    this.gamePageTipMessage.addText("您将要扮演的角色是 ... ")
-                    let mrnmp = this.myRole.getNameMessagePart()
-                    mrnmp.style += 'font-weight:bold;'
-                    this.gamePageTipMessage.parts.push(mrnmp)
-                    this.gamePageTipMessage.class = 'animation-fadeIn-1s'
-                    document.getElementById('gamePage').style.display = 'flex'
-                    setTimeout(()=>{
-                        this.gamePageTipMessage.class = 'animation-fadeOut-2s'
-                        document.getElementById('gamePageBody').classList.add('animation-fadeIn-3s')
-                        document.getElementById('gamePageBody').style.display = 'flex'
-                        if(this.setting.startAt.startsWith('day'))
-                            document.getElementById('gamePage').classList.add('animation-nightToDay')
-                    }, 3000)
+                    this.playAnimation('begin')
                 }
                 else if(this.status === 'animation/nightToDay'){
-                    document.getElementById('gamePage').classList.remove('animation-dayToNight')
-                    document.getElementById('gamePage').classList.add('animation-nightToDay')
+                    this.playAnimation('nightToDay')
                 }
                 else if(this.status === 'day/discussion'){
                     this.clearMssagesList()
@@ -158,14 +155,7 @@ document.addEventListener('alpine:init', () => {
                     this.createTimer('行刑追悼', 0.4/2, ()=>{this.timer = undefined})
                 }
                 else if(this.status === 'animation/dayToNight'){
-                    this.gamePageTipMessage = new MagicString({text:"不幸的是，再讨论下去太晚了..."})
-                    this.gamePageTipMessage.class = 'animation-fadeIn-1s'
-                    // document.getElementById('gamePage').classList.replace('animation-nightToDay', 'animation-dayToNight')
-                    document.getElementById('gamePage').classList.remove('animation-nightToDay')
-                    document.getElementById('gamePage').classList.add('animation-dayToNight')
-                    setTimeout(()=>{
-                        this.gamePageTipMessage.class = 'animation-fadeOut-2s'
-                    }, 3000)
+                    this.playAnimation('dayToNight')
                 }
                 else if(this.status === 'night/discussion'){
                     this.executionTarget = undefined
@@ -277,6 +267,61 @@ document.addEventListener('alpine:init', () => {
                         this.addSystemHintText("当前阶段不允许设置遗言")
                     }
                 break
+            }
+        },
+        playAnimation(animationName){
+            switch(animationName){
+                case 'begin':
+                    this.gamePageTipMessage = new MagicString()
+                    this.gamePageTipMessage.addText("您将要扮演的角色是 ... ")
+                    let mrnmp = this.myRole?.getNameMessagePart()
+                    if(mrnmp)
+                        mrnmp.style += 'font-weight:bold;'
+                    this.gamePageTipMessage.parts.push(mrnmp)
+                    this.gamePageTipMessage.class = 'animation-fadeIn-1s'
+                    document.getElementById('gamePage').style.display = 'flex'
+                    setTimeout(()=>{
+                        this.gamePageTipMessage.class = 'animation-fadeOut-2s'
+                        document.getElementById('gamePageBody').classList.add('animation-fadeIn-3s')
+                        document.getElementById('gamePageBody').style.display = 'flex'
+                        if(this.setting.startAt.startsWith('day'))
+                            document.getElementById('gamePage').classList.add('animation-nightToDay-6s')
+                    }, 3000)
+                break
+                case 'dayToNight':
+                    // document.getElementById('gamePage').classList.replace('animation-nightToDay', 'animation-dayToNight')
+                    document.getElementById('gamePage').classList.remove('animation-nightToDay-6s')
+                    document.getElementById('gamePage').classList.add('animation-dayToNight-6s')
+
+                    this.gamePageTipMessage = new MagicString({text:"不幸的是，再讨论下去太晚了..."})
+                    this.gamePageTipMessage.class = 'animation-fadeIn-1s'
+                    setTimeout(()=>{
+                        this.gamePageTipMessage.class = 'animation-fadeOut-2s'
+                    }, 3000)
+                    setTimeout(()=>{
+                        document.getElementById('music').volume = 1.0
+                        document.getElementById('music').fastSeek(0)
+                        document.getElementById('music').play()
+                    }, 6000)
+                break
+                case 'nightToDay':
+                    document.getElementById('gamePage').classList.remove('animation-dayToNight-6s')
+                    document.getElementById('gamePage').classList.add('animation-nightToDay-6s')
+                    setTimeout(()=>{
+                        document.getElementById('music').volume -= 0.25
+                        setTimeout(()=>{
+                            document.getElementById('music').volume -= 0.25
+                            setTimeout(()=>{
+                                document.getElementById('music').volume -= 0.25
+                                setTimeout(()=>{
+                                    document.getElementById('music').volume -= 0.25
+                                    document.getElementById('music').pause()
+                                }, 1000)
+                            }, 1000)
+                        }, 1000)
+                    }, 1000)
+                break
+
             }
         },
 

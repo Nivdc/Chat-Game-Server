@@ -465,10 +465,10 @@ ul{
     justify-content: space-between;
 }
 
-.animation-dayToNight {
+.animation-dayToNight-6s {
     animation: dayToNight 6s forwards;
 }
-.animation-nightToDay {
+.animation-nightToDay-6s {
     animation: nightToDay 6s forwards;
 }
 

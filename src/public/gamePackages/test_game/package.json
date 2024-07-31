@@ -1,5 +1,6 @@
 {
-    "name":"测试游戏",
+    "name":"test_game",
+    "nameZh":"测试游戏",
     "main":"main.js",
     "staticResourcePath":"public",
 

@@ -1,6 +1,8 @@
 {
     "name":"sc2mafia",
+    "nameZh":"星际2黑手党",
     "main":"main.js",
+    "private":true,
     "staticResourcePath":"public",
 
     "version":"0.1.0", 

@@ -316,7 +316,8 @@ class Game{
         this.nightActionSequence = []
         this.recentlyDeadPlayers = []
 
-        await this.newGameStage("animation/dayToNight", 0.1)
+        if(this.dayCount !== 1)
+            await this.newGameStage("animation/dayToNight", 0.1)
         await this.newGameStage("night/discussion", this.setting.nightLength)
 
         this.dayCount ++

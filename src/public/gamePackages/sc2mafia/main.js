@@ -622,6 +622,12 @@ class Game{
             this.repickHost(this.getNewRandomHost())
 
         player.user = undefined
+
+        if(this.onlinePlayerList.length === 0){
+            this.status = 'end'
+            this.gameStage?.end()
+            this.room.endGame()
+        }
     }
 }
 

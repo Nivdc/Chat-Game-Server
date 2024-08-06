@@ -13,16 +13,10 @@ document.addEventListener('alpine:init', () => {
             this.roleSetInit()
             this.recentlyDeadPlayers = []
             this.loading = false
-            // this.playAnimation('begin')
-            // setTimeout(()=>{
-            //     this.playAnimation('dayToNight')
-            //     setTimeout(()=>{
-            //         this.playAnimation('nightToDay')
-            //         setTimeout(()=>{
-            //             this.playAnimation('dayToNight')
-            //         }, 10000)
-            //     }, 10000)
-            // }, 10000)
+
+            // testCode
+            // this.status = 'lynchVote'
+            // this.commandHandler('lv')
 
 
             this.$watch('setting', (value, oldValue)=>{
@@ -263,6 +257,28 @@ document.addEventListener('alpine:init', () => {
             'SetRecentlyDeadPlayers':function(data){
                 this.recentlyDeadPlayers = data
             },
+
+            'LynchVote':function(data){
+                let voter = this.playerList[data.voterIndex]
+                let target = this.playerList[data.targetIndex]
+                let message = new MagicString()
+                message.append(voter.getNameMagicString())
+                if(data.previousTargetIndex === undefined)
+                    message.addText(' 投票审判 ')
+                else
+                    message.addText(' 将他的投票改为 ')
+                message.append(target.getNameMagicString())
+                message.style = `background-color:${hexToRgba(target.color, 0.5)};text-shadow: 1px 1px 0px #000000;`
+                this.addMessage(message)
+            },
+            'LynchVoteCancel':function(data){
+                let voter = this.playerList[data.voterIndex]
+                let message = new MagicString()
+                message.append(voter.getNameMagicString())
+                message.addText(' 取消了他的投票')
+                message.style = `background-color: rgba(0, 0, 0, 0.5);`
+                this.addMessage(message)
+            }
         },
         commandHandler(commandString){
             [command, ...args] = commandString.split(" ")
@@ -290,6 +306,27 @@ document.addEventListener('alpine:init', () => {
                     }else{
                         this.addSystemHintText("当前阶段不允许设置遗言")
                     }
+                break
+
+                // fixme:player Can vote to self...And deadPlayer
+                case 'lv':
+                case 'lynchVote':
+                    if(this.status.split('/').includes('lynchVote')){
+                        let targetIndex = Number(args.shift())-1
+                        if(Number.isNaN(targetIndex) === false)
+                            sendEvent('LynchVote', targetIndex)
+                        else
+                            sendEvent('LynchVoteCancel')
+                    }
+                    else
+                        this.addSystemHintText("当前阶段不允许进行审判投票")
+                break
+                case 'LynchVoteCancel':
+                    sendEvent('LynchVoteCancel')
+                break
+
+                default:
+                    this.addSystemHintText("未知指令，请重试。")
                 break
             }
         },
@@ -344,7 +381,7 @@ document.addEventListener('alpine:init', () => {
                     let time = this.status.startsWith('day') ? '白天' : '夜晚'
                     this.gamePageTipMessage = new MagicString()
                     this.gamePageTipMessage.text  = `${time}  ${this.dayCount}`
-                    this.gamePageTipMessage.style = 'font-size:2em;font-weight: bold;padding: 0.5em 1em;background-color: rgba(0, 0, 0, 0.2);'
+                    this.gamePageTipMessage.style = 'font-size:1.5em;font-weight: bold;padding: 0.5em 1em;background-color: rgba(0, 0, 0, 0.2);'
                     this.gamePageTipMessage.class = 'border animation-fadeIn-1s'
                     setTimeout(()=>{
                         this.gamePageTipMessage.class = 'border animation-fadeOut-2s'
@@ -352,12 +389,12 @@ document.addEventListener('alpine:init', () => {
                 break
                 case 'deathDeclear':
                     if(this.recentlyDeadPlayers.length > 0)
-                        this.playAnimation('deathDeclearOnce', recentlyDeadPlayers.pop())
+                        this.playAnimation('deathDeclearOnce', this.recentlyDeadPlayers.pop())
 
                     let animationCycleCount = 1
                     while(this.recentlyDeadPlayers.length > 0){
                         setTimeout(()=>{
-                            this.playAnimation('deathDeclearOnce', recentlyDeadPlayers.pop())
+                            this.playAnimation('deathDeclearOnce', this.recentlyDeadPlayers.pop())
                         }, 6 * animationCycleCount * 1000)
                         animationCycleCount ++
                     }
@@ -370,7 +407,7 @@ document.addEventListener('alpine:init', () => {
 
                         let deadPlayerData  = data
                         let player      = this.playerList[deadPlayerData.index]
-                        let role        = this.roleSet.find(r => r.name === deadPlayerData.role.name)
+                        let role        = this.roleSet.find(r => r.name === deadPlayerData.roleName)
                         let lastWill    = deadPlayerData.lastWill
 
                         setTimeout(() => {
@@ -378,7 +415,9 @@ document.addEventListener('alpine:init', () => {
                             this.gamePageTipMessage.append(player.getNameMagicString())
                             this.gamePageTipMessage.addText(' 的身份是 ')
                             this.gamePageTipMessage.append(role.getNameMessagePart())
-                            this.addMessage(cloneDeep(this.gamePageTipMessage))
+                            let newMessage = cloneDeep(this.gamePageTipMessage)
+                            newMessage.style = 'background-color:rgba(0, 0, 0, 0.2);'
+                            this.addMessage(newMessage)
                             this.gamePageTipMessage.class = 'animation-fadeIn-1s'
                         }, 2000)
                         setTimeout(() => {
@@ -406,11 +445,11 @@ document.addEventListener('alpine:init', () => {
         },
 
         get isRunning(){
-            return this.status?.startsWith('day') || this.status?.startsWith('night') || this.status === 'end' || this.status === 'animation'
+            return this.status?.startsWith('day') || this.status?.startsWith('night') || this.status === 'end' || this.status?.split('/').includes('animation')
         },
 
         get isRunningAndNoAnimation(){
-            return this.isRunning && this.status !== 'animation'
+            return this.isRunning && this.status?.split('/').includes('animation') === false
         },
 
         // 预设栏组件
@@ -731,6 +770,17 @@ document.addEventListener('alpine:init', () => {
     function scrollToBottom(elementClass) {
         const content = document.querySelector(`.${elementClass}`);
         content.scrollTop = content.scrollHeight;
+    }
+    
+    function hexToRgba(hex, opacity){
+        hex = hex.replace('#', '')
+        if (hex.length === 3) {  
+            hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2]
+        }  
+        let r = parseInt(hex.substring(0, 2), 16)
+        let g = parseInt(hex.substring(2, 4), 16)
+        let b = parseInt(hex.substring(4, 6), 16)
+        return `rgba(${r},${g},${b},${opacity})`
     }
 })
 

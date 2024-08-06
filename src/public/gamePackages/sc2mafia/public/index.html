@@ -248,7 +248,6 @@
             </div>
         </div>
 
-        <!-- <div div id="beginPage" style="justify-content: center;"> -->
         <div id="beginPage" style="justify-content: center;" x-show="status === 'begin' ">
             <p style="position: absolute;top: 20%;" x-text="setting?.enableCustomName?`输入 '-名字' 来选择你想要使用的名字( 例如 '-好人' )`:`未启用自定义名称，请等待游戏开始`"></p>
             <p style="position: absolute;top:5%;right: 5%;padding: 0.5em;background-color: rgba(0, 0, 0, 0.2);" class="border" x-show="timer" x-text="`游戏即将开始: ${timer?.durationSec} 秒`"></p>
@@ -366,7 +365,7 @@
                             <div class="playerList scrollbar" style="display:flex;flex: auto;background-color: rgba(0, 0, 0, 0.1);">
                                 <table>
                                     <template x-for="player in playerList">
-                                        <tr><td x-text="player.name" :style="`color:${player.color}`"></td><td><button @click="clickTempButton(player)">临时按钮</button></td></tr>
+                                        <tr><td x-text="player.index+1"></td><td x-text="player.name" :style="`color:${player.color}`"></td><td><button @click="clickTempButton(player)">临时按钮</button></td></tr>
                                     </template>
                                 </table>
                             </div>

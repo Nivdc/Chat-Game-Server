@@ -115,7 +115,7 @@ class Game{
 
                 case "RepickHost":
                     if(['init', 'setup'].includes(this.status)){
-                        if(event.data !== undefined && isValidIndex((Number(event.data)), this.playerList.length) === false)
+                        if(event.data == undefined || isValidIndex((Number(event.data)), this.playerList.length) === false)
                             return
 
                         this.sendEventToAll(event.type, {player, targetIndex:(Number(event.data))})
@@ -152,18 +152,32 @@ class Game{
                     }
                 break
                 case "LynchVote":
-                    // todo:发送投票信息
+                    // fixme:player Can vote to self...And deadPlayer
                     if(this.status.split('/').includes('lynchVote')){
-                        if(event.data !== undefined){
-                            player.lynchVoteTargetIndex = Number(event.data)
+                        if(event.data == undefined || isValidIndex((Number(event.data)), this.playerList.length) === false)
+                            return
+
+                        let previousTargetIndex = player.lynchVoteTargetIndex
+                        let targetIndex = Number(event.data)
+                        if(Number.isNaN(targetIndex) === false && previousTargetIndex !== targetIndex){
+                            player.lynchVoteTargetIndex = targetIndex
+                            this.sendEventToAll(event.type, {voterIndex:player.index, targetIndex:event.data, previousTargetIndex})
                             this.lynchVoteCheck()
                         }
+                    }
+                break
+                case "LynchVoteCancel":
+                    if(player.lynchVoteTargetIndex !== undefined){
+                        player.lynchVoteTargetIndex = undefined
+                        this.sendEventToAll("LynchVoteCancel", {voterIndex:player.index})
+                        this.lynchVoteCheck()
                     }
                 break
                 
                 case "MafiaKillVote":
                     if(player.role.affiliation === "Mafia"){
                         player.mafiaKillVoteTargetIndex = Number(event.data)
+                        this.sendEventToAll(event.type, {voterIndex:player.index, targetIndex:event.data})
                         this.mafiaKillVoteCheck()
                     }
                 break
@@ -213,6 +227,8 @@ class Game{
             // todo:为没有自定义名字的玩家随机分配名字
             shuffleArray(this.setting.roleList)
             shuffleArray(this.playerList)
+            console.log(this.playerList)
+            this.sendEventToAll("SetPlayerList", this.playerList)
             for(let [index, p] of this.playerList.entries()){
                 p.role = roleSet.find( r => r.name === this.setting.roleList[index] )
                 p.isAlive = true
@@ -298,6 +314,7 @@ class Game{
         if(this.setting.enableDiscussion)
             await this.newGameStage("day/discussion", this.setting.discussionTime)
 
+        // 如果是第一天，就判断是否以白天/无处刑开局，如果不是，那就执行...有点绕
         // Except for the first day/No-Lynch...this is a bit counter-intuitive.
         if(this.dayCount !== 1 || this.setting.startAt !== "day/No-Lynch")
             await this.newGameStage("day/discussion/lynchVote", this.setting.dayLength)
@@ -316,7 +333,8 @@ class Game{
         this.nightActionSequence = []
         this.recentlyDeadPlayers = []
 
-        if(this.dayCount !== 1)
+        // 如果是第一天，就判断是否以夜晚开局，如果不是，那就执行...有点绕
+        if(this.dayCount !== 1 || this.setting.startAt !== "night")
             await this.newGameStage("animation/dayToNight", 0.1)
         await this.newGameStage("night/discussion", this.setting.nightLength)
 
@@ -556,12 +574,12 @@ class Game{
     }
 
     async execution(player){
-        let executionLenght = 0.4 // 0.4 * 60 = 24s
+        let executionLenghtMin = 0.4 // 0.4 * 60 = 24s
 
         // "day" stage end
         this.gameStage.end()
         this.sendEventToAll("SetExecutionTarget", player)
-        await this.newGameStage("day/execution/lastWord", executionLenght/2)
+        await this.newGameStage("day/execution/lastWord", executionLenghtMin/2)
         player.isAlive = false
         player.deathReason = "Execution"
 
@@ -571,7 +589,7 @@ class Game{
         this.sendEventToAll('SetRecentlyDeadPlayers', this.recentlyDeadPlayers.map(p => this.getPlayerDeathDeclearData(p)))
         await this.newGameStage("animation/execution/deathDeclear", this.recentlyDeadPlayers.length * 0.1)
 
-        await this.newGameStage("day/execution/discussion", executionLenght/2)
+        await this.newGameStage("day/execution/discussion", executionLenghtMin/2)
         await this.victoryCheck()
 
         if(this.status !== "end")
@@ -640,9 +658,10 @@ class Game{
 
         player.user = undefined
 
+        console.log("opll",this.onlinePlayerList.length)
         if(this.onlinePlayerList.length === 0){
             this.status = 'end'
-            this.gameStage?.end()
+            this.gameStage?.abort()
             this.room.endGame()
         }
     }

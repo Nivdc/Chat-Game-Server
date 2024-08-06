@@ -257,6 +257,7 @@ class Room{
                 })
             }
             this.status = "inGame"
+            all_user_update_all()
         }
     }
 

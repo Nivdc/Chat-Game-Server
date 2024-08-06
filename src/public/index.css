@@ -211,6 +211,7 @@ hr{
     width: 100%;
 }
 #lobbyRoomListFormBody table tbody tr:has(td):hover{
+    cursor:pointer;
     border-style: dashed solid;
 }
 #lobbyRoomListFormBody table tbody tr:nth-child(odd){
@@ -227,9 +228,8 @@ hr{
 #lobbyRoomListFormBody table tbody tr th,
 #lobbyRoomListFormBody table tbody tr td{
     padding: 0.2em;
-}
-#lobbyRoomListFormBody table tbody tr td{
     text-align: center;
+    user-select: none;
 }
 
 /* #lobbyRoomListFormSideBar{

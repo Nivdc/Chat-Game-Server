@@ -131,7 +131,8 @@ let lobbyRoomList = {
         if(this.selectedRoom === room)
             this.joinRoom()
         else
-            this.selectedRoom = room
+            if(room.status === 'open')
+                this.selectedRoom = room
     },
     joinRoom(){
         if(this.selectedRoom)

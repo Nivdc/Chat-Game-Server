@@ -163,6 +163,9 @@ document.addEventListener('alpine:init', () => {
                 }
                 else if(this.status === 'night/discussion'){
                     this.playAnimation('showDayCount')
+                    document.getElementById('music').volume = 1.0
+                    document.getElementById('music').currentTime = 0
+                    document.getElementById('music').play()
                     this.executionTarget = undefined
                     this.clearMssagesList()
                     this.createTimer('夜晚', this.setting.nightLength, ()=>{this.timer = undefined})
@@ -310,13 +313,6 @@ document.addEventListener('alpine:init', () => {
                     setTimeout(()=>{
                         this.gamePageTipMessage.class = 'animation-fadeOut-2s'
                     }, 3000)
-                    setTimeout(()=>{
-                        document.getElementById('music').volume = 1.0
-                        // ...Chrome浏览器居然不支持这个方法？？
-                        // document.getElementById('music').fastSeek(0)
-                        document.getElementById('music').currentTime = 0
-                        document.getElementById('music').play()
-                    }, 6000)
                 break
                 case 'nightToDay':
                     document.getElementById('gamePage').classList.remove('animation-dayToNight-6s')

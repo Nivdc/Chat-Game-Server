@@ -122,7 +122,6 @@ class Game{
                         if(player !== this.host){
                             if(event.data){
                                 player.repickHostVoteTargetIndex = Number(event.data)
-                                console.log(player.index, 'vote to ', player.repickHostVoteTargetIndex)
                             }
                             else{
                                 player.repickHostVoteTargetIndex = -1
@@ -143,55 +142,53 @@ class Game{
                 break
             }
 
-            if(player.isAlive ?? false)
-            switch(event.type){
-                case 'SetLastWill':
-                    if(this.setting.enableLastWill){
-                        player.lastWill = event.data
-                        player.sendEvent("SetLastWill", player.lastWill)
-                    }
-                break
-                case "LynchVote":
-                    // fixme:player Can vote to self...And deadPlayer
-                    if(this.status.split('/').includes('lynchVote')){
-                        if(event.data == undefined || isValidIndex((Number(event.data)), this.playerList.length) === false)
-                            return
-
-                        let previousTargetIndex = player.lynchVoteTargetIndex
-                        let targetIndex = Number(event.data)
-                        if(Number.isNaN(targetIndex) === false && previousTargetIndex !== targetIndex){
-                            player.lynchVoteTargetIndex = targetIndex
-                            this.sendEventToAll(event.type, {voterIndex:player.index, targetIndex:event.data, previousTargetIndex})
+            if(player.isAlive ?? false){
+                switch(event.type){
+                    case 'SetLastWill':
+                        if(this.setting.enableLastWill){
+                            player.lastWill = event.data
+                            player.sendEvent("SetLastWill", player.lastWill)
+                        }
+                    break
+                    case "LynchVote":
+                        // fixme:player Can vote to self...And deadPlayer
+                        if(this.status.split('/').includes('lynchVote')){
+                            let targetIndex = Number(event.data)
+                            let previousTargetIndex = player.lynchVoteTargetIndex
+                            if(previousTargetIndex !== targetIndex){
+                                player.setVoteTargetIndex(event.type, targetIndex)
+                                this.sendEventToAll(event.type, {voterIndex:player.index, targetIndex:event.data, previousTargetIndex})
+                                this.lynchVoteCheck()
+                            }
+                        }
+                    break
+                    case "LynchVoteCancel":
+                        if(player.lynchVoteTargetIndex !== undefined){
+                            player.lynchVoteTargetIndex = undefined
+                            this.sendEventToAll("LynchVoteCancel", {voterIndex:player.index})
                             this.lynchVoteCheck()
                         }
-                    }
-                break
-                case "LynchVoteCancel":
-                    if(player.lynchVoteTargetIndex !== undefined){
-                        player.lynchVoteTargetIndex = undefined
-                        this.sendEventToAll("LynchVoteCancel", {voterIndex:player.index})
-                        this.lynchVoteCheck()
-                    }
-                break
-                
-                case "MafiaKillVote":
-                    if(player.role.affiliation === "Mafia"){
-                        player.mafiaKillVoteTargetIndex = Number(event.data)
-                        this.sendEventToAll(event.type, {voterIndex:player.index, targetIndex:event.data})
-                        this.mafiaKillVoteCheck()
-                    }
-                break
+                    break
+                    
+                    case "MafiaKillVote":
+                        if(player.role.affiliation === "Mafia"){
+                            player.mafiaKillVoteTargetIndex = Number(event.data)
+                            this.sendEventToAll(event.type, {voterIndex:player.index, targetIndex:event.data})
+                            this.mafiaKillVoteCheck()
+                        }
+                    break
 
-                // case "AuxiliaryOfficerVote":
-                //     if(player.role.affiliation === "Mafia"){
-                //         player.mafiaKillVoteTargetIndex = Number(event.data)
-                //         this.mafiaKillVoteCheck()
-                //     }
-                // break
+                    // case "AuxiliaryOfficerVote":
+                    //     if(player.role.affiliation === "Mafia"){
+                    //         player.mafiaKillVoteTargetIndex = Number(event.data)
+                    //         this.mafiaKillVoteCheck()
+                    //     }
+                    // break
 
-                case "UseAbility":
-                        player.abilityTargetIndex = Number(event.data)
-                break
+                    case "UseAbility":
+                            player.abilityTargetIndex = Number(event.data)
+                    break
+                }
             }
     
         }
@@ -720,6 +717,12 @@ class Player{
     sendEvent(eventType, data){
         if(this.user !== undefined)
             this.user.sendEvent(eventType, data)
+    }
+
+    setVoteTargetIndex(voteType, targetIndex){
+        voteType = voteType.charAt(0).toLowerCase() + voteType.slice(1)
+        let ti = Number(targetIndex)
+        this[`${voteType}TargetIndex`] = isValidIndex(ti, this.playerList.length) ? ti : undefined
     }
 
     resetCommonProperties(){

@@ -266,6 +266,7 @@ class Room{
         send_event_to(this.user_list, "GameEnded")
         this.current_game = undefined
         this.status = "open"
+        all_user_update_all()
     }
 
     toJSON(){

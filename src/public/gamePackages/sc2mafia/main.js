@@ -65,7 +65,7 @@ class Game{
         return this.playerList.filter((p) => p.isOnline === true)
     }
 
-    get survivingPlayerList(){
+    get alivePlayerList(){
         return this.playerList.filter((p) => p.isAlive === true)
     }
 
@@ -150,48 +150,89 @@ class Game{
                             player.sendEvent("SetLastWill", player.lastWill)
                         }
                     break
-                    case "LynchVote":
-                        // fixme:player Can vote to self...And deadPlayer
-                        if(this.status.split('/').includes('lynchVote')){
-                            let targetIndex = Number(event.data)
-                            let previousTargetIndex = player.lynchVoteTargetIndex
-                            if(previousTargetIndex !== targetIndex){
-                                player.setVoteTargetIndex(event.type, targetIndex)
-                                this.sendEventToAll(event.type, {voterIndex:player.index, targetIndex:event.data, previousTargetIndex})
-                                this.lynchVoteCheck()
-                            }
-                        }
-                    break
-                    case "LynchVoteCancel":
-                        if(player.lynchVoteTargetIndex !== undefined){
-                            player.lynchVoteTargetIndex = undefined
-                            this.sendEventToAll("LynchVoteCancel", {voterIndex:player.index})
-                            this.lynchVoteCheck()
-                        }
-                    break
-                    
-                    case "MafiaKillVote":
-                        if(player.role.affiliation === "Mafia"){
-                            player.mafiaKillVoteTargetIndex = Number(event.data)
-                            this.sendEventToAll(event.type, {voterIndex:player.index, targetIndex:event.data})
-                            this.mafiaKillVoteCheck()
-                        }
-                    break
-
-                    // case "AuxiliaryOfficerVote":
-                    //     if(player.role.affiliation === "Mafia"){
-                    //         player.mafiaKillVoteTargetIndex = Number(event.data)
-                    //         this.mafiaKillVoteCheck()
+                    // case "LynchVote":
+                    //     // fixme:player Can vote to self...And deadPlayer
+                    //     if(this.status.split('/').includes('lynchVote')){
+                    //         let targetIndex = Number(event.data)
+                    //         let previousTargetIndex = player.lynchVoteTargetIndex
+                    //         if(previousTargetIndex !== targetIndex){
+                    //             player.setTargetIndex(event.type, targetIndex)
+                    //             this.sendEventToAll(event.type, {voterIndex:player.index, targetIndex:event.data, previousTargetIndex})
+                    //             this.lynchVoteCheck()
+                    //         }
                     //     }
                     // break
 
-                    case "UseAbility":
-                            player.abilityTargetIndex = Number(event.data)
-                    break
+                    // case "UseAbility":
+                    //         player.abilityTargetIndex = Number(event.data)
+                    // break
+                }
+
+                // 下面是投票相关的功能...太抽象了...太抽象辣！
+                if(event.type.endsWith('Vote')){
+                    const voteCheckFunctions = {
+                        "LynchVote":(voterIndex, targetIndex)=>{
+                            let voterIsAlive = this.playerList[voterIndex].isAlive
+                            let targetIsAlive = this.playerList[targetIndex].isAlive
+                            // 为什么玩家不能给自己投票？我觉得他可以啊
+                            // let targetIsNotVoter = (voterIndex !== targetIndex)
+                            let gameStatusIncludesLynchVote = this.status.split('/').includes('lynchVote')
+                            return voterIsAlive && targetIsAlive && gameStatusIncludesLynchVote
+                        },
+                        "MafiaKillVote":(voterIndex, targetIndex)=>{
+                            let voterIsAlive = this.playerList[voterIndex].isAlive
+                            let targetIsAlive = this.playerList[targetIndex].isAlive
+                            let voterIsMafia = this.queryAlivePlayersByCategory('Mafia').map(p => p.index).includes(voterIndex)
+                            // 为什么要限制黑手党在晚上投票呢？白天也可以投啊
+                            // let gameStatusIsNightDiscussion = (this.status === 'night/discussion')
+                            return voterIsAlive && targetIsAlive && voterIsMafia
+                        },
+                        // "MafiaKillVote":(voterIndex, targetIndex)=>{},
+                    }
+
+                    let eventType = event.type
+                    let voteType = event.type
+                    let voterIndex = player.index
+                    let targetIndex = Number(event.data)
+                    if(voteCheckFunctions[voteType]?.call(this, voterIndex, targetIndex)){
+                        let previousTargetIndex = player[`${voteType}TargetIndex`]
+                        if(previousTargetIndex !== targetIndex){
+                            player.setTargetIndex(voteType, targetIndex)
+                            this.sendEventToGroup(this.getVoteNoticeGroup(voteType), eventType, {voterIndex, targetIndex, previousTargetIndex})
+                            voteType = voteType.charAt(0).toLowerCase() + voteType.slice(1)
+                            this[`${voteType}Check`]()
+                        }
+                    }
+                }else if(event.type.endsWith('VoteCancel')){
+                    let eventType = event.type
+                    let voteType = eventType.slice(0, eventType.indexOf('Cancel'))
+                    voteType = voteType.charAt(0).toLowerCase() + voteType.slice(1)
+                    if(player[`${voteType}TargetIndex`] !== undefined){
+                        player.setTargetIndex(voteType, undefined)
+                        this.sendEventToGroup(this.getVoteNoticeGroup(eventType), eventType, {voterIndex:player.index})
+                        this[`${voteType}Check`]()
+                    }
                 }
             }
-    
         }
+    }
+
+    getVoteNoticeGroup(type){
+        let targetGroup = undefined
+        console.log(type)
+        switch(type){
+            case 'LynchVote':
+            case 'LynchVoteCancel':
+                targetGroup = this.playerList
+            break
+
+            case 'MafiaKillVote':
+            case 'MafiaKillVoteCancel':
+                targetGroup = this.queryAlivePlayersByCategory('Mafia')
+            break
+        }
+        console.log(targetGroup)
+        return targetGroup
     }
 
     sendEventToAll(eventType, data){
@@ -234,9 +275,9 @@ class Game{
             this.playerList.forEach(p=>{
                 p.sendEvent("SetRole", p.role)
                 if(p.role.affiliation === "Mafia")
-                    p.sendEvent("SetTeam", this.querySurvivingPlayerByCategory("Mafia").map(p=>p.toJSON_includeRole()))
+                    p.sendEvent("SetTeam", this.queryAlivePlayersByCategory("Mafia").map(p=>p.toJSON_includeRole()))
                 else if(p.role.name === "AuxiliaryOfficer")
-                    p.sendEvent("SetTeam", this.querySurvivingPlayerByRoleName("AuxiliaryOfficer").map(p=>p.toJSON_includeRole()))
+                    p.sendEvent("SetTeam", this.queryAlivePlayersByRoleName("AuxiliaryOfficer").map(p=>p.toJSON_includeRole()))
 
             })
 
@@ -457,10 +498,10 @@ class Game{
         else{
             if(sender.isAlive === true){
                 if(this.status.startsWith("day") && this.status.split('/').includes("discussion")){
-                    targetGroup = this.survivingPlayerList
+                    targetGroup = this.alivePlayerList
                 }else if(this.status.startsWith("night") && this.status.split('/').includes("discussion")){
                     if(sender.role.affiliation === "Mafia")
-                        targetGroup = this.querySurvivingPlayerByCategory(sender.role.affiliation)
+                        targetGroup = this.queryAlivePlayersByCategory(sender.role.affiliation)
                 }
             }else{
                 targetGroup = this.deadPlayerList
@@ -472,9 +513,9 @@ class Game{
     }
 
     lynchVoteCheck(){
-        let spll = this.survivingPlayerList.length
+        let spll = this.alivePlayerList.length
         const voteNeeded = spll % 2 === 0 ? ((spll / 2) + 1) : Math.ceil(spll / 2)
-        let lynchTarget = this.voteCheck('LynchVote', this.survivingPlayerList, this.survivingPlayerList, voteNeeded)
+        let lynchTarget = this.voteCheck('LynchVote', this.alivePlayerList, this.alivePlayerList, voteNeeded)
         if(lynchTarget !== undefined){
             this.sendEventToAll("SetLynchTarget", lynchTarget)
             if(this.setting.enableTrial){
@@ -488,7 +529,7 @@ class Game{
 
     mafiaKillVoteCheck(){
         // Note that when a tie vote occurs, there can be multiple targets
-        let killTargets = this.voteCheck('MafiaKillVote', this.querySurvivingPlayerByCategory('Mafia'), this.survivingPlayerList)
+        let killTargets = this.voteCheck('MafiaKillVote', this.queryAlivePlayersByCategory('Mafia'), this.alivePlayerList)
         this.mafiaKillTargets = killTargets
         // todo:发往客户端的提示信息
     }
@@ -540,7 +581,7 @@ class Game{
         for(const p of checkPlayers){
             if(p[`${voteType}TargetIndex`] !== undefined){
                 voteCount[p[`${voteType}TargetIndex`]] += `${voteType}Weight` in p ? p[`${voteType}Weight`] : 1
-                console.log('voteType', voteType, `${p.index} voteTo`, p[`${voteType}TargetIndex`])
+                console.log('voteType:', voteType, `->${p.index} voteTo`, p[`${voteType}TargetIndex`])
             }
         }
 
@@ -607,15 +648,15 @@ class Game{
     }
 
     async victoryCheck(){
-        let town_sp_l = this.querySurvivingPlayerByCategory("Town").length
-        let mafia_sp_l = this.querySurvivingPlayerByCategory("Mafia").length
+        let town_sp_l = this.queryAlivePlayersByCategory("Town").length
+        let mafia_sp_l = this.queryAlivePlayersByCategory("Mafia").length
         
         if(town_sp_l === 0){
             this.winningFaction = "Mafia"
-            this.winners = this.querySurvivingPlayerByCategory("Mafia")
+            this.winners = this.queryAlivePlayersByCategory("Mafia")
         }else if(mafia_sp_l === 0){
             this.winningFaction = "Town"
-            this.winners = this.querySurvivingPlayerByCategory("Town")
+            this.winners = this.queryAlivePlayersByCategory("Town")
         }
         
         if(this.winningFaction !== undefined){
@@ -627,14 +668,14 @@ class Game{
         }
     }
 
-    querySurvivingPlayerByCategory(categoryString){
-        return this.survivingPlayerList.filter((p)=>{
+    queryAlivePlayersByCategory(categoryString){
+        return this.alivePlayerList.filter((p)=>{
             return p.role.categories.includes(categoryString)
         })
     }
 
-    querySurvivingPlayerByRoleName(roleName){
-        return this.survivingPlayerList.filter((p)=>{
+    queryAlivePlayersByRoleName(roleName){
+        return this.alivePlayerList.filter((p)=>{
             return p.role.name === roleName
         })
     }
@@ -655,7 +696,6 @@ class Game{
 
         player.user = undefined
 
-        console.log("opll",this.onlinePlayerList.length)
         if(this.onlinePlayerList.length === 0){
             this.status = 'end'
             this.gameStage?.abort()
@@ -719,10 +759,10 @@ class Player{
             this.user.sendEvent(eventType, data)
     }
 
-    setVoteTargetIndex(voteType, targetIndex){
-        voteType = voteType.charAt(0).toLowerCase() + voteType.slice(1)
+    setTargetIndex(type, targetIndex){
+        type = type.charAt(0).toLowerCase() + type.slice(1)
         let ti = Number(targetIndex)
-        this[`${voteType}TargetIndex`] = isValidIndex(ti, this.playerList.length) ? ti : undefined
+        this[`${type}TargetIndex`] = isValidIndex(ti, this.playerList.length) ? ti : undefined
     }
 
     resetCommonProperties(){

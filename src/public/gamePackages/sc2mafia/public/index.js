@@ -11,6 +11,7 @@ document.addEventListener('alpine:init', () => {
             this.socketInit()
             sendEvent("FrontendReady")
             this.roleSetInit()
+            this.recentlyDeadPlayers = []
             this.loading = false
             // this.playAnimation('begin')
             // setTimeout(()=>{
@@ -43,6 +44,7 @@ document.addEventListener('alpine:init', () => {
                 socket = {send:console.log}
             }
 
+            // webSocket链接会保证消息收发的顺序性
             for(const eventName in this.eventHandler){
                 window.addEventListener(eventName, (e)=>{
                     this.eventHandler[eventName].call(this, e.detail)
@@ -100,7 +102,7 @@ document.addEventListener('alpine:init', () => {
             },
 
             'PlayerQuit':function(data){
-                let message = {parts:[], style:'background-color:darkred'}
+                let message = {parts:[], style:'background-color:darkred;text-shadow: 1px 1px 0px #000000;'}
                 let player  = this.playerList[data.index]
                 message.parts.push(player.getNameMessagePart())
                 message.parts.push({text:' 退出了游戏'})
@@ -147,6 +149,9 @@ document.addEventListener('alpine:init', () => {
                     this.gamePageTipMessage.class = 'animation-fadeIn-1s'
 
                     this.createTimer('临终遗言', 0.4/2, ()=>{this.timer = undefined})
+                }
+                else if(this.status === 'animation/execution/deathDeclear'){
+                    this.playAnimation('deathDeclear')
                 }
                 else if(this.status === 'day/execution/discussion'){
                     this.gamePageTipMessage = new MagicString()
@@ -210,7 +215,7 @@ document.addEventListener('alpine:init', () => {
                     p.role = this.roleSet.find(r => r.name === playerRoleData.name)
                 })
                 this.myTeam.playerList = teamPlayers
-                // 这里有一个this指针的绑定问题，暂时就先这样吧
+                // 这里有一个this指针的绑定问题，下面这个函数的this绑定到了全局的game，暂时就先这样吧
                 this.myTeam.getMagicStrings = function(){
                     return this.myTeam.playerList.map(p => {
                         console.log(p, p.role)
@@ -253,7 +258,11 @@ document.addEventListener('alpine:init', () => {
 
             'SetDayCount':function(data){
                 this.dayCount = Number(data)
-            }
+            },
+
+            'SetRecentlyDeadPlayers':function(data){
+                this.recentlyDeadPlayers = data
+            },
         },
         commandHandler(commandString){
             [command, ...args] = commandString.split(" ")
@@ -284,7 +293,7 @@ document.addEventListener('alpine:init', () => {
                 break
             }
         },
-        playAnimation(animationName){
+        playAnimation(animationName, data){
             switch(animationName){
                 case 'begin':
                     this.gamePageTipMessage = new MagicString()
@@ -335,11 +344,64 @@ document.addEventListener('alpine:init', () => {
                     let time = this.status.startsWith('day') ? '白天' : '夜晚'
                     this.gamePageTipMessage = new MagicString()
                     this.gamePageTipMessage.text  = `${time}  ${this.dayCount}`
-                    this.gamePageTipMessage.style = 'font-weight: bold;padding: 0.5em 1em;background-color: rgba(0, 0, 0, 0.2);'
+                    this.gamePageTipMessage.style = 'font-size:2em;font-weight: bold;padding: 0.5em 1em;background-color: rgba(0, 0, 0, 0.2);'
                     this.gamePageTipMessage.class = 'border animation-fadeIn-1s'
                     setTimeout(()=>{
                         this.gamePageTipMessage.class = 'border animation-fadeOut-2s'
                     }, 3000)
+                break
+                case 'deathDeclear':
+                    if(this.recentlyDeadPlayers.length > 0)
+                        this.playAnimation('deathDeclearOnce', recentlyDeadPlayers.pop())
+
+                    let animationCycleCount = 1
+                    while(this.recentlyDeadPlayers.length > 0){
+                        setTimeout(()=>{
+                            this.playAnimation('deathDeclearOnce', recentlyDeadPlayers.pop())
+                        }, 6 * animationCycleCount * 1000)
+                        animationCycleCount ++
+                    }
+                break
+                case 'deathDeclearOnce':
+                    if(data !== undefined){
+                        // 这时候的提示，正在被'xxx 你还有什么遗言吗？'占用。
+                        if(this.gamePageTipMessage.class !== 'animation-fadeOut-2s')
+                            this.gamePageTipMessage.class = 'animation-fadeOut-2s'
+
+                        let deadPlayerData  = data
+                        let player      = this.playerList[deadPlayerData.index]
+                        let role        = this.roleSet.find(r => r.name === deadPlayerData.role.name)
+                        let lastWill    = deadPlayerData.lastWill
+
+                        setTimeout(() => {
+                            this.gamePageTipMessage = new MagicString()
+                            this.gamePageTipMessage.append(player.getNameMagicString())
+                            this.gamePageTipMessage.addText(' 的身份是 ')
+                            this.gamePageTipMessage.append(role.getNameMessagePart())
+                            this.addMessage(cloneDeep(this.gamePageTipMessage))
+                            this.gamePageTipMessage.class = 'animation-fadeIn-1s'
+                        }, 2000)
+                        setTimeout(() => {
+                            if(this.setting.enableLastWill === true){
+                                if(lastWill !== undefined){
+                                    let lastWillTitle = new MagicString()
+                                    lastWillTitle.append(player.getNameMagicString())
+                                    lastWillTitle.addText(' 为我们留下了他的遗言：')
+                                    lastWillTitle.style = 'color:NavajoWhite;background-color:rgba(0, 0, 0, 0.2);'
+                                    this.addMessage(lastWillTitle)
+
+                                    let lastWillContent = new MagicString()
+                                    lastWillContent.addText(lastWill)
+                                    lastWillContent.style = 'color:NavajoWhite;background-color:rgba(0, 0, 0, 0.2);'
+                                    this.addMessage(lastWillContent)
+                                }else{
+                                    this.addSystemHintText('我们未能找到他的遗言。')
+                                }
+                            }
+                            this.gamePageTipMessage.class = 'animation-fadeOut-2s'
+                        }, 4000);
+                    }
+                break
             }
         },
 

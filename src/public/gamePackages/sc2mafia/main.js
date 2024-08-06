@@ -565,13 +565,30 @@ class Game{
         player.isAlive = false
         player.deathReason = "Execution"
 
-        //todo:向所有玩家发送玩家遗言
+        this.recentlyDeadPlayers = []
+        this.recentlyDeadPlayers.push(player)
+
+        this.sendEventToAll('SetRecentlyDeadPlayers', this.recentlyDeadPlayers.map(p => this.getPlayerDeathDeclearData(p)))
+        await this.newGameStage("animation/execution/deathDeclear", this.recentlyDeadPlayers.length * 0.1)
 
         await this.newGameStage("day/execution/discussion", executionLenght/2)
         await this.victoryCheck()
 
         if(this.status !== "end")
             this.nightCycle()
+    }
+
+    // getDDD, Ha
+    getPlayerDeathDeclearData(deadPlayer){
+        let data = {}
+        data.index = deadPlayer.index
+        data.deathReason = deadPlayer.deathReason
+        if(this.setting.revealPlayerRoleOnDeath === true)
+            data.roleName = deadPlayer.role.name
+        if(this.setting.enableLastWill === true)
+            data.lastWill = deadPlayer.lastWill
+
+        return data
     }
 
     async victoryCheck(){

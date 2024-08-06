@@ -265,7 +265,7 @@ function init_socket(){
                     let room = lobbyRoomList.roomList.find(room => {return room.id === userSelf.current_room_id})
                     if(room){
                         lobbyRoom.setup(lobbyRoomList.roomList.find(room => {return room.id === userSelf.current_room_id}))
-                        // document.getElementById("lobbyRoomForm").style.zIndex = 1
+                        document.getElementById("lobbyRoomForm").style.zIndex = 2
                     }
                 }
             break

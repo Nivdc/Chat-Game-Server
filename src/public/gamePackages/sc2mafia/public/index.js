@@ -312,7 +312,9 @@ document.addEventListener('alpine:init', () => {
                     }, 3000)
                     setTimeout(()=>{
                         document.getElementById('music').volume = 1.0
-                        document.getElementById('music').fastSeek(0)
+                        // ...Chrome浏览器居然不支持这个方法？？
+                        // document.getElementById('music').fastSeek(0)
+                        document.getElementById('music').currentTime = 0
                         document.getElementById('music').play()
                     }, 6000)
                 break

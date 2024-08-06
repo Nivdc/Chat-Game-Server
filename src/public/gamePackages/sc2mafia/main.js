@@ -198,6 +198,7 @@ class Game{
         p.sendEvent("SetPlayerList", this.playerList)
         p.sendEvent("SetHost", this.host)
         p.sendEvent("SetStatus", this.status)
+        p.sendEvent("SetDayCount", this.dayCount ?? 1)
         // p.sendEvent("SetRoleSet", this.roleSet)
         p.sendEvent("InitCompleted")
     }
@@ -294,8 +295,6 @@ class Game{
         if(this.status === 'end')
             return
 
-        if(this.dayCount !== 1)
-
         if(this.setting.enableDiscussion)
             await this.newGameStage("day/discussion", this.setting.discussionTime)
 
@@ -321,6 +320,7 @@ class Game{
         await this.newGameStage("night/discussion", this.setting.nightLength)
 
         this.dayCount ++
+        this.sendEventToAll("SetDayCount", this.dayCount ?? 1)
         this.nightAction()
     }
 

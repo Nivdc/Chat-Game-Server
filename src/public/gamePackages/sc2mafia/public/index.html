@@ -270,7 +270,7 @@
         </div>
         <div id="gamePage" style="display: flex;flex-direction:column;height: 100%;align-items: center;" class="flex" x-show="isRunning">
             <p style="position: absolute;top:1%;right: 1%;padding: 0.5em;background-color: rgba(0, 0, 0, 0.2);" class="border" x-text="`${timer?.name} 阶段剩余: ${timer?.durationSec} 秒`" x-show="timer" x-transition></p>
-            <p id="gamePageTipMessage" style="position: absolute;top: 10%;" :class="gamePageTipMessage?.class">
+            <p id="gamePageTipMessage" :style="'position: absolute;top: 10%;' + gamePageTipMessage?.style " :class="gamePageTipMessage?.class">
                 <span x-text="gamePageTipMessage?.text"></span>
                 <template x-for="messagePart in gamePageTipMessage?.parts">
                     <span x-text="messagePart.text" :style="messagePart.style" :class="messagePart.class"></span>
@@ -332,7 +332,7 @@
                     <div style="display: flex;">
                         <div style="flex: 1;align-items: center;" class="flex" x-show="myTeam" >
                             <div style="background-color: rgba(0, 0, 0, 0.1);width: 100%;height: 10em;padding: 0.5em;">
-                                <h3>团队</h3>
+                                <h3>盟友</h3>
                                 <template x-for="magicString in myTeam?.getMagicStrings">
                                     <p :class="magicString.class" :style="magicString.style">
                                         <span x-text="magicString.text"></span>

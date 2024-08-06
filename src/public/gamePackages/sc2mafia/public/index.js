@@ -61,7 +61,8 @@ document.addEventListener('alpine:init', () => {
                 let message = {parts:[]}
                 message.parts.push(this.host.getNameMessagePart())
                 message.parts.push({text:'  是新的主机', class:'text-warning'})
-                this.addMessage(message)
+                if(this.isRunning === false)
+                    this.addMessage(message)
             },
 
             'SetPlayerList':function(data){
@@ -123,11 +124,14 @@ document.addEventListener('alpine:init', () => {
                 }
                 else if(this.status === 'day/discussion'){
                     this.clearMssagesList()
+                    this.playAnimation('showDayCount')
                     this.createTimer('讨论', this.setting.discussionTime, ()=>{this.timer = undefined})
                 }
                 else if(this.status === 'day/discussion/lynchVote'){
-                    if(this.setting.enableDiscussion === false)
+                    if(this.setting.enableDiscussion === false){
                         this.clearMssagesList()
+                        this.playAnimation('showDayCount')
+                    }
                     this.createTimer('投票', this.setting.dayLength, ()=>{this.timer = undefined})
                 }
                 else if(this.status === 'day/trial/defense'){
@@ -158,6 +162,7 @@ document.addEventListener('alpine:init', () => {
                     this.playAnimation('dayToNight')
                 }
                 else if(this.status === 'night/discussion'){
+                    this.playAnimation('showDayCount')
                     this.executionTarget = undefined
                     this.clearMssagesList()
                     this.createTimer('夜晚', this.setting.nightLength, ()=>{this.timer = undefined})
@@ -195,14 +200,17 @@ document.addEventListener('alpine:init', () => {
 
             'SetTeam':function(data){
                 this.myTeam = {}
-                let teamPlayers = data.map(pd => this.playerList.find(p => p.name === pd.name))
+                let teamPlayers = data.map(pd => this.playerList.find(p => p.index === pd.index))
+                // console.log('IAmHere!->',teamPlayers)
                 teamPlayers.forEach(p => {
-                    let playerRoleData = data.find(pd => pd.name === p.name).role
+                    let playerRoleData = data.find(pd => pd.index === p.index).role
                     p.role = this.roleSet.find(r => r.name === playerRoleData.name)
                 })
                 this.myTeam.playerList = teamPlayers
+                // 这里有一个this指针的绑定问题，暂时就先这样吧
                 this.myTeam.getMagicStrings = function(){
-                    return this.playerList.map(p => {
+                    return this.myTeam.playerList.map(p => {
+                        console.log(p, p.role)
                         let ms = new MagicString()
                         ms.append(p.getIndexAndNameMagicString())
                         ms.addText(' (')
@@ -238,6 +246,10 @@ document.addEventListener('alpine:init', () => {
 
             'SetExecutionTarget':function(data){
                 this.executionTarget = this.playerList[data.index]
+            },
+
+            'SetDayCount':function(data){
+                this.dayCount = Number(data)
             }
         },
         commandHandler(commandString){
@@ -321,7 +333,15 @@ document.addEventListener('alpine:init', () => {
                         }, 1000)
                     }, 1000)
                 break
-
+                case 'showDayCount':
+                    let time = this.status.startsWith('day') ? '白天' : '夜晚'
+                    this.gamePageTipMessage = new MagicString()
+                    this.gamePageTipMessage.text  = `${time}  ${this.dayCount}`
+                    this.gamePageTipMessage.style = 'font-weight: bold;padding: 0.5em 1em;background-color: rgba(0, 0, 0, 0.2);'
+                    this.gamePageTipMessage.class = 'border animation-fadeIn-1s'
+                    setTimeout(()=>{
+                        this.gamePageTipMessage.class = 'border animation-fadeOut-2s'
+                    }, 3000)
             }
         },
 

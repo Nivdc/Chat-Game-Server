@@ -248,6 +248,11 @@ document.addEventListener('alpine:init', () => {
 
             'SetExecutionTarget':function(data){
                 this.executionTarget = this.playerList[data.index]
+                let message = new MagicString()
+                message.append(this.executionTarget.getNameMagicString())
+                message.addText(' 将会被处决！')
+                message.style = 'color:NavajoWhite;background-color:rgba(0, 0, 0, 0.1);'
+                this.addMessage(message)
             },
 
             'SetDayCount':function(data){
@@ -278,7 +283,16 @@ document.addEventListener('alpine:init', () => {
                 message.addText(' 取消了他的投票')
                 message.style = `background-color: rgba(0, 0, 0, 0.5);`
                 this.addMessage(message)
-            }
+            },
+
+            'SetLastWill':function(data){
+                this.addSystemHintText('你已将自己的遗言设置为：')
+
+                let lastWillContent = new MagicString()
+                lastWillContent.addText(data)
+                lastWillContent.style = 'color:NavajoWhite;background-color:rgba(0, 0, 0, 0.2);'
+                this.addMessageWithoutLog(lastWillContent)
+            },
         },
         commandHandler(commandString){
             [command, ...args] = commandString.split(" ")

@@ -185,9 +185,20 @@ class Game{
                             let voterIsMafia = this.queryAlivePlayersByCategory('Mafia').map(p => p.index).includes(voterIndex)
                             // 为什么要限制黑手党在晚上投票呢？白天也可以投啊
                             // let gameStatusIsNightDiscussion = (this.status === 'night/discussion')
+                            // 为什么要限制黑手党给自己人投票呢？我觉得他可以啊
+                            // let targetIsNotMafia = (this.queryAlivePlayersByCategory('Mafia').map(p => p.index).includes(targetIndex) === false)
                             return voterIsAlive && targetIsAlive && voterIsMafia
                         },
+                        "AuxiliaryOfficerCheckVote":(voterIndex, targetIndex)=>{
+                            let voterIsAlive = this.playerList[voterIndex].isAlive
+                            let targetIsAlive = this.playerList[targetIndex].isAlive
+                            let voterIsAuxiliaryOfficer = this.queryAlivePlayersByRoleName('AuxiliaryOfficer').map(p => p.index).includes(voterIndex)
+                            let targetIsNotAuxiliaryOfficer = (this.queryAlivePlayersByRoleName('AuxiliaryOfficer').map(p => p.index).includes(targetIndex) === false)
+
+                            return voterIsAlive && targetIsAlive && voterIsAuxiliaryOfficer && targetIsNotAuxiliaryOfficer
+                        },
                         // "MafiaKillVote":(voterIndex, targetIndex)=>{},
+
                     }
 
                     let eventType = event.type
@@ -219,7 +230,6 @@ class Game{
 
     getVoteNoticeGroup(type){
         let targetGroup = undefined
-        console.log(type)
         switch(type){
             case 'LynchVote':
             case 'LynchVoteCancel':
@@ -230,8 +240,12 @@ class Game{
             case 'MafiaKillVoteCancel':
                 targetGroup = this.queryAlivePlayersByCategory('Mafia')
             break
+
+            case 'AuxiliaryOfficerCheckVote':
+            case 'AuxiliaryOfficerCheckVoteCancel':
+                targetGroup = this.queryAlivePlayersByRoleName('AuxiliaryOfficer')
+            break
         }
-        console.log(targetGroup)
         return targetGroup
     }
 
@@ -265,7 +279,6 @@ class Game{
             // todo:为没有自定义名字的玩家随机分配名字
             shuffleArray(this.setting.roleList)
             shuffleArray(this.playerList)
-            console.log(this.playerList)
             this.sendEventToAll("SetPlayerList", this.playerList)
             for(let [index, p] of this.playerList.entries()){
                 p.role = roleSet.find( r => r.name === this.setting.roleList[index] )
@@ -337,6 +350,7 @@ class Game{
     }
 
     async dayCycle(){
+        this.nightActionSequence = []
         this.playerList.forEach((p) => p.resetCommonProperties())
         this.dayOver = false
 
@@ -364,14 +378,18 @@ class Game{
     }
 
     async deathDeclare(){
-        // todo:没啥特别的...就是把最近死掉的人的信息发送出去（然后等待动画播放完成...会有动画的吧？大概？
+        if(this.recentlyDeadPlayers?.length > 0){
+            this.sendEventToAll('SetRecentlyDeadPlayers', this.recentlyDeadPlayers.map(p => this.getPlayerDeathDeclearData(p)))
+            await this.newGameStage("animation/deathDeclear", this.recentlyDeadPlayers.length * 0.1)
+        }
     }
 
     async nightCycle(){
-        this.nightActionSequence = []
+        if(this.nightActionSequence === undefined)
+            this.nightActionSequence = []
         this.recentlyDeadPlayers = []
 
-        // 如果是第一天，就判断是否以夜晚开局，如果不是，那就执行...有点绕
+        // 如果是第一天，就判断是否以夜晚开局，如果不是，那就执行。
         if(this.dayCount !== 1 || this.setting.startAt !== "night")
             await this.newGameStage("animation/dayToNight", 0.1)
         await this.newGameStage("night/discussion", this.setting.nightLength)
@@ -379,7 +397,14 @@ class Game{
         this.dayCount ++
         this.sendEventToAll("SetDayCount", this.dayCount ?? 1)
         this.nightAction()
+        this.dayCycle()
     }
+
+
+    // generatePlayerAction
+    // 它的主要作用是为了防止反复变动造成复杂的修改
+    // 试想如果一个党徒决定在晚上杀死1号玩家，但是过了会儿他又改成2号
+    // 如果我们不引入一个生成过程，就得要对夜晚的行动队列进行反复修改
 
     nightAction(){
         this.setStatus("night/action")
@@ -390,14 +415,17 @@ class Game{
 
         this.nightActionProcess()
 
+
         function actionSequencing(a,b){
             const priorityOfActions = {
-                "MafiaKill":10,
-                "SheriffCheck":20,
-                "DoctorProtect":89,
+                "MafiaKillAttack":9,
+                // "DoctorHealProtect":19,
+
+                // "SheriffCheck":20,
+                "AuxiliaryOfficerCheck":21,
             }
 
-            return priorityOfActions[a.name] - priorityOfActions[b.name]
+            return priorityOfActions[a.type] - priorityOfActions[b.type]
         }
     }
 
@@ -405,81 +433,112 @@ class Game{
         // MafiaKill
         if(this.mafiaKillTargets ?? false){
             let realTarget = getRandomElement(this.mafiaKillTargets)
-            let realKiller = getMafiaKiller()
-            this.nightActionSequence.push({type:"MafiaKill", origin:realKiller, target:this.mafiaKillTargets})
+            // let realKiller = getMafiaKiller() todo
+            let realKiller = getRandomElement(this.queryAlivePlayersByRoleName('Mafioso'))
+            this.nightActionSequence.push({type:"MafiaKillAttack", origin:realKiller, target:realTarget})
             this.mafiaKillTargets = undefined
         }
 
-        // SoloPlayer
-        for(const p of this.playerList){
-            if(p.abilityTargetIndex !== undefined){
-                let targetPlayer = this.playerList[p.abilityTargetIndex]
-                let actionType = undefined
-
-                switch(p.role.name){
-                    case "Sheriff":
-                        actionType = "SheriffCheck"
-                    break
-                    case "Doctor":
-                        actionType = "DoctorHeal"
-                    break
-                }
-
-                if(actionType ?? false)
-                    nightActionSequence.push({type:actionType, origin:p, target:targetPlayer})
-            }
+        // AuxiliaryOfficerCheck
+        if(this.auxiliaryOfficerCheckTargets ?? false){
+            let realTarget = getRandomElement(this.auxiliaryOfficerCheckTargets)
+            let realOrigin = getRandomElement(this.queryAlivePlayersByRoleName('AuxiliaryOfficer'))
+            this.nightActionSequence.push({type:"AuxiliaryOfficerCheck", origin:realOrigin, target:realTarget})
+            this.auxiliaryOfficerCheckTargets = undefined
         }
+
+        // SoloPlayer
+        // for(const p of this.playerList){
+        //     if(p.abilityTargetIndex !== undefined){
+        //         let targetPlayer = this.playerList[p.abilityTargetIndex]
+        //         let actionType = undefined
+
+        //         switch(p.role.name){
+        //             case "Sheriff":
+        //                 actionType = "SheriffCheck"
+        //             break
+        //             case "Doctor":
+        //                 actionType = "DoctorHeal"
+        //             break
+        //         }
+
+        //         if(actionType ?? false)
+        //             nightActionSequence.push({type:actionType, origin:p, target:targetPlayer})
+        //     }
+        // }
     }
 
     nightActionProcess(){
-        let attackCount = Array(this.playerList.length).fill(0)
-        let healCount   = Array(this.playerList.length).fill(0)
-
+        // If no actions happend
         if(this.nightActionSequence.length === 0){
-            this.dayCycle()
             return
         }
 
-        let a = this.nightActionSequence.shift()
-        switch(a.type){
-            case "MafiaKill":
-                attackCount[a.target.index] ++
-                // todo: 发送提示
-            break
+        // Attack and Protection Processing
+        let attackSequence  = filterAndRemove(this.nightActionSequence, a => a.type.endsWith('Attack'))
+        let protectSequence = filterAndRemove(this.nightActionSequence, a => a.type.endsWith('Protect'))
 
-            case "SheriffCheck":
-                // todo: 没啥特别的...就是发送消息去就好
-            break
+        for(const p of this.alivePlayerList){
+            let asf  = attackSequence .filter(a => a.target === p)
+            let psf  = protectSequence.filter(a => a.target === p)
+            let anps = interleaveArrays(asf, psf)
+            let tempDeathReason = []
 
-            case "DoctorHeal":
-                healCount[a.target.index] ++
-                // todo: 发送提示
-            break
-        }
+            while(anps.length > 0){
+                console.log(anps)
+                let action = anps.shift()
+                switch(action.type){
+                    case 'MafiaKillAttack':
+                        p.sendEvent('MafiaKillAttack')
+                        p.isAlive = false
+                        tempDeathReason.push('MafiaKillAttack')
+                    break
 
-        for(let p of this.playerList){
-            let idx = p.index
-            if(p.isAlive){
-                if(attackCount[idx] > healCount[idx]){
-                    p.isAlive = false
-                    this.recentlyDeadPlayers.push(p)
+                    case 'DoctorHealProtect':
+                        if(tempDeathReason.length !== 0){
+                            // action.origin.sendEvent('DoctorHealProtectedTargetIsAttacked')
+                        }
+                        if(p.isAlive === false && p.deathReason === undefined){
+                            p.sendEvent('DoctorHealProtect')
+                            p.isAlive = true
+                        }
+                    break
                 }
             }
+
+            if(p.isAlive === false){
+                p.deathReason = tempDeathReason
+                this.recentlyDeadPlayers.push(p)
+            }
         }
-        
+
+
+        while(this.nightActionSequence.length > 0){
+            let a = this.nightActionSequence.shift()
+            console.log(a)
+            switch(a.type){
+                case 'AuxiliaryOfficerCheck':
+                    if(a.origin.isAlive === true){
+                        this.sendEventToGroup(this.queryAlivePlayersByRoleName('AuxiliaryOfficer'), 
+                        'AuxiliaryOfficerCheckResult', a.target.role.affiliation)
+                    }
+                break
+                // case "MafiaKill":
+                //     attackCount[a.target.index] ++
+                //     // todo: 发送提示
+                // break
+
+                // case "SheriffCheck":
+                //     // todo: 没啥特别的...就是发送消息去就好
+                // break
+
+                // case "DoctorHeal":
+                //     healCount[a.target.index] ++
+                //     // todo: 发送提示
+                // break
+            }
+        }
     }
-
-    // addNightAction(type, args){
-    //     let existedEvents = this.nightActionSequence.filter((a) => a.type === type)
-
-    //     switch(type){
-    //         case "MafiaKill":
-    //             if(existedEvents.length === 1) 
-    //                 this.nightActionSequence.splice(this.nightActionSequence.indexOf(existedEvents.pop()), 1)
-    //             this.nightActionSequence.push({type, target:args.target})
-    //         break
-    //     }
-    // }
 
     abortSetupStage(){
         if(this.gameStage?.name === "setup"){
@@ -513,8 +572,8 @@ class Game{
     }
 
     lynchVoteCheck(){
-        let spll = this.alivePlayerList.length
-        const voteNeeded = spll % 2 === 0 ? ((spll / 2) + 1) : Math.ceil(spll / 2)
+        let apll = this.alivePlayerList.length
+        const voteNeeded = apll % 2 === 0 ? ((apll / 2) + 1) : Math.ceil(apll / 2)
         let lynchTarget = this.voteCheck('LynchVote', this.alivePlayerList, this.alivePlayerList, voteNeeded)
         if(lynchTarget !== undefined){
             this.sendEventToAll("SetLynchTarget", lynchTarget)
@@ -531,7 +590,14 @@ class Game{
         // Note that when a tie vote occurs, there can be multiple targets
         let killTargets = this.voteCheck('MafiaKillVote', this.queryAlivePlayersByCategory('Mafia'), this.alivePlayerList)
         this.mafiaKillTargets = killTargets
-        // todo:发往客户端的提示信息
+        this.sendEventToGroup(this.queryAlivePlayersByCategory('Mafia'),  'MafiaKillTargets', killTargets.map(p => p.index))
+    }
+
+    auxiliaryOfficerCheckVoteCheck(){
+        // Note that when a tie vote occurs, there can be multiple targets
+        let checkTargets = this.voteCheck('AuxiliaryOfficerCheckVote', this.queryAlivePlayersByRoleName('AuxiliaryOfficer'), this.alivePlayerList)
+        this.auxiliaryOfficerCheckTargets = checkTargets
+        this.sendEventToGroup(this.queryAlivePlayersByRoleName('AuxiliaryOfficer'),  'AuxiliaryOfficerCheckTargets', checkTargets.map(p => p.index))
     }
 
     // 首先检查是否有一半的玩家投票重选主机，如果有，随机选择一个主机
@@ -595,19 +661,22 @@ class Game{
         // 否则得票最高的玩家将被返回，可以返回多个(MafiaKillVote)
         if(voteNeeded !== undefined){
             for(const [index, vc] of voteCount.entries()){
-                console.log(vc)
                 if(vc >= voteNeeded){
                     return this.playerList[index]
                 }
             }
             return undefined
         }else{
-            let voteMax = Math.max(voteCount)
-            let voteMaxIndexArray = voteCount.map((vc, idx) => {
-                if(vc === voteMax)
-                    return idx
-            })
-            return voteMaxIndexArray.map((idx) => this.playerList[idx])
+            // let voteMax = Math.max(voteCount)
+            const voteMax = voteCount.reduce((a, b) => Math.max(a, b), -Infinity);
+
+            console.log('vc:',voteCount,'vm:', voteMax)
+            if(voteMax > 0){
+                let voteMaxIndexArray = voteCount.map((vc, idx) => {return  vc === voteMax ? idx:undefined}).filter(vidx => vidx !== undefined)
+                if(voteMaxIndexArray.length > 0)
+                    return voteMaxIndexArray.map((idx) => this.playerList[idx])
+            }
+            return undefined
         }
     }
 
@@ -616,7 +685,8 @@ class Game{
 
         // "day" stage end
         this.gameStage.end()
-        this.sendEventToAll("SetExecutionTarget", player)
+        this.executionTarget = player
+        this.sendEventToAll("SetExecutionTarget", this.executionTarget)
         await this.newGameStage("day/execution/lastWord", executionLenghtMin/2)
         player.isAlive = false
         player.deathReason = "Execution"
@@ -626,6 +696,7 @@ class Game{
 
         this.sendEventToAll('SetRecentlyDeadPlayers', this.recentlyDeadPlayers.map(p => this.getPlayerDeathDeclearData(p)))
         await this.newGameStage("animation/execution/deathDeclear", this.recentlyDeadPlayers.length * 0.1)
+        this.executionTarget = undefined
 
         await this.newGameStage("day/execution/discussion", executionLenghtMin/2)
         await this.victoryCheck()
@@ -680,14 +751,6 @@ class Game{
         })
     }
 
-    // clearAllTimer(){
-    //     for (const [key, value] of Object.entries(this)) {
-    //         if(key.endsWith("Timer")){
-    //             value.clear()
-    //         }
-    //     }
-    // }
-
     userQuit(user){
         let player = this.playerList.find(p => p.user === user)
         this.sendEventToGroup(this.onlinePlayerList, "PlayerQuit", player)
@@ -695,6 +758,7 @@ class Game{
             this.repickHost(this.getNewRandomHost())
 
         player.user = undefined
+        // todo: AFK Kill
 
         if(this.onlinePlayerList.length === 0){
             this.status = 'end'
@@ -718,6 +782,34 @@ function shuffleArray(array) {
 
 function isValidIndex(index, arrayLength) {
     return Number.isInteger(index) && index >= 0 && index < arrayLength;
+}
+
+function filterAndRemove(array, condition) {
+    let newArray = array.filter(condition)
+
+    for (let i = array.length - 1; i >= 0; i--) {
+        if (condition(array[i])) {
+            array.splice(i, 1)
+        }
+    }
+
+    return newArray
+}
+
+function interleaveArrays(arr1, arr2) {
+    let result = [];
+    let maxLength = Math.max(arr1.length, arr2.length);
+
+    for (let i = 0; i < maxLength; i++) {
+        if (i < arr1.length) {
+            result.push(arr1[i]);
+        }
+        if (i < arr2.length) {
+            result.push(arr2[i]);
+        }
+    }
+
+    return result;
 }
 
 class Player{

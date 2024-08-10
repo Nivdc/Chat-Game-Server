@@ -144,7 +144,7 @@ document.addEventListener('alpine:init', () => {
 
                     this.createTimer('临终遗言', 0.4/2, ()=>{this.timer = undefined})
                 }
-                else if(this.status === 'animation/execution/deathDeclear'){
+                else if(this.status.split('/').includes('deathDeclear')){
                     this.playAnimation('deathDeclear')
                 }
                 else if(this.status === 'day/execution/discussion'){
@@ -293,6 +293,90 @@ document.addEventListener('alpine:init', () => {
                 lastWillContent.style = 'color:NavajoWhite;background-color:rgba(0, 0, 0, 0.2);'
                 this.addMessageWithoutLog(lastWillContent)
             },
+
+            'MafiaKillVote':function(data){
+                let voter = this.playerList[data.voterIndex]
+                let target = this.playerList[data.targetIndex]
+                let message = new MagicString()
+                message.append(voter.getNameMagicString())
+                if(data.previousTargetIndex === undefined)
+                    message.addText(' 投票杀死 ')
+                else
+                    message.addText(' 将他的投票改为 ')
+                message.append(target.getNameMagicString())
+                message.style = `background-color:${hexToRgba(target.color, 0.5)};text-shadow: 1px 1px 0px #000000;`
+                this.addMessage(message)
+            },
+            'MafiaKillVoteCancel':function(data){
+                let voter = this.playerList[data.voterIndex]
+                let message = new MagicString()
+                message.append(voter.getNameMagicString())
+                message.addText(' 取消了他的投票')
+                message.style = `background-color: rgba(0, 0, 0, 0.5);`
+                this.addMessage(message)
+            },
+            'MafiaKillTargets':function(data){
+                let message = new  MagicString()
+                let targets = data.map(pidx => this.playerList[pidx])
+                if(targets.length === 1){
+                    message.addText('你们决定杀死 ')
+                    message.append(targets[0].getNameMagicString())
+                    message.style = `background-color:${hexToRgba(targets[0].color, 0.5)};text-shadow: 1px 1px 0px #000000;`
+                }
+                else if(targets.length > 1){
+                    message.addText('你们决定在[ ')
+                    for(const [i, t] of targets.entries()){
+                        message.append(t.getNameMagicString())
+                        if(i < (targets.length-1))
+                            message.addText('、')
+                    }
+                    message.addText(' ] 中随机杀死一人。')
+                    message.style = `background-color: rgba(0, 0, 0, 0.5);`
+                }
+                this.addMessage(message)
+            },
+
+            'AuxiliaryOfficerCheckVote':function(data){
+                let voter = this.playerList[data.voterIndex]
+                let target = this.playerList[data.targetIndex]
+                let message = new MagicString()
+                message.append(voter.getNameMagicString())
+                if(data.previousTargetIndex === undefined)
+                    message.addText(' 投票搜查 ')
+                else
+                    message.addText(' 将他的投票改为 ')
+                message.append(target.getNameMagicString())
+                message.style = `background-color:${hexToRgba(target.color, 0.5)};text-shadow: 1px 1px 0px #000000;`
+                this.addMessage(message)
+            },
+            'AuxiliaryOfficerCheckVoteCancel':function(data){
+                let voter = this.playerList[data.voterIndex]
+                let message = new MagicString()
+                message.append(voter.getNameMagicString())
+                message.addText(' 取消了他的投票')
+                message.style = `background-color: rgba(0, 0, 0, 0.5);`
+                this.addMessage(message)
+            },
+            'AuxiliaryOfficerCheckTargets':function(data){
+                let message = new  MagicString()
+                let targets = data.map(pidx => this.playerList[pidx])
+                if(targets.length === 1){
+                    message.addText('你们决定搜查 ')
+                    message.append(targets[0].getNameMagicString())
+                    message.style = `background-color:${hexToRgba(targets[0].color, 0.5)};text-shadow: 1px 1px 0px #000000;`
+                }
+                else if(targets.length > 1){
+                    message.addText('你们决定在[ ')
+                    for(const [i, t] of targets.entries()){
+                        message.append(t.getNameMagicString())
+                        if(i < (targets.length-1))
+                            message.addText('、')
+                    }
+                    message.addText(' ] 中随机搜查一人。')
+                    message.style = `background-color: rgba(0, 0, 0, 0.5);`
+                }
+                this.addMessage(message)
+            },
         },
         commandHandler(commandString){
             [command, ...args] = commandString.split(" ")
@@ -300,7 +384,6 @@ document.addEventListener('alpine:init', () => {
             switch(command){
                 case 'repick':
                     let playerIndex = Number(args.shift())
-                    console.log(playerIndex)
                     sendEvent("RepickHost", playerIndex?playerIndex-1:undefined)
                 break
 
@@ -315,10 +398,10 @@ document.addEventListener('alpine:init', () => {
                         if(this.setting.enableLastWill){
                             sendEvent("SetLastWill", args.shift())
                         }else{
-                            this.addSystemHintText("本局游戏没有启用遗言")
+                            this.addSystemHintText("本局游戏没有启用遗嘱")
                         }
                     }else{
-                        this.addSystemHintText("当前阶段不允许设置遗言")
+                        this.addSystemHintText("抱歉，现在不能设置遗嘱")
                     }
                 break
 
@@ -337,6 +420,24 @@ document.addEventListener('alpine:init', () => {
                 break
                 case 'LynchVoteCancel':
                     sendEvent('LynchVoteCancel')
+                break
+
+                case 'tg':
+                case 'target':
+                    let targetIndex = Number(args.shift())-1
+                    if(this.myRole.affiliationName === 'Mafia'){
+                        if(Number.isNaN(targetIndex) === false)
+                            sendEvent('MafiaKillVote', targetIndex)
+                        else
+                            sendEvent('MafiaKillVoteCancel')
+                    }
+                    else if(this.myRole.name === 'AuxiliaryOfficer'){
+                        // todo: 提示不允许投给队友
+                        if(Number.isNaN(targetIndex) === false)
+                            sendEvent('AuxiliaryOfficerCheckVote', targetIndex)
+                        else
+                            sendEvent('AuxiliaryOfficerCheckVoteCancel')
+                    }
                 break
 
                 default:
@@ -439,7 +540,7 @@ document.addEventListener('alpine:init', () => {
                                 if(lastWill !== undefined){
                                     let lastWillTitle = new MagicString()
                                     lastWillTitle.append(player.getNameMagicString())
-                                    lastWillTitle.addText(' 为我们留下了他的遗言：')
+                                    lastWillTitle.addText(' 给我们留下了他的遗嘱：')
                                     lastWillTitle.style = 'color:NavajoWhite;background-color:rgba(0, 0, 0, 0.2);'
                                     this.addMessage(lastWillTitle)
 
@@ -448,7 +549,7 @@ document.addEventListener('alpine:init', () => {
                                     lastWillContent.style = 'color:NavajoWhite;background-color:rgba(0, 0, 0, 0.2);'
                                     this.addMessage(lastWillContent)
                                 }else{
-                                    this.addSystemHintText('我们未能找到他的遗言。')
+                                    this.addSystemHintText('我们未能找到他的遗嘱。')
                                 }
                             }
                             this.gamePageTipMessage.class = 'animation-fadeOut-2s'
@@ -497,9 +598,11 @@ document.addEventListener('alpine:init', () => {
                     enablePrivateMessage: true,
                     
                     roleList: [
-                        "Citizen", "Citizen",
-                        "AuxiliaryOfficer", "AuxiliaryOfficer", 
-                        "Mafioso", "Mafioso", 
+                        // "Citizen", "Citizen",
+                        // "Sheriff",
+                        // "Doctor",
+                        "AuxiliaryOfficer",
+                        "Mafioso",
                     ],
                 }
             }
@@ -830,6 +933,8 @@ class Player{
 
 }
 
+
+// 这个类有潜力发展成html custom element，但是我还需要更多研究
 class MagicString{
     constructor({text, style, cssClass, parts} = {parts:[]}){
         this.text   = text      ?? ""

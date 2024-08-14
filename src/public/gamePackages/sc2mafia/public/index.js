@@ -377,6 +377,33 @@ document.addEventListener('alpine:init', () => {
                 }
                 this.addMessage(message)
             },
+            'AuxiliaryOfficerCheckResult':function(data){
+                let target = this.playerList[data.targetIndex]
+                let affiliation = this.affiliationSet.find(a => a.name === data.targetAffiliation)
+                let message = new MagicString()
+                message.append(target.getNameMagicString())
+                if(affiliation.name === 'Mafia'){
+                    message.addText(' 是 ')
+                    message.append(this.buildAffiliationNameMagicString(affiliation))
+                }else{
+                    message.addText(' 看起来不可疑。')
+                }
+                this.addMessage(message)
+            },
+
+            'TeamActionNotice':function(data){
+                let message = new MagicString()
+                message.addText('你们决定派出 ')
+                message.append(this.playerList[data.originIndex].getNameMagicString())
+                if(this.myRole.affiliation.name === 'Mafia'){
+                    message.addText(' 去杀死 ')
+                }
+                else if(this.myRole.name === 'AuxiliaryOfficer'){
+                    message.addText(' 去搜查 ')
+                }
+                message.append(this.playerList[data.targetIndex].getNameMagicString())
+                this.addMessage(message)
+            }
         },
         commandHandler(commandString){
             [command, ...args] = commandString.split(" ")
@@ -638,6 +665,7 @@ document.addEventListener('alpine:init', () => {
         addMessage(message){
             this.addMessageWithoutLog(message)
             this.messageLog.push(message)
+            console.log(this.messageLog)
         },
         addMessageWithoutLog(message){
             this.messageList.push(message)
@@ -865,7 +893,10 @@ document.addEventListener('alpine:init', () => {
         },
 
         // 游戏结束后显示的演员表
-        cast:undefined
+        cast:undefined,
+
+        // 消息历史记录
+        messageLogToggle:false,
     }))
 
     function cloneDeep(o){

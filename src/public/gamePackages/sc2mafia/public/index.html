@@ -297,7 +297,7 @@
                     </div>
                     <div id="gamePageButtonBar" class="buttonBar" style="display: flex;margin-bottom: 1em;column-gap: 0.5em;">
                         <button>遗言</button>
-                        <button>日志</button>
+                        <button @click="messageLogToggle = !messageLogToggle">日志</button>
                         <button>跳过白天</button>
                     </div>
                     <div class="chatForm border">
@@ -393,6 +393,19 @@
                     <p>Dark.Revenant（原作者）</p>
                     <p>国士无双</p>
                 </div> -->
+            </div>
+
+            <div id="messageLog" class="chatForm border" style="background-color: rgba(0, 0, 0, 0.2);position:absolute;bottom: 1em;height: 35em;padding: 1em;" x-show="messageLogToggle">
+                <div class="chatMessageList scrollbar">
+                    <template x-for="message in messageLog">
+                        <p :style="message.style" :class="message.class">
+                            <span x-text="message.text"></span>
+                            <template x-for="messagePart in message.parts">
+                                <span x-text="messagePart.text" :style="messagePart.style" :class="messagePart.class"></span>
+                            </template>
+                        </p>
+                    </template>
+                </div>
             </div>
 
         </div>

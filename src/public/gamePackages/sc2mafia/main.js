@@ -725,15 +725,21 @@ class Game{
     }
 
     async victoryCheck(){
-        let town_sp_l = this.queryAlivePlayersByCategory("Town").length
-        let mafia_sp_l = this.queryAlivePlayersByCategory("Mafia").length
+        let town_ap_l = this.queryAlivePlayersByCategory("Town").length
+        let mafia_ap_l = this.queryAlivePlayersByCategory("Mafia").length
         
-        if(town_sp_l === 0){
+        if(town_ap_l === 0){
             this.winningFaction = "Mafia"
             this.winners = this.queryAlivePlayersByCategory("Mafia")
-        }else if(mafia_sp_l === 0){
+        }else if(mafia_ap_l === 0){
             this.winningFaction = "Town"
             this.winners = this.queryAlivePlayersByCategory("Town")
+        }else if(this.setting.protectCitizensMode === true){
+            let citizens_ap_l = this.queryAlivePlayersByRoleName("Citizen").length
+            if(citizens_ap_l === 0){
+                this.winningFaction = "Mafia"
+                this.winners = this.queryAlivePlayersByCategory("Mafia")
+            }
         }
         
         if(this.winningFaction !== undefined){
@@ -747,8 +753,6 @@ class Game{
             this.status = 'end'
             this.room.endGame()
         }
-
-        console.log(this.onlinePlayerList.length)
     }
 
     queryAlivePlayersByCategory(categoryString){

@@ -45,10 +45,10 @@
                             <label>启用遗言</label>
                             <input type="checkbox" x-model="setting.enableLastWill" />
                         </div>
-                        <div>
+                        <!-- <div>
                             <label>启用击杀留言</label>
                             <input type="checkbox" x-model="setting.enableKillMessage" />
-                        </div>
+                        </div> -->
                         <div>
                             <label>启用私信</label>
                             <input type="checkbox" x-model="setting.enablePrivateMessage" />
@@ -267,7 +267,7 @@
                 </form>
             </div>
         </div>
-        <div id="gamePage" style="display: flex;flex-direction:column;height: 100%;align-items: center;" class="flex" x-show="isRunning">
+        <div id="gamePage" style="display: flex;flex-direction:column;height: 100%;align-items: center;justify-content: center;" class="flex" x-show="isRunning">
             <p style="position: absolute;top:1%;right: 1%;padding: 0.5em;background-color: rgba(0, 0, 0, 0.2);" class="border" x-text="`${timer?.name} 阶段剩余: ${timer?.durationSec} 秒`" x-show="timer"></p>
             <p id="gamePageTipMessage" :style="'position: absolute;top: 10%;' + gamePageTipMessage?.style " :class="gamePageTipMessage?.class">
                 <span x-text="gamePageTipMessage?.text"></span>
@@ -296,7 +296,7 @@
                         </div>
                     </div>
                     <div id="gamePageButtonBar" class="buttonBar" style="display: flex;margin-bottom: 1em;column-gap: 0.5em;">
-                        <button>遗言</button>
+                        <button @click="lastWillEditorToggle = !lastWillEditorToggle">遗言</button>
                         <button @click="messageLogToggle = !messageLogToggle">日志</button>
                         <button>跳过白天</button>
                     </div>
@@ -395,6 +395,7 @@
                 </div> -->
             </div>
 
+            <!-- 消息历史 -->
             <div id="messageLog" class="chatForm border" style="background-color: rgba(0, 0, 0, 0.2);position:absolute;bottom: 1em;height: 35em;padding: 1em;" x-show="messageLogToggle">
                 <div class="chatMessageList scrollbar">
                     <template x-for="message in messageLog">
@@ -408,6 +409,15 @@
                 </div>
             </div>
 
+            <!-- 遗言框 -->
+            <div id="lastWillEditor" class="border flex" style="background-color: rgba(0, 0, 0, 0.2);position:absolute;padding: 0.2em;column-gap: 0.2em;" x-show="lastWillEditorToggle">
+                <div class="flex" style="flex-direction: column;width: 25em;">
+                    <input id="lastWillInput1" type="text" style="flex: auto;font-size: 1.2em;">
+                    <hr/>
+                    <input id="lastWillInput2" type="text" style="flex: auto;font-size: 1.2em;">
+                </div>
+                <button style="width: 5em;height: 5em;flex:initial" @click="lastWillSubmit()"></button>
+            </div>
         </div>
 
         <audio id="music" loop>

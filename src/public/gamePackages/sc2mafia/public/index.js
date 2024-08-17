@@ -286,12 +286,27 @@ document.addEventListener('alpine:init', () => {
             },
 
             'SetLastWill':function(data){
+                let lastWillString = data
+                let lwsa = lastWillString.split('\n')
+                let lws1 = lwsa[0] ?? ""
+                let lws2 = lwsa[1] ?? ""
+
                 this.addSystemHintText('你已将自己的遗言设置为：')
 
                 let lastWillContent = new MagicString()
-                lastWillContent.addText(data)
+                lastWillContent.addText(lws1)
                 lastWillContent.style = 'color:NavajoWhite;background-color:rgba(0, 0, 0, 0.2);'
                 this.addMessageWithoutLog(lastWillContent)
+
+                if(isEmpty(lws2) === false){
+                    let lastWillContent2 = new MagicString()
+                    lastWillContent2.addText(lws2)
+                    lastWillContent2.style = 'color:NavajoWhite;background-color:rgba(0, 0, 0, 0.2);'
+                    this.addMessageWithoutLog(lastWillContent2)
+                }
+
+                document.getElementById('lastWillInput1').value = lws1
+                document.getElementById('lastWillInput2').value = lws2
             },
 
             'MafiaKillVote':function(data){
@@ -555,7 +570,7 @@ document.addEventListener('alpine:init', () => {
                         setTimeout(() => {
                             this.gamePageTipMessage = new MagicString()
                             this.gamePageTipMessage.append(player.getNameMagicString())
-                            this.gamePageTipMessage.addText(' 的身份是 ')
+                            this.gamePageTipMessage.addText(' 的角色是 ')
                             this.gamePageTipMessage.append(role.getNameMessagePart())
                             let newMessage = cloneDeep(this.gamePageTipMessage)
                             newMessage.style = 'background-color:rgba(0, 0, 0, 0.2);'
@@ -571,10 +586,21 @@ document.addEventListener('alpine:init', () => {
                                     lastWillTitle.style = 'color:NavajoWhite;background-color:rgba(0, 0, 0, 0.2);'
                                     this.addMessage(lastWillTitle)
 
+                                    let lwsa = lastWill.split('\n')
+                                    let lws1 = lwsa[0] ?? ""
+                                    let lws2 = lwsa[1] ?? ""
+                    
                                     let lastWillContent = new MagicString()
-                                    lastWillContent.addText(lastWill)
+                                    lastWillContent.addText(lws1)
                                     lastWillContent.style = 'color:NavajoWhite;background-color:rgba(0, 0, 0, 0.2);'
                                     this.addMessage(lastWillContent)
+                    
+                                    if(isEmpty(lws2) === false){
+                                        let lastWillContent2 = new MagicString()
+                                        lastWillContent2.addText(lws2)
+                                        lastWillContent2.style = 'color:NavajoWhite;background-color:rgba(0, 0, 0, 0.2);'
+                                        this.addMessage(lastWillContent2)
+                                    }
                                 }else{
                                     this.addSystemHintText('我们未能找到他的遗嘱。')
                                 }
@@ -897,11 +923,29 @@ document.addEventListener('alpine:init', () => {
 
         // 消息历史记录
         messageLogToggle:false,
+
+        // 遗言编辑栏
+        lastWillEditorToggle:false,
+        lastWillSubmit(){
+            let lwi1t = document.getElementById('lastWillInput1').value
+            let lwi2t = document.getElementById('lastWillInput2').value
+
+            let lws = isEmpty(lwi2t) ? lwi1t : `${lwi1t}\n${lwi2t}`
+
+            if(isEmpty(lws) === false)
+                this.commandHandler(`lastWill ${lws}`)
+
+            this.lastWillEditorToggle = false
+        }
     }))
 
     function cloneDeep(o){
         return JSON.parse(JSON.stringify(o))
     }
+
+    function isEmpty(str) {  
+        return str === null || str === undefined || /^\s*$/.test(str);  
+    }  
 
     function onMessage(e){
         const event = JSON.parse(e.data)

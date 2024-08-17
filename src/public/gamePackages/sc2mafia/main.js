@@ -437,6 +437,7 @@ class Game{
             let realKiller = getRandomElement(this.queryAlivePlayersByRoleName('Mafioso'))
             this.nightActionSequence.push({type:"MafiaKillAttack", origin:realKiller, target:realTarget})
             this.mafiaKillTargets = undefined
+            this.sendEventToGroup(this.queryAlivePlayersByCategory('Mafia'), 'TeamActionNotice', {originIndex:realKiller.index, targetIndex:realTarget.index})
         }
 
         // AuxiliaryOfficerCheck
@@ -445,6 +446,7 @@ class Game{
             let realOrigin = getRandomElement(this.queryAlivePlayersByRoleName('AuxiliaryOfficer'))
             this.nightActionSequence.push({type:"AuxiliaryOfficerCheck", origin:realOrigin, target:realTarget})
             this.auxiliaryOfficerCheckTargets = undefined
+            this.sendEventToGroup(this.queryAlivePlayersByRoleName('AuxiliaryOfficer'), 'TeamActionNotice', {originIndex:realOrigin.index, targetIndex:realTarget.index})
         }
 
         // SoloPlayer
@@ -520,7 +522,7 @@ class Game{
                 case 'AuxiliaryOfficerCheck':
                     if(a.origin.isAlive === true){
                         this.sendEventToGroup(this.queryAlivePlayersByRoleName('AuxiliaryOfficer'), 
-                        'AuxiliaryOfficerCheckResult', a.target.role.affiliation)
+                        'AuxiliaryOfficerCheckResult', {targetIndex:a.target.index, targetAffiliation:a.target.role.affiliation})
                     }
                 break
                 // case "MafiaKill":
@@ -561,6 +563,8 @@ class Game{
                 }else if(this.status.startsWith("night") && this.status.split('/').includes("discussion")){
                     if(sender.role.affiliation === "Mafia")
                         targetGroup = this.queryAlivePlayersByCategory(sender.role.affiliation)
+                    else if(sender.role.name === "AuxiliaryOfficer")
+                        targetGroup = this.queryAlivePlayersByRoleName("AuxiliaryOfficer")
                 }
             }else{
                 targetGroup = this.deadPlayerList
@@ -737,6 +741,12 @@ class Game{
             await this.newGameStage("end", 0.2)
             this.room.endGame()
         }
+        else if(this.onlinePlayerList.length === 0){
+            this.status = 'end'
+            this.room.endGame()
+        }
+
+        console.log(this.onlinePlayerList.length)
     }
 
     queryAlivePlayersByCategory(categoryString){

@@ -37,10 +37,10 @@
                             <label>保护市民模式</label>
                             <input type="checkbox" x-model="setting.protectCitizensMode" />
                         </div>
-                        <div>
+                        <!-- <div>
                             <label>启用自设名字</label>
                             <input type="checkbox" x-model="setting.enableCustomName" />
-                        </div>
+                        </div> -->
                         <div>
                             <label>启用遗言</label>
                             <input type="checkbox" x-model="setting.enableLastWill" />
@@ -49,10 +49,10 @@
                             <label>启用击杀留言</label>
                             <input type="checkbox" x-model="setting.enableKillMessage" />
                         </div> -->
-                        <div>
+                        <!-- <div>
                             <label>启用私信</label>
                             <input type="checkbox" x-model="setting.enablePrivateMessage" />
-                        </div>
+                        </div> -->
                         
                     </div>
                     <div>
@@ -76,10 +76,10 @@
                             <label>启用讨论</label>
                             <input type="checkbox" x-model="setting.enableDiscussion" />
                         </span>
-                        <span>
+                        <!-- <span>
                             <label>启用审判</label>
                             <input type="checkbox" x-model="setting.enableTrial" />
-                        </span>
+                        </span> -->
                         <div x-show="setting.enableDiscussion" x-transition>
                             <h5>讨论设置</h5>
                             <div>
@@ -285,11 +285,15 @@
                     <div id ="graveyardAndRoleList" style="display: flex;flex: auto;margin-bottom: 1em;">
                         <div id="graveyard"style="flex:initial;width: 10em;margin-right:1em;background-color: rgba(0, 0, 0, 0.1);">
                             <h3>墓地</h3>
-                            <!-- <div class="scrollbar">
-                                <template x-for="deadPlayer in playerList.filter(p => p.isAlive===false)">
-                                    <span x-text="role.nameZh??role.name" :style="`color:${role.affiliation.color};`"></span>
+                            <div class="scrollbar">
+                                <template x-for="player in playerList.filter(p => p.isAlive===false)">
+                                    <p class="flex" style="column-gap: 0.2em;">
+                                        <span x-text="`${player.index+1}. `"></span>
+                                        <span x-text="player.name" :style="`color:${player.color};flex:auto;`"></span>
+                                        <span x-text="`${player.role.getNameMessagePart().text}`" :style="`${player.role.getNameMessagePart().style}`"></span>
+                                    </p>
                                 </template>
-                            </div> -->
+                            </div>
                         </div>
                         <div style="display: flex;flex-direction: column;position: relative;flex: initial;width: 10em;background-color: rgba(0, 0, 0, 0.1);">
                             <h3 style="margin-bottom: 0.2em;flex: initial;">角色列表</h3>
@@ -370,8 +374,8 @@
                             <div class="scrollbar" style="display:flex;flex-direction: column;flex: auto;background-color: rgba(0, 0, 0, 0.1);min-height: 22em;height: 0px;padding: 0.5em;overflow: auto;">
                                 <template x-for="player in playerList">
                                     <p class="flex" style="column-gap: 0.2em;">
-                                        <span x-text="`${player.index+1}. `"></span>
-                                        <span x-text="player.name" :style="`color:${player.color};flex:auto;`"></span>
+                                        <span x-text="`${player.index+1}. `" :style="player.isAlive? '': 'text-decoration-line: line-through;'"></span>
+                                        <span x-text="player.name" :style="player.isAlive? `color:${player.color};flex:auto;` : `text-decoration-line: line-through;flex:auto;`"></span>
                                         <button @click="clickTempButton(player)">临时按钮</button>
                                         <span x-text="lynchVoteCount?.at(player.index)" x-show="status.split('/').includes('lynchVote')"></span>
                                     </p>

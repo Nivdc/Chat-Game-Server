@@ -430,10 +430,6 @@ document.addEventListener('alpine:init', () => {
 
             'SetLynchVoteCount':function(data){
                 this.lynchVoteCount = data
-                console.log("vc:", this.lynchVoteCount)
-                console.log("vc1:", this.lynchVoteCount.at(0))
-                console.log("vc2:", this.lynchVoteCount.at(1))
-
             }
         },
         commandHandler(commandString){
@@ -582,9 +578,6 @@ document.addEventListener('alpine:init', () => {
                         let player      = this.playerList[deadPlayerData.index]
                         let role        = this.roleSet.find(r => r.name === deadPlayerData.roleName)
                         let lastWill    = deadPlayerData.lastWill
-                        player.isAlive  = false
-                        player.role     = role
-                        player.lastWill = lastWill
 
                         setTimeout(() => {
                             this.gamePageTipMessage = new MagicString()
@@ -595,6 +588,10 @@ document.addEventListener('alpine:init', () => {
                             newMessage.style = 'background-color:rgba(0, 0, 0, 0.2);'
                             this.addMessage(newMessage)
                             this.gamePageTipMessage.class = 'animation-fadeIn-1s'
+
+                            player.isAlive  = false
+                            player.role     = role
+                            player.lastWill = lastWill
                         }, 2000)
                         setTimeout(() => {
                             if(this.setting.enableLastWill === true){
@@ -663,7 +660,7 @@ document.addEventListener('alpine:init', () => {
                     discussionTime: 0.3,
                     
                     revealPlayerRoleOnDeath: true,
-                    protectCitizensMode:true,
+                    protectCitizensMode:false,
                     enableCustomName: true,
                     enableKillMessage: true,
                     enableLastWill: true,

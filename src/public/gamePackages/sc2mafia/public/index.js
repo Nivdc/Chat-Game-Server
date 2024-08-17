@@ -557,27 +557,51 @@ document.addEventListener('alpine:init', () => {
                     }, 3000)
                 break
                 case 'deathDeclear':
-                    if(this.recentlyDeadPlayers.length > 0)
-                        this.playAnimation('deathDeclearOnce', this.recentlyDeadPlayers.pop())
+                    if(this.recentlyDeadPlayers.length > 0){
+                        let delaySec = 0
+                        if(this.status === 'animation/daily/deathDeclear'){
+                            this.gamePageTipMessage = new MagicString()
+                            if(this.recentlyDeadPlayers.length === 1)
+                                this.gamePageTipMessage.addText("我们中的一人未能活过昨晚。")
+                            else if(this.recentlyDeadPlayers.length > 1)
+                                this.gamePageTipMessage.addText("我们中的一些人未能活过昨晚。")
+                            this.gamePageTipMessage.class = 'animation-fadeIn-1s'
+                            delaySec = 3
+                        }
 
-                    let animationCycleCount = 1
-                    while(this.recentlyDeadPlayers.length > 0){
                         setTimeout(()=>{
                             this.playAnimation('deathDeclearOnce', this.recentlyDeadPlayers.pop())
-                        }, 6 * animationCycleCount * 1000)
-                        animationCycleCount ++
+                            let animationCycleCount = 1
+
+                            while(this.recentlyDeadPlayers.length > 0){
+                                setTimeout(()=>{
+                                    this.playAnimation('deathDeclearOnce', this.recentlyDeadPlayers.pop())
+                                }, 6 * animationCycleCount * 1000)
+                                animationCycleCount ++
+                            }
+                        }, delaySec * 1000)
                     }
                 break
                 case 'deathDeclearOnce':
                     if(data !== undefined){
-                        // 这时候的提示，正在被'xxx 你还有什么遗言吗？'占用。
-                        if(this.gamePageTipMessage.class !== 'animation-fadeOut-2s')
-                            this.gamePageTipMessage.class = 'animation-fadeOut-2s'
-
                         let deadPlayerData  = data
                         let player      = this.playerList[deadPlayerData.index]
                         let role        = this.roleSet.find(r => r.name === deadPlayerData.roleName)
                         let lastWill    = deadPlayerData.lastWill
+
+                        if(this.status === 'animation/daily/deathDeclear'){
+                            this.gamePageTipMessage = new MagicString()
+                            this.gamePageTipMessage.append(player.getNameMagicString())
+                            this.gamePageTipMessage.addText(' 在这个早晨被发现时已经死亡了。')
+
+                            // todo: killerHint
+                        }
+                        else if(this.status === 'animation/execution/deathDeclear'){
+                            // 这个时候提示栏正在被“xxx，你还有什么遗言吗？”占用
+                            if(this.gamePageTipMessage.class !== 'animation-fadeOut-2s')
+                                this.gamePageTipMessage.class = 'animation-fadeOut-2s'
+                        }
+
 
                         setTimeout(() => {
                             this.gamePageTipMessage = new MagicString()

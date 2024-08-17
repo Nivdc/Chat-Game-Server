@@ -382,7 +382,7 @@ class Game{
     async deathDeclare(){
         if(this.recentlyDeadPlayers?.length > 0){
             this.sendEventToAll('SetRecentlyDeadPlayers', this.recentlyDeadPlayers.map(p => this.getPlayerDeathDeclearData(p)))
-            await this.newGameStage("animation/daily/deathDeclear", this.recentlyDeadPlayers.length * 0.1)
+            await this.newGameStage("animation/daily/deathDeclear", 0.05 + (this.recentlyDeadPlayers.length * 0.1))
         }
     }
 

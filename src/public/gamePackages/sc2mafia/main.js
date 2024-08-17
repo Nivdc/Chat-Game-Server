@@ -368,8 +368,10 @@ class Game{
 
         // 如果是第一天，就判断是否以白天/无处刑开局，如果不是，那就执行...有点绕
         // Except for the first day/No-Lynch...this is a bit counter-intuitive.
-        if(this.dayCount !== 1 || this.setting.startAt !== "day/No-Lynch")
+        if(this.dayCount !== 1 || this.setting.startAt !== "day/No-Lynch"){
+            this.sendEventToAll(`SetLynchVoteCount`, Array(this.playerList.length).fill(0))
             await this.newGameStage("day/discussion/lynchVote", this.setting.dayLength)
+        }
 
 
         this.dayOver = true
@@ -380,7 +382,7 @@ class Game{
     async deathDeclare(){
         if(this.recentlyDeadPlayers?.length > 0){
             this.sendEventToAll('SetRecentlyDeadPlayers', this.recentlyDeadPlayers.map(p => this.getPlayerDeathDeclearData(p)))
-            await this.newGameStage("animation/deathDeclear", this.recentlyDeadPlayers.length * 0.1)
+            await this.newGameStage("animation/daily/deathDeclear", this.recentlyDeadPlayers.length * 0.1)
         }
     }
 
@@ -487,7 +489,6 @@ class Game{
             let tempDeathReason = []
 
             while(anps.length > 0){
-                console.log(anps)
                 let action = anps.shift()
                 switch(action.type){
                     case 'MafiaKillAttack':
@@ -661,6 +662,9 @@ class Game{
             }
         }
 
+        if(voteType === 'lynchVote')
+            this.sendEventToAll(`SetLynchVoteCount`, voteCount)
+        
         // 如果定义了最小票数，达到最小票数的玩家对象将被返回(lynchVote)
         // 否则得票最高的玩家将被返回，可以返回多个(MafiaKillVote)
         if(voteNeeded !== undefined){
@@ -671,10 +675,8 @@ class Game{
             }
             return undefined
         }else{
-            // let voteMax = Math.max(voteCount)
             const voteMax = voteCount.reduce((a, b) => Math.max(a, b), -Infinity);
 
-            console.log('vc:',voteCount,'vm:', voteMax)
             if(voteMax > 0){
                 let voteMaxIndexArray = voteCount.map((vc, idx) => {return  vc === voteMax ? idx:undefined}).filter(vidx => vidx !== undefined)
                 if(voteMaxIndexArray.length > 0)

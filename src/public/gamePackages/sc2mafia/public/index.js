@@ -105,7 +105,6 @@ document.addEventListener('alpine:init', () => {
 
             'SetStatus':function(data){
                 this.status = data
-                console.log(this.status)
                 if(this.status === 'begin'){
                     this.clearMssagesList()
                     this.createTimer('试镜', 0.5, ()=>{this.timer = undefined})
@@ -118,6 +117,9 @@ document.addEventListener('alpine:init', () => {
                 else if(this.status === 'animation/nightToDay'){
                     this.playAnimation('nightToDay')
                 }
+                else if(this.status === 'animation/daily/deathDeclear'){
+                    this.playAnimation('deathDeclear')
+                }
                 else if(this.status === 'day/discussion'){
                     this.clearMssagesList()
                     this.playAnimation('showDayCount')
@@ -128,6 +130,14 @@ document.addEventListener('alpine:init', () => {
                         this.clearMssagesList()
                         this.playAnimation('showDayCount')
                     }
+
+                    const apll = this.playerList.filter(p => p.isAlive).length
+                    const voteNeeded = apll % 2 === 0 ? ((apll / 2) + 1) : Math.ceil(apll / 2)
+
+                    this.gamePageTipMessage = new MagicString()
+                    this.gamePageTipMessage.addText(`我们需要 ${voteNeeded} 票来将某人送上${this.setting.enableTrial? '审判台':'绞刑架'}。`)
+                    this.gamePageTipMessage.class = 'animation-fadeIn-1s'
+
                     this.createTimer('投票', this.setting.dayLength, ()=>{this.timer = undefined})
                 }
                 else if(this.status === 'day/trial/defense'){
@@ -144,7 +154,7 @@ document.addEventListener('alpine:init', () => {
 
                     this.createTimer('临终遗言', 0.4/2, ()=>{this.timer = undefined})
                 }
-                else if(this.status.split('/').includes('deathDeclear')){
+                else if(this.status === 'animation/execution/deathDeclear'){
                     this.playAnimation('deathDeclear')
                 }
                 else if(this.status === 'day/execution/discussion'){
@@ -203,7 +213,6 @@ document.addEventListener('alpine:init', () => {
             'SetTeam':function(data){
                 this.myTeam = {}
                 let teamPlayers = data.map(pd => this.playerList.find(p => p.index === pd.index))
-                // console.log('IAmHere!->',teamPlayers)
                 teamPlayers.forEach(p => {
                     let playerRoleData = data.find(pd => pd.index === p.index).role
                     p.role = this.roleSet.find(r => r.name === playerRoleData.name)
@@ -212,7 +221,6 @@ document.addEventListener('alpine:init', () => {
                 // 这里有一个this指针的绑定问题，下面这个函数的this绑定到了全局的game，暂时就先这样吧
                 this.myTeam.getMagicStrings = function(){
                     return this.myTeam.playerList.map(p => {
-                        console.log(p, p.role)
                         let ms = new MagicString()
                         ms.append(p.getIndexAndNameMagicString())
                         ms.addText(' (')
@@ -418,6 +426,14 @@ document.addEventListener('alpine:init', () => {
                 }
                 message.append(this.playerList[data.targetIndex].getNameMagicString())
                 this.addMessage(message)
+            },
+
+            'SetLynchVoteCount':function(data){
+                this.lynchVoteCount = data
+                console.log("vc:", this.lynchVoteCount)
+                console.log("vc1:", this.lynchVoteCount.at(0))
+                console.log("vc2:", this.lynchVoteCount.at(1))
+
             }
         },
         commandHandler(commandString){
@@ -460,7 +476,7 @@ document.addEventListener('alpine:init', () => {
                     else
                         this.addSystemHintText("当前阶段不允许进行审判投票")
                 break
-                case 'LynchVoteCancel':
+                case 'lynchVoteCancel':
                     sendEvent('LynchVoteCancel')
                 break
 
@@ -566,6 +582,9 @@ document.addEventListener('alpine:init', () => {
                         let player      = this.playerList[deadPlayerData.index]
                         let role        = this.roleSet.find(r => r.name === deadPlayerData.roleName)
                         let lastWill    = deadPlayerData.lastWill
+                        player.isAlive  = false
+                        player.role     = role
+                        player.lastWill = lastWill
 
                         setTimeout(() => {
                             this.gamePageTipMessage = new MagicString()
@@ -691,7 +710,6 @@ document.addEventListener('alpine:init', () => {
         addMessage(message){
             this.addMessageWithoutLog(message)
             this.messageLog.push(message)
-            console.log(this.messageLog)
         },
         addMessageWithoutLog(message){
             this.messageList.push(message)
@@ -912,6 +930,7 @@ document.addEventListener('alpine:init', () => {
         // 一些游戏数据
         myRole:undefined,
         myTeam:undefined,
+        lynchVoteCount:undefined,
 
         // 玩家列表...的按钮
         clickTempButton(player){
@@ -950,7 +969,7 @@ document.addEventListener('alpine:init', () => {
     function onMessage(e){
         const event = JSON.parse(e.data)
         window.dispatchEvent(new CustomEvent(event.type, { detail:event.data }))
-        console.log('recive <-', e)
+        console.log('recive <-', "type:", event.type, "data:", event.data)
     }
 
     function sendEvent(type, data){
@@ -978,8 +997,9 @@ document.addEventListener('alpine:init', () => {
 
 class Player{
     constructor(playerData, color){
-        this.data   = playerData
-        this.color  = html5ColorHexMap[color]??(color.startsWith('#')? color:`#${color}`)
+        this.data    = playerData
+        this.isAlive = playerData.isAlive ?? true
+        this.color   = html5ColorHexMap[color]??(color.startsWith('#')? color:`#${color}`)
     }
 
     get name(){

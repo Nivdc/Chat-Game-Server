@@ -446,7 +446,7 @@ ul{
     to { opacity: 0; }
 }
 
-.playerList{
+/* .playerList{
     min-height: 22em;
 }
 .playerList table,
@@ -463,7 +463,7 @@ ul{
     flex: initial;
     display: flex;
     justify-content: space-between;
-}
+} */
 
 .animation-dayToNight-6s {
     animation: dayToNight 6s forwards;

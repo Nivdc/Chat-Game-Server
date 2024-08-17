@@ -285,6 +285,11 @@
                     <div id ="graveyardAndRoleList" style="display: flex;flex: auto;margin-bottom: 1em;">
                         <div id="graveyard"style="flex:initial;width: 10em;margin-right:1em;background-color: rgba(0, 0, 0, 0.1);">
                             <h3>墓地</h3>
+                            <!-- <div class="scrollbar">
+                                <template x-for="deadPlayer in playerList.filter(p => p.isAlive===false)">
+                                    <span x-text="role.nameZh??role.name" :style="`color:${role.affiliation.color};`"></span>
+                                </template>
+                            </div> -->
                         </div>
                         <div style="display: flex;flex-direction: column;position: relative;flex: initial;width: 10em;background-color: rgba(0, 0, 0, 0.1);">
                             <h3 style="margin-bottom: 0.2em;flex: initial;">角色列表</h3>
@@ -298,7 +303,7 @@
                     <div id="gamePageButtonBar" class="buttonBar" style="display: flex;margin-bottom: 1em;column-gap: 0.5em;">
                         <button @click="lastWillEditorToggle = !lastWillEditorToggle">遗言</button>
                         <button @click="messageLogToggle = !messageLogToggle">日志</button>
-                        <button>跳过白天</button>
+                        <!-- <button>跳过白天</button> -->
                     </div>
                     <div class="chatForm border">
                         <div class="chatMessageList scrollbar">
@@ -362,12 +367,20 @@
                                     <span  style="color: var(--emphasized-content);" x-text="myRole?.affiliation.goalDescriptionZh"></span>
                                 </p>
                             </div>
-                            <div class="playerList scrollbar" style="display:flex;flex: auto;background-color: rgba(0, 0, 0, 0.1);">
-                                <table>
+                            <div class="scrollbar" style="display:flex;flex-direction: column;flex: auto;background-color: rgba(0, 0, 0, 0.1);min-height: 22em;height: 0px;padding: 0.5em;overflow: auto;">
+                                <template x-for="player in playerList">
+                                    <p class="flex" style="column-gap: 0.2em;">
+                                        <span x-text="`${player.index+1}. `"></span>
+                                        <span x-text="player.name" :style="`color:${player.color};flex:auto;`"></span>
+                                        <button @click="clickTempButton(player)">临时按钮</button>
+                                        <span x-text="lynchVoteCount?.at(player.index)" x-show="status.split('/').includes('lynchVote')"></span>
+                                    </p>
+                                </template>
+                                <!-- <table>
                                     <template x-for="player in playerList">
                                         <tr><td x-text="player.index+1"></td><td x-text="player.name" :style="`color:${player.color}`"></td><td><button @click="clickTempButton(player)">临时按钮</button></td></tr>
                                     </template>
-                                </table>
+                                </table> -->
                             </div>
                         </div>
                     </div>

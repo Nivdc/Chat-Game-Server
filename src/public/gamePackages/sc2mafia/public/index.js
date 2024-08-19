@@ -955,10 +955,11 @@ document.addEventListener('alpine:init', () => {
 
         // 玩家列表...的按钮
         clickTempButton(player){
+            let targetIndex = player.index + 1
             if(this.status.split('/').includes('lynchVote')){
-                this.commandHandler(`lynchVote ${player.index}`)
+                this.commandHandler(`lynchVote ${targetIndex}`)
             }else if(this.status === 'night/discussion'){
-                this.commandHandler(`target ${player.index}`)
+                this.commandHandler(`target ${targetIndex}`)
             }
         },
 

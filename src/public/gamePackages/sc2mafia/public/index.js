@@ -955,7 +955,11 @@ document.addEventListener('alpine:init', () => {
 
         // 玩家列表...的按钮
         clickTempButton(player){
-
+            if(this.status.split('/').includes('lynchVote')){
+                this.commandHandler(`lynchVote ${player.index}`)
+            }else if(this.status === 'night/discussion'){
+                this.commandHandler(`target ${player.index}`)
+            }
         },
 
         // 游戏结束后显示的演员表

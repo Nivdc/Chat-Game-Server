@@ -1,11 +1,11 @@
-import { generateGameData } from "./public/gameData/bakingRoleData"
+import { generateGameData } from "./public/gameData/bakingGameData"
 
 const gameDataPath = import.meta.dir + '/public/gameData/'
-if(await Bun.file(gameDataPath+'roleData.json').exists() === false)
+if(await Bun.file(gameDataPath+'gameData.json').exists() === false)
     await generateGameData()
 
 let defaultSetting = await readJsonFile(gameDataPath+"defaultSetting.json")
-let roleSet = await readJsonFile(gameDataPath+"roleData.json")
+let roleSet = await readJsonFile(gameDataPath+"gameData.json")
 
 async function readJsonFile(path){
     return await Bun.file(path).json()
@@ -182,11 +182,11 @@ class Game{
                         "MafiaKillVote":(voterIndex, targetIndex)=>{
                             let voterIsAlive = this.playerList[voterIndex].isAlive
                             let targetIsAlive = this.playerList[targetIndex].isAlive
-                            let voterIsMafia = this.queryAlivePlayersByCategory('Mafia').map(p => p.index).includes(voterIndex)
+                            let voterIsMafia = this.queryAlivePlayersByRoleTag('Mafia').map(p => p.index).includes(voterIndex)
                             // 为什么要限制黑手党在晚上投票呢？白天也可以投啊
                             // let gameStatusIsNightDiscussion = (this.status === 'night/discussion')
                             // 为什么要限制黑手党给自己人投票呢？我觉得他可以啊
-                            // let targetIsNotMafia = (this.queryAlivePlayersByCategory('Mafia').map(p => p.index).includes(targetIndex) === false)
+                            // let targetIsNotMafia = (this.queryAlivePlayersByRoleTag('Mafia').map(p => p.index).includes(targetIndex) === false)
                             return voterIsAlive && targetIsAlive && voterIsMafia
                         },
                         "AuxiliaryOfficerCheckVote":(voterIndex, targetIndex)=>{
@@ -238,7 +238,7 @@ class Game{
 
             case 'MafiaKillVote':
             case 'MafiaKillVoteCancel':
-                targetGroup = this.queryAlivePlayersByCategory('Mafia')
+                targetGroup = this.queryAlivePlayersByRoleTag('Mafia')
             break
 
             case 'AuxiliaryOfficerCheckVote':
@@ -288,7 +288,7 @@ class Game{
             this.playerList.forEach(p=>{
                 p.sendEvent("SetRole", p.role)
                 if(p.role.affiliation === "Mafia")
-                    p.sendEvent("SetTeam", this.queryAlivePlayersByCategory("Mafia").map(p=>p.toJSON_includeRole()))
+                    p.sendEvent("SetTeam", this.queryAlivePlayersByRoleTag("Mafia").map(p=>p.toJSON_includeRole()))
                 else if(p.role.name === "AuxiliaryOfficer")
                     p.sendEvent("SetTeam", this.queryAlivePlayersByRoleName("AuxiliaryOfficer").map(p=>p.toJSON_includeRole()))
 
@@ -439,7 +439,7 @@ class Game{
             let realKiller = getRandomElement(this.queryAlivePlayersByRoleName('Mafioso'))
             this.nightActionSequence.push({type:"MafiaKillAttack", origin:realKiller, target:realTarget})
             this.mafiaKillTargets = undefined
-            this.sendEventToGroup(this.queryAlivePlayersByCategory('Mafia'), 'TeamActionNotice', {originIndex:realKiller.index, targetIndex:realTarget.index})
+            this.sendEventToGroup(this.queryAlivePlayersByRoleTag('Mafia'), 'TeamActionNotice', {originIndex:realKiller.index, targetIndex:realTarget.index})
         }
 
         // AuxiliaryOfficerCheck
@@ -563,7 +563,7 @@ class Game{
                     targetGroup = this.alivePlayerList
                 }else if(this.status.startsWith("night") && this.status.split('/').includes("discussion")){
                     if(sender.role.affiliation === "Mafia")
-                        targetGroup = this.queryAlivePlayersByCategory(sender.role.affiliation)
+                        targetGroup = this.queryAlivePlayersByRoleTag(sender.role.affiliation)
                     else if(sender.role.name === "AuxiliaryOfficer")
                         targetGroup = this.queryAlivePlayersByRoleName("AuxiliaryOfficer")
                 }
@@ -593,9 +593,9 @@ class Game{
 
     mafiaKillVoteCheck(){
         // Note that when a tie vote occurs, there can be multiple targets
-        let killTargets = this.voteCheck('MafiaKillVote', this.queryAlivePlayersByCategory('Mafia'), this.alivePlayerList)
+        let killTargets = this.voteCheck('MafiaKillVote', this.queryAlivePlayersByRoleTag('Mafia'), this.alivePlayerList)
         this.mafiaKillTargets = killTargets
-        this.sendEventToGroup(this.queryAlivePlayersByCategory('Mafia'),  'MafiaKillTargets', killTargets.map(p => p.index))
+        this.sendEventToGroup(this.queryAlivePlayersByRoleTag('Mafia'),  'MafiaKillTargets', killTargets.map(p => p.index))
     }
 
     auxiliaryOfficerCheckVoteCheck(){
@@ -725,20 +725,20 @@ class Game{
     }
 
     async victoryCheck(){
-        let town_ap_l = this.queryAlivePlayersByCategory("Town").length
-        let mafia_ap_l = this.queryAlivePlayersByCategory("Mafia").length
+        let town_ap_l = this.queryAlivePlayersByRoleTag("Town").length
+        let mafia_ap_l = this.queryAlivePlayersByRoleTag("Mafia").length
         
         if(town_ap_l === 0){
             this.winningFaction = "Mafia"
-            this.winners = this.queryAlivePlayersByCategory("Mafia")
+            this.winners = this.queryAlivePlayersByRoleTag("Mafia")
         }else if(mafia_ap_l === 0){
             this.winningFaction = "Town"
-            this.winners = this.queryAlivePlayersByCategory("Town")
+            this.winners = this.queryAlivePlayersByRoleTag("Town")
         }else if(this.setting.protectCitizensMode === true){
             let citizens_ap_l = this.queryAlivePlayersByRoleName("Citizen").length
             if(citizens_ap_l === 0){
                 this.winningFaction = "Mafia"
-                this.winners = this.queryAlivePlayersByCategory("Mafia")
+                this.winners = this.queryAlivePlayersByRoleTag("Mafia")
             }
         }
         
@@ -755,9 +755,9 @@ class Game{
         }
     }
 
-    queryAlivePlayersByCategory(categoryString){
+    queryAlivePlayersByRoleTag(tagString){
         return this.alivePlayerList.filter((p)=>{
-            return p.role.categories.includes(categoryString)
+            return p.role.tags.includes(tagString)
         })
     }
 

@@ -150,23 +150,22 @@ class Game{
 
             // 最后一类并不复杂，我们暂时忽略，而为前几类行为进行编程的难点在于，它们有很相似的行为，却又略有不同。
 
-            //                                               (PublicVote)                         
-            //                                              ┌──► Immediately change the game state
-            // PublicVote ─┐                                │                                     
-            //   TeamVote ─┼► Input parameter verification ─┼─► Set Team   ability targets ──┐    
-            // UseAbility ─┘                                └─► Set Player ability targets ──┤    
-            //                                                                               │    
-            //                                                                     (At Night)│    
-            //                                                  Generate actions ◄───────────┘     
+            //                                                                            ┌──► Immediately change the game state
+            // PublicVote ─┐                                ┌─ Public vote result check ──┘                                     
+            //   TeamVote ─┼► Input parameter verification ─┼─ Team   vote result check ────► Set Team ability targets ──┐    
+            // UseAbility ─┘                                └───────────────────────────────► Set Role ability targets ──┤    
+            //                                                                                                           │    
+            //                                                                                                 (At Night)│    
+            //                                                                              Generate actions ◄───────────┘     
 
             // 我们可以将这三种行为抽象出来，并且单独编程每个行为的验证函数，但是这里有个小问题，
             // TeamVote可以由Team对象验证，UseAbility可以由Role对象验证，但是PublicVote该由谁来验证呢？
-            // 要回答这个问题，我们必须要仔细思考一下现实中的黑手党（狼人杀）是怎么玩的，
 
+            // 要回答这个问题，我们必须要仔细思考一下现实中的黑手党（狼人杀）是怎么玩的，
             // 当我们在线下与朋友们一起玩这类游戏的时候，如果你说：“我要投票审判12号玩家。”
             // 是由谁来确认你的这个投票是有效的呢？答案很简单，是游戏的主持人。
 
-            // 编程应该尽可能保持直观和贴近现实，因此，PublicVote应该由SystemHost来验证。
+            // 因此，PublicVote应该由SystemHost来验证。
             // 而出于某些原因，在这个程序中，我会将SystemHost称之为GameDirector。
 
             if(player.isAlive ?? false){
@@ -178,31 +177,15 @@ class Game{
                         }
                     break
                     // case "LynchVote":
-                    //     // fixme:player Can vote to self...And deadPlayer
-                    //     if(this.status.split('/').includes('lynchVote')){
-                    //         let targetIndex = Number(event.data)
-                    //         let previousTargetIndex = player.lynchVoteTargetIndex
-                    //         if(previousTargetIndex !== targetIndex){
-                    //             player.setTargetIndex(event.type, targetIndex)
-                    //             this.sendEventToAll(event.type, {voterIndex:player.index, targetIndex:event.data, previousTargetIndex})
-                    //             this.lynchVoteCheck()
-                    //         }
-                    //     }
+                    //     let data = event.data
+                    //     data.type = event.type
+                    //     this.gameDirector.playerVote(player, data)
                     // break
                     // case "TeamVote":
-                    //     let targetIndex = event.data
-                    //     if(player.role.team.teamVoteVerify(player.index, targetIndex)){
-                    //         let previousTargetIndex = player[`${voteType}TargetIndex`]
-                    //         if(previousTargetIndex !== targetIndex){
-                    //             player.setTargetIndex(voteType, targetIndex)
-                    //             this.sendEventToGroup(this.getVoteNoticeGroup(voteType), eventType, {voterIndex, targetIndex, previousTargetIndex})
-                    //             voteType = voteType.charAt(0).toLowerCase() + voteType.slice(1)
-                    //             this[`${voteType}Check`]()
-                    //         }
-                    //     }
+                    //     player.team.playerVote(data)
 
                     // case "UseAbility":
-                    //         player.abilityTargetIndex = Number(event.data)
+                    //     player.role.useAblity(data)
                     // break
                 }
 
@@ -321,16 +304,15 @@ class Game{
             for(let [index, p] of this.playerList.entries()){
                 p.role = roleSet.find( r => r.name === this.setting.roleList[index] )
                 p.isAlive = true
-            }
 
-            this.playerList.forEach(p=>{
                 p.sendEvent("SetRole", p.role)
                 if(p.role.affiliation === "Mafia")
                     p.sendEvent("SetTeam", this.queryAlivePlayersByRoleTag("Mafia").map(p=>p.toJSON_includeRole()))
                 else if(p.role.name === "AuxiliaryOfficer")
                     p.sendEvent("SetTeam", this.queryAlivePlayersByRoleName("AuxiliaryOfficer").map(p=>p.toJSON_includeRole()))
+            }
 
-            })
+            this.gameDirectorInit()
 
 
             // 游戏环境变量初始化...可能不全，因为js可以随时添加上去，欸嘿
@@ -341,6 +323,35 @@ class Game{
         }catch(e){
             if(e === "GameStage:setup aborted")
                 return
+        }
+    }
+
+    gameDirectorInit(){
+        const game = this
+
+        this.gameDirector = {
+            voteRecords: [],
+            playerVote: (type, voter, data)=>{
+                const targetIndex = Number(data)
+                const success = game.votes.find(v => v.name === type).verify(game, voter, targetIndex)
+                if(success){
+                    let voteRecord = this.voteRecords.find(vr => vr.type === type)
+                    if(voteRecord === undefined){
+                        voteRecord = {
+                            type:type,
+                            record:Array(game.playerList.length).fill(undefined)
+                        }
+                        this.voteRecords.push(voteRecord)
+                    }
+                    
+                    let previousTargetIndex = voteRecord[voter.index]
+                    // if(previousTargetIndex !== targetIndex){
+                    //     voter.setTargetIndex(voteType, targetIndex)
+                    //     game.sendEventToAll(eventType, {voterIndex, targetIndex, previousTargetIndex})
+                    //     game[`${voteType}Check`]()
+                    // }
+                }
+            }
         }
     }
 

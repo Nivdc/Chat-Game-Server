@@ -1,4 +1,4 @@
-import { generateGameData } from "./public/gameData/bakingGameData"
+import { generateGameData } from "./gameData"
 
 const gameDataPath = import.meta.dir + '/public/gameData/'
 if(await Bun.file(gameDataPath+'gameData.json').exists() === false)
@@ -142,6 +142,33 @@ class Game{
                 break
             }
 
+            // 仔细观察活着的玩家在游戏流程中的几种行为，我认为可以分为以下几类：
+            // 1.公开投票，例如lynchVote
+            // 2.团队投票，例如MafiaKillVote
+            // 3.使用技能
+            // 4.其他，例如聊天、设置遗言
+
+            // 最后一类并不复杂，我们暂时忽略，而为前几类行为进行编程的难点在于，它们有很相似的行为，却又略有不同。
+
+            //                                               (PublicVote)                         
+            //                                              ┌──► Immediately change the game state
+            // PublicVote ─┐                                │                                     
+            //   TeamVote ─┼► Input parameter verification ─┼─► Set Team   ability targets ──┐    
+            // UseAbility ─┘                                └─► Set Player ability targets ──┤    
+            //                                                                               │    
+            //                                                                     (At Night)│    
+            //                                                  Generate actions ◄───────────┘     
+
+            // 我们可以将这三种行为抽象出来，并且单独编程每个行为的验证函数，但是这里有个小问题，
+            // TeamVote可以由Team对象验证，UseAbility可以由Role对象验证，但是PublicVote该由谁来验证呢？
+            // 要回答这个问题，我们必须要仔细思考一下现实中的黑手党（狼人杀）是怎么玩的，
+
+            // 当我们在线下与朋友们一起玩这类游戏的时候，如果你说：“我要投票审判12号玩家。”
+            // 是由谁来确认你的这个投票是有效的呢？答案很简单，是游戏的主持人。
+
+            // 编程应该尽可能保持直观和贴近现实，因此，PublicVote应该由SystemHost来验证。
+            // 而出于某些原因，在这个程序中，我会将SystemHost称之为GameDirector。
+
             if(player.isAlive ?? false){
                 switch(event.type){
                     case 'SetLastWill':
@@ -162,6 +189,17 @@ class Game{
                     //         }
                     //     }
                     // break
+                    // case "TeamVote":
+                    //     let targetIndex = event.data
+                    //     if(player.role.team.teamVoteVerify(player.index, targetIndex)){
+                    //         let previousTargetIndex = player[`${voteType}TargetIndex`]
+                    //         if(previousTargetIndex !== targetIndex){
+                    //             player.setTargetIndex(voteType, targetIndex)
+                    //             this.sendEventToGroup(this.getVoteNoticeGroup(voteType), eventType, {voterIndex, targetIndex, previousTargetIndex})
+                    //             voteType = voteType.charAt(0).toLowerCase() + voteType.slice(1)
+                    //             this[`${voteType}Check`]()
+                    //         }
+                    //     }
 
                     // case "UseAbility":
                     //         player.abilityTargetIndex = Number(event.data)
@@ -865,6 +903,11 @@ class Player{
     sendEvent(eventType, data){
         if(this.user !== undefined)
             this.user.sendEvent(eventType, data)
+    }
+
+    getTargetIndex(type){
+        type = type.charAt(0).toLowerCase() + type.slice(1)
+        return this[`${type}TargetIndex`] ?? undefined
     }
 
     setTargetIndex(type, targetIndex){

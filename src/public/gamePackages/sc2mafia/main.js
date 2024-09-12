@@ -346,6 +346,7 @@ class Game{
                         game.sendEventToAll(`SetLynchVoteCount`, voteCount)
 
                     const resultIndex = vote.getResultIndex()
+                    console.log(resultIndex)
                     if(resultIndex !== undefined){
                         switch(type){
                             case 'LynchVote':

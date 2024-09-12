@@ -69,8 +69,8 @@ const originalGameData = {
             getResultIndex(game, count){
                 const apll = game.alivePlayerList.length
                 const voteNeeded = apll % 2 === 0 ? ((apll / 2) + 1) : Math.ceil(apll / 2)
-                const resultIndex = count.findIndex(c => c > voteNeeded)
-                return  resultIndex >= 0 ? result : undefined
+                const resultIndex = count.findIndex(c => c >= voteNeeded)
+                return  resultIndex >= 0 ? resultIndex : undefined
             }
         }
 

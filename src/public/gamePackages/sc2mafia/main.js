@@ -1,11 +1,7 @@
-import { generateGameData } from "./gameData"
+import { gameDataInit } from "./gameData"
 
 const gameDataPath = import.meta.dir + '/public/gameData/'
-if(await Bun.file(gameDataPath+'gameData.json').exists() === false)
-    await generateGameData()
-
 let defaultSetting = await readJsonFile(gameDataPath+"defaultSetting.json")
-let roleSet = await readJsonFile(gameDataPath+"gameData.json")
 
 async function readJsonFile(path){
     return await Bun.file(path).json()
@@ -176,11 +172,13 @@ class Game{
                             player.sendEvent("SetLastWill", player.lastWill)
                         }
                     break
-                    // case "LynchVote":
-                    //     let data = event.data
-                    //     data.type = event.type
-                    //     this.gameDirector.playerVote(player, data)
-                    // break
+                    case "LynchVote":
+                        this.gameDirector.playerVote(event.type, player, event.data)
+                    break
+                    case "LynchVoteCancel":
+                        let voteType = event.type.slice(0, event.type.indexOf('Cancel'))
+                        this.gameDirector.playerVoteCancel(voteType, player)
+                    break
                     // case "TeamVote":
                     //     player.team.playerVote(data)
 
@@ -190,61 +188,61 @@ class Game{
                 }
 
                 // 下面是投票相关的功能...太抽象了...太抽象辣！
-                if(event.type.endsWith('Vote')){
-                    const voteCheckFunctions = {
-                        "LynchVote":(voterIndex, targetIndex)=>{
-                            let voterIsAlive = this.playerList[voterIndex].isAlive
-                            let targetIsAlive = this.playerList[targetIndex].isAlive
-                            // 为什么玩家不能给自己投票？我觉得他可以啊
-                            // let targetIsNotVoter = (voterIndex !== targetIndex)
-                            let gameStatusIncludesLynchVote = this.status.split('/').includes('lynchVote')
-                            return voterIsAlive && targetIsAlive && gameStatusIncludesLynchVote
-                        },
-                        "MafiaKillVote":(voterIndex, targetIndex)=>{
-                            let voterIsAlive = this.playerList[voterIndex].isAlive
-                            let targetIsAlive = this.playerList[targetIndex].isAlive
-                            let voterIsMafia = this.queryAlivePlayersByRoleTag('Mafia').map(p => p.index).includes(voterIndex)
-                            // 为什么要限制黑手党在晚上投票呢？白天也可以投啊
-                            // let gameStatusIsNightDiscussion = (this.status === 'night/discussion')
-                            // 为什么要限制黑手党给自己人投票呢？我觉得他可以啊
-                            // let targetIsNotMafia = (this.queryAlivePlayersByRoleTag('Mafia').map(p => p.index).includes(targetIndex) === false)
-                            return voterIsAlive && targetIsAlive && voterIsMafia
-                        },
-                        "AuxiliaryOfficerCheckVote":(voterIndex, targetIndex)=>{
-                            let voterIsAlive = this.playerList[voterIndex].isAlive
-                            let targetIsAlive = this.playerList[targetIndex].isAlive
-                            let voterIsAuxiliaryOfficer = this.queryAlivePlayersByRoleName('AuxiliaryOfficer').map(p => p.index).includes(voterIndex)
-                            let targetIsNotAuxiliaryOfficer = (this.queryAlivePlayersByRoleName('AuxiliaryOfficer').map(p => p.index).includes(targetIndex) === false)
+                // if(event.type.endsWith('Vote')){
+                //     const voteCheckFunctions = {
+                //         "LynchVote":(voterIndex, targetIndex)=>{
+                //             let voterIsAlive = this.playerList[voterIndex].isAlive
+                //             let targetIsAlive = this.playerList[targetIndex].isAlive
+                //             // 为什么玩家不能给自己投票？我觉得他可以啊
+                //             // let targetIsNotVoter = (voterIndex !== targetIndex)
+                //             let gameStatusIncludesLynchVote = this.status.split('/').includes('lynchVote')
+                //             return voterIsAlive && targetIsAlive && gameStatusIncludesLynchVote
+                //         },
+                //         "MafiaKillVote":(voterIndex, targetIndex)=>{
+                //             let voterIsAlive = this.playerList[voterIndex].isAlive
+                //             let targetIsAlive = this.playerList[targetIndex].isAlive
+                //             let voterIsMafia = this.queryAlivePlayersByRoleTag('Mafia').map(p => p.index).includes(voterIndex)
+                //             // 为什么要限制黑手党在晚上投票呢？白天也可以投啊
+                //             // let gameStatusIsNightDiscussion = (this.status === 'night/discussion')
+                //             // 为什么要限制黑手党给自己人投票呢？我觉得他可以啊
+                //             // let targetIsNotMafia = (this.queryAlivePlayersByRoleTag('Mafia').map(p => p.index).includes(targetIndex) === false)
+                //             return voterIsAlive && targetIsAlive && voterIsMafia
+                //         },
+                //         "AuxiliaryOfficerCheckVote":(voterIndex, targetIndex)=>{
+                //             let voterIsAlive = this.playerList[voterIndex].isAlive
+                //             let targetIsAlive = this.playerList[targetIndex].isAlive
+                //             let voterIsAuxiliaryOfficer = this.queryAlivePlayersByRoleName('AuxiliaryOfficer').map(p => p.index).includes(voterIndex)
+                //             let targetIsNotAuxiliaryOfficer = (this.queryAlivePlayersByRoleName('AuxiliaryOfficer').map(p => p.index).includes(targetIndex) === false)
 
-                            return voterIsAlive && targetIsAlive && voterIsAuxiliaryOfficer && targetIsNotAuxiliaryOfficer
-                        },
-                        // "MafiaKillVote":(voterIndex, targetIndex)=>{},
+                //             return voterIsAlive && targetIsAlive && voterIsAuxiliaryOfficer && targetIsNotAuxiliaryOfficer
+                //         },
+                //         // "MafiaKillVote":(voterIndex, targetIndex)=>{},
 
-                    }
+                //     }
 
-                    let eventType = event.type
-                    let voteType = event.type
-                    let voterIndex = player.index
-                    let targetIndex = Number(event.data)
-                    if(voteCheckFunctions[voteType]?.call(this, voterIndex, targetIndex)){
-                        let previousTargetIndex = player[`${voteType}TargetIndex`]
-                        if(previousTargetIndex !== targetIndex){
-                            player.setTargetIndex(voteType, targetIndex)
-                            this.sendEventToGroup(this.getVoteNoticeGroup(voteType), eventType, {voterIndex, targetIndex, previousTargetIndex})
-                            voteType = voteType.charAt(0).toLowerCase() + voteType.slice(1)
-                            this[`${voteType}Check`]()
-                        }
-                    }
-                }else if(event.type.endsWith('VoteCancel')){
-                    let eventType = event.type
-                    let voteType = eventType.slice(0, eventType.indexOf('Cancel'))
-                    voteType = voteType.charAt(0).toLowerCase() + voteType.slice(1)
-                    if(player[`${voteType}TargetIndex`] !== undefined){
-                        player.setTargetIndex(voteType, undefined)
-                        this.sendEventToGroup(this.getVoteNoticeGroup(eventType), eventType, {voterIndex:player.index})
-                        this[`${voteType}Check`]()
-                    }
-                }
+                //     let eventType = event.type
+                //     let voteType = event.type
+                //     let voterIndex = player.index
+                //     let targetIndex = Number(event.data)
+                //     if(voteCheckFunctions[voteType]?.call(this, voterIndex, targetIndex)){
+                //         let previousTargetIndex = player[`${voteType}TargetIndex`]
+                //         if(previousTargetIndex !== targetIndex){
+                //             player.setTargetIndex(voteType, targetIndex)
+                //             this.sendEventToGroup(this.getVoteNoticeGroup(voteType), eventType, {voterIndex, targetIndex, previousTargetIndex})
+                //             voteType = voteType.charAt(0).toLowerCase() + voteType.slice(1)
+                //             this[`${voteType}Check`]()
+                //         }
+                //     }
+                // }else if(event.type.endsWith('VoteCancel')){
+                //     let eventType = event.type
+                //     let voteType = eventType.slice(0, eventType.indexOf('Cancel'))
+                //     voteType = voteType.charAt(0).toLowerCase() + voteType.slice(1)
+                //     if(player[`${voteType}TargetIndex`] !== undefined){
+                //         player.setTargetIndex(voteType, undefined)
+                //         this.sendEventToGroup(this.getVoteNoticeGroup(eventType), eventType, {voterIndex:player.index})
+                //         this[`${voteType}Check`]()
+                //     }
+                // }
             }
         }
     }
@@ -292,6 +290,11 @@ class Game{
 
     async setup(setting){
         try{
+            const {roleSet, voteSet, teamSet} = gameDataInit(this)
+            this.roleSet = roleSet
+            this.voteSet = voteSet
+            this.teamSet = teamSet
+
             await this.newGameStage("setup", 0.025)
             this.setting = {...defaultSetting, ...setting}
             await this.newGameStage("begin", 0.05)
@@ -302,7 +305,7 @@ class Game{
             shuffleArray(this.playerList)
             this.sendEventToAll("SetPlayerList", this.playerList)
             for(let [index, p] of this.playerList.entries()){
-                p.role = roleSet.find( r => r.name === this.setting.roleList[index] )
+                p.role = this.roleSet.find( r => r.name === this.setting.roleList[index] )
                 p.isAlive = true
 
                 p.sendEvent("SetRole", p.role)
@@ -310,6 +313,7 @@ class Game{
                     p.sendEvent("SetTeam", this.queryAlivePlayersByRoleTag("Mafia").map(p=>p.toJSON_includeRole()))
                 else if(p.role.name === "AuxiliaryOfficer")
                     p.sendEvent("SetTeam", this.queryAlivePlayersByRoleName("AuxiliaryOfficer").map(p=>p.toJSON_includeRole()))
+
             }
 
             this.gameDirectorInit()
@@ -330,26 +334,42 @@ class Game{
         const game = this
 
         this.gameDirector = {
-            voteRecords: [],
             playerVote: (type, voter, data)=>{
+                const vote = game.voteSet.find(v => v.name === type)
+                const voterIndex = voter.index
                 const targetIndex = Number(data)
-                const success = game.votes.find(v => v.name === type).verify(game, voter, targetIndex)
+                const {success, previousTargetIndex, voteCount} = vote.playerVote(voterIndex, targetIndex)
                 if(success){
-                    let voteRecord = this.voteRecords.find(vr => vr.type === type)
-                    if(voteRecord === undefined){
-                        voteRecord = {
-                            type:type,
-                            record:Array(game.playerList.length).fill(undefined)
+                    game.sendEventToAll(type, {voterIndex, targetIndex, previousTargetIndex})
+
+                    if(type === 'LynchVote')
+                        game.sendEventToAll(`SetLynchVoteCount`, voteCount)
+
+                    const resultIndex = vote.getResultIndex()
+                    if(resultIndex !== undefined){
+                        switch(type){
+                            case 'LynchVote':
+                                const lynchTarget = game.playerList[resultIndex]
+                                game.sendEventToAll("SetLynchTarget", lynchTarget)
+                                if(game.setting.enableTrial){
+                                    game.trialCycle(lynchTarget)
+                                }else{
+                                    game.execution(lynchTarget)
+                                }
+                            break
                         }
-                        this.voteRecords.push(voteRecord)
                     }
-                    
-                    let previousTargetIndex = voteRecord[voter.index]
-                    // if(previousTargetIndex !== targetIndex){
-                    //     voter.setTargetIndex(voteType, targetIndex)
-                    //     game.sendEventToAll(eventType, {voterIndex, targetIndex, previousTargetIndex})
-                    //     game[`${voteType}Check`]()
-                    // }
+                }
+            },
+            playerVoteCancel(type, voter){
+                const vote = game.voteSet.find(v => v.name === type)
+                const voterIndex = voter.index
+                const {success, previousTargetIndex, voteCount} = vote.playerVoteCancel(voterIndex)
+                if(success){
+                    game.sendEventToAll(type+'Cancel', {voterIndex, previousTargetIndex})
+
+                    if(type === 'LynchVote')
+                        game.sendEventToAll(`SetLynchVoteCount`, voteCount)
                 }
             }
         }

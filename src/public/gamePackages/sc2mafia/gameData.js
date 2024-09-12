@@ -1,11 +1,3 @@
-if(require.main){
-    // console.log("?")
-    // console.log(gameDataInit({}))
-    // console.log("??")
-}
-
-// console.log("?")
-
 const originalGameData = {
     tags: [
         {
@@ -94,9 +86,6 @@ const originalGameData = {
     ]
 }
 
-console.log(gameDataInit({playerList:[]}))
-
-
 export function gameDataInit(game){
     let roleSet = roleSetInit()
     let voteSet = voteSetInit(game)
@@ -129,7 +118,30 @@ export function gameDataInit(game){
     }
 
     function teamSetInit(roleSet){
-        return {}
+        let teamsData = originalGameData.teams
+        let teamSet = teamsData.map(td => {
+            td.includeRoles = []
+            for(const r of roleSet){
+                if('includeRoleTag' in td){
+                    if(r.tags.includes(td.includeRoleTag)){
+                        td.includeRoles.push(r)
+                    }
+                }
+
+                if('includeRoleNames' in td){
+                    for(const roleName of td.includeRoleNames){
+                        if(r.name === roleName && (td.includeRoles.includes(r) === false)){
+                            td.includeRoles.push(r)
+                        }
+                    }
+
+                }
+            }
+
+            return td
+        })
+
+        return teamSet
     }
 }
 
@@ -202,4 +214,8 @@ class Vote{
     cancelVerify(game, record, voterIndex){
         return this.data.cancelVerify(game, record, voterIndex)
     }
+}
+
+if(require.main === module){
+    console.log(gameDataInit({playerList:[]}))
 }

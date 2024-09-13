@@ -190,86 +190,8 @@ class Game{
                     //     player.role.useAblity(data)
                     // break
                 }
-
-                // 下面是投票相关的功能...太抽象了...太抽象辣！
-                // if(event.type.endsWith('Vote')){
-                //     const voteCheckFunctions = {
-                //         "LynchVote":(voterIndex, targetIndex)=>{
-                //             let voterIsAlive = this.playerList[voterIndex].isAlive
-                //             let targetIsAlive = this.playerList[targetIndex].isAlive
-                //             // 为什么玩家不能给自己投票？我觉得他可以啊
-                //             // let targetIsNotVoter = (voterIndex !== targetIndex)
-                //             let gameStatusIncludesLynchVote = this.status.split('/').includes('lynchVote')
-                //             return voterIsAlive && targetIsAlive && gameStatusIncludesLynchVote
-                //         },
-                //         "MafiaKillVote":(voterIndex, targetIndex)=>{
-                //             let voterIsAlive = this.playerList[voterIndex].isAlive
-                //             let targetIsAlive = this.playerList[targetIndex].isAlive
-                //             let voterIsMafia = this.queryAlivePlayersByRoleTag('Mafia').map(p => p.index).includes(voterIndex)
-                //             // 为什么要限制黑手党在晚上投票呢？白天也可以投啊
-                //             // let gameStatusIsNightDiscussion = (this.status === 'night/discussion')
-                //             // 为什么要限制黑手党给自己人投票呢？我觉得他可以啊
-                //             // let targetIsNotMafia = (this.queryAlivePlayersByRoleTag('Mafia').map(p => p.index).includes(targetIndex) === false)
-                //             return voterIsAlive && targetIsAlive && voterIsMafia
-                //         },
-                //         "AuxiliaryOfficerCheckVote":(voterIndex, targetIndex)=>{
-                //             let voterIsAlive = this.playerList[voterIndex].isAlive
-                //             let targetIsAlive = this.playerList[targetIndex].isAlive
-                //             let voterIsAuxiliaryOfficer = this.queryAlivePlayersByRoleName('AuxiliaryOfficer').map(p => p.index).includes(voterIndex)
-                //             let targetIsNotAuxiliaryOfficer = (this.queryAlivePlayersByRoleName('AuxiliaryOfficer').map(p => p.index).includes(targetIndex) === false)
-
-                //             return voterIsAlive && targetIsAlive && voterIsAuxiliaryOfficer && targetIsNotAuxiliaryOfficer
-                //         },
-                //         // "MafiaKillVote":(voterIndex, targetIndex)=>{},
-
-                //     }
-
-                //     let eventType = event.type
-                //     let voteType = event.type
-                //     let voterIndex = player.index
-                //     let targetIndex = Number(event.data)
-                //     if(voteCheckFunctions[voteType]?.call(this, voterIndex, targetIndex)){
-                //         let previousTargetIndex = player[`${voteType}TargetIndex`]
-                //         if(previousTargetIndex !== targetIndex){
-                //             player.setTargetIndex(voteType, targetIndex)
-                //             this.sendEventToGroup(this.getVoteNoticeGroup(voteType), eventType, {voterIndex, targetIndex, previousTargetIndex})
-                //             voteType = voteType.charAt(0).toLowerCase() + voteType.slice(1)
-                //             this[`${voteType}Check`]()
-                //         }
-                //     }
-                // }else if(event.type.endsWith('VoteCancel')){
-                //     let eventType = event.type
-                //     let voteType = eventType.slice(0, eventType.indexOf('Cancel'))
-                //     voteType = voteType.charAt(0).toLowerCase() + voteType.slice(1)
-                //     if(player[`${voteType}TargetIndex`] !== undefined){
-                //         player.setTargetIndex(voteType, undefined)
-                //         this.sendEventToGroup(this.getVoteNoticeGroup(eventType), eventType, {voterIndex:player.index})
-                //         this[`${voteType}Check`]()
-                //     }
-                // }
             }
         }
-    }
-
-    getVoteNoticeGroup(type){
-        let targetGroup = undefined
-        switch(type){
-            case 'LynchVote':
-            case 'LynchVoteCancel':
-                targetGroup = this.playerList
-            break
-
-            case 'MafiaKillVote':
-            case 'MafiaKillVoteCancel':
-                targetGroup = this.queryAlivePlayersByRoleTag('Mafia')
-            break
-
-            case 'AuxiliaryOfficerCheckVote':
-            case 'AuxiliaryOfficerCheckVoteCancel':
-                targetGroup = this.queryAlivePlayersByRoleName('AuxiliaryOfficer')
-            break
-        }
-        return targetGroup
     }
 
     sendEventToAll(eventType, data){
@@ -524,26 +446,9 @@ class Game{
                 const action = ability.generateAction()
                 if(action !== undefined)
                     this.nightActionSequence.push(action)
+
+                ability.vote.resetRecord()
             }
-        }
-
-        // MafiaKill
-        if(this.mafiaKillTargets ?? false){
-            let realTarget = getRandomElement(this.mafiaKillTargets)
-            // let realKiller = getMafiaKiller() todo
-            let realKiller = getRandomElement(this.queryAlivePlayersByRoleName('Mafioso'))
-            this.nightActionSequence.push({type:"MafiaKillAttack", origin:realKiller, target:realTarget})
-            this.mafiaKillTargets = undefined
-            this.sendEventToGroup(this.queryAlivePlayersByRoleTag('Mafia'), 'TeamActionNotice', {originIndex:realKiller.index, targetIndex:realTarget.index})
-        }
-
-        // AuxiliaryOfficerCheck
-        if(this.auxiliaryOfficerCheckTargets ?? false){
-            let realTarget = getRandomElement(this.auxiliaryOfficerCheckTargets)
-            let realOrigin = getRandomElement(this.queryAlivePlayersByRoleName('AuxiliaryOfficer'))
-            this.nightActionSequence.push({type:"AuxiliaryOfficerCheck", origin:realOrigin, target:realTarget})
-            this.auxiliaryOfficerCheckTargets = undefined
-            this.sendEventToGroup(this.queryAlivePlayersByRoleName('AuxiliaryOfficer'), 'TeamActionNotice', {originIndex:realOrigin.index, targetIndex:realTarget.index})
         }
 
         // SoloPlayer
@@ -684,20 +589,6 @@ class Game{
             }
         }
 
-    }
-
-    mafiaKillVoteCheck(){
-        // Note that when a tie vote occurs, there can be multiple targets
-        let killTargets = this.voteCheck('MafiaKillVote', this.queryAlivePlayersByRoleTag('Mafia'), this.alivePlayerList)
-        this.mafiaKillTargets = killTargets
-        this.sendEventToGroup(this.queryAlivePlayersByRoleTag('Mafia'),  'MafiaKillTargets', killTargets.map(p => p.index))
-    }
-
-    auxiliaryOfficerCheckVoteCheck(){
-        // Note that when a tie vote occurs, there can be multiple targets
-        let checkTargets = this.voteCheck('AuxiliaryOfficerCheckVote', this.queryAlivePlayersByRoleName('AuxiliaryOfficer'), this.alivePlayerList)
-        this.auxiliaryOfficerCheckTargets = checkTargets
-        this.sendEventToGroup(this.queryAlivePlayersByRoleName('AuxiliaryOfficer'),  'AuxiliaryOfficerCheckTargets', checkTargets.map(p => p.index))
     }
 
     // 首先检查是否有一半的玩家投票重选主机，如果有，随机选择一个主机

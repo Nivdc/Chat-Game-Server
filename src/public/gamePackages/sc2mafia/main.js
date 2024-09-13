@@ -179,8 +179,12 @@ class Game{
                         let voteType = event.type.slice(0, event.type.indexOf('Cancel'))
                         this.gameDirector.playerVoteCancel(voteType, player)
                     break
-                    // case "TeamVote":
-                    //     player.team.playerVote(data)
+                    case "TeamVote":
+                        player.team.playerVote(player, event.data)
+                    break
+                    case "TeamVoteCancel":
+                        player.team.playerVoteCancel(player, event.data)
+                    break
 
                     // case "UseAbility":
                     //     player.role.useAblity(data)
@@ -309,12 +313,24 @@ class Game{
                 p.isAlive = true
 
                 p.sendEvent("SetRole", p.role)
-                if(p.role.affiliation === "Mafia")
-                    p.sendEvent("SetTeam", this.queryAlivePlayersByRoleTag("Mafia").map(p=>p.toJSON_includeRole()))
-                else if(p.role.name === "AuxiliaryOfficer")
-                    p.sendEvent("SetTeam", this.queryAlivePlayersByRoleName("AuxiliaryOfficer").map(p=>p.toJSON_includeRole()))
+                for(let t of this.teamSet){
+                    if(t.includeRoles.includes(p.role)){
+                        t.playerList.push(p)
+                        p.team = t
+                    }
+                }
+                // if(p.role.affiliation === "Mafia")
+                //     p.sendEvent("SetTeam", this.queryAlivePlayersByRoleTag("Mafia").map(p=>p.toJSON_includeRole()))
+                // else if(p.role.name === "AuxiliaryOfficer")
+                //     p.sendEvent("SetTeam", this.queryAlivePlayersByRoleName("AuxiliaryOfficer").map(p=>p.toJSON_includeRole()))
 
             }
+
+            for(const t of this.teamSet){
+                t.sendEvent("SetTeam", t.playerList.map(p=>p.toJSON_includeRole()))
+            }
+
+            this.teamSet = this.teamSet.filter(t => t.playerList.length > 0)
 
             this.gameDirectorInit()
 
@@ -346,7 +362,6 @@ class Game{
                         game.sendEventToAll(`SetLynchVoteCount`, voteCount)
 
                     const resultIndex = vote.getResultIndex()
-                    console.log(resultIndex)
                     if(resultIndex !== undefined){
                         switch(type){
                             case 'LynchVote':
@@ -359,6 +374,8 @@ class Game{
                                 }
                             break
                         }
+
+                        vote.resetRecord()
                     }
                 }
             },
@@ -502,6 +519,14 @@ class Game{
     }
 
     generatePlayerAction(){
+        for(const t of this.teamSet){
+            for(const ability of t.abilitys){
+                const action = ability.generateAction()
+                if(action !== undefined)
+                    this.nightActionSequence.push(action)
+            }
+        }
+
         // MafiaKill
         if(this.mafiaKillTargets ?? false){
             let realTarget = getRandomElement(this.mafiaKillTargets)

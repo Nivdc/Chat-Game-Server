@@ -53,11 +53,11 @@ const originalGameData = {
                 let gameStatusIncludesLynchVote = game.status.split('/').includes('lynchVote')
                 return voterIsAlive && targetIsAlive && targetIsNotPreviousTarget && gameStatusIncludesLynchVote
             },
-            cancelVerify(game, record, voterIndex){
-                let voterHasVoteRecord = record[voterIndex] !== undefined
-                let gameStatusIncludesLynchVote = game.status.split('/').includes('lynchVote')
-                return voterHasVoteRecord && gameStatusIncludesLynchVote
-            },
+            // cancelVerify(game, record, voterIndex){
+            //     let voterHasVoteRecord = record[voterIndex] !== undefined
+            //     let gameStatusIncludesLynchVote = game.status.split('/').includes('lynchVote')
+            //     return voterHasVoteRecord && gameStatusIncludesLynchVote
+            // },
             getResultIndex(game, count){
                 const apll = game.alivePlayerList.length
                 const voteNeeded = apll % 2 === 0 ? ((apll / 2) + 1) : Math.ceil(apll / 2)
@@ -71,17 +71,72 @@ const originalGameData = {
         {
             name: "Mafia",
             includeRoleTag: "Mafia",
-            teamAbility: "MafiaKillAttack",
-            teamVoteVerify: (voterIndex, targetIndex)=>{
-                let voterIsAlive = this.playerList[voterIndex].isAlive
-                let targetIsAlive = this.playerList[targetIndex].isAlive
-                let voterIsMafia = this.queryAlivePlayersByRoleTag('Mafia').map(p => p.index).includes(voterIndex)
-                // 为什么要限制黑手党在晚上投票呢？白天也可以投啊
-                // let gameStatusIsNightDiscussion = (this.status === 'night/discussion')
-                // 为什么要限制黑手党给自己人投票呢？我觉得他可以啊
-                // let targetIsNotMafia = (this.queryAlivePlayersByRoleTag('Mafia').map(p => p.index).includes(targetIndex) === false)
-                return voterIsAlive && targetIsAlive && voterIsMafia
+            playerList:[],
+            get alivePlayerList(){
+                return this.playerList.filter(p => p.isAlive)
             },
+            abilitys:[
+                {
+                    name:"MafiaKillAttack",
+                    voteData:{
+                        name:"MafiaKillVote",
+                        verify(game, voterIndex, targetIndex, previousTargetIndex){
+                            let voterIsAlive = game.playerList[voterIndex].isAlive
+                            let targetIsAlive = game.playerList[targetIndex].isAlive
+                            let voterIsTeamMember = this.team.playerList.map(p => p.index).includes(voterIndex)
+                            let targetIsNotPreviousTarget = targetIndex !== previousTargetIndex
+                            // 为什么要限制黑手党在晚上投票呢？白天也可以投啊
+                            // let gameStatusIsNightDiscussion = (this.status === 'night/discussion')
+                            // 为什么要限制黑手党给自己人投票呢？我觉得他可以啊
+                            // let targetIsNotMafia = (this.queryAlivePlayersByRoleTag('Mafia').map(p => p.index).includes(targetIndex) === false)
+                            return voterIsAlive && voterIsTeamMember && targetIsAlive && targetIsNotPreviousTarget
+                        },
+                        getResultIndex(game, count){
+                            const voteMax = count.reduce((a, b) => Math.max(a, b), -Infinity);
+
+                            if(voteMax > 0){
+                                let voteMaxIndexArray = count.map((vc, idx) => {return  vc === voteMax ? idx:undefined}).filter(vidx => vidx !== undefined)
+                                return voteMaxIndexArray
+                            }
+                            return undefined
+                        }
+                    },
+                    generateAction(){
+                        const targetIndexArray = this.vote.getResultIndex()
+                        if(targetIndexArray !== undefined && targetIndexArray.length !== 0){
+                            const realKiller = getRandomElement(this.team.alivePlayerList)
+                            const realTargetIndex = getRandomElement(targetIndexArray)
+                            const realTarget = this.game.playerList[realTargetIndex]
+                            this.team.sendEvent('TeamActionNotice', {originIndex:realKiller.index, targetIndex:realTarget.index})
+                            return {type:this.name, origin:realKiller, target:realTarget}
+                        }else{
+                            return undefined
+                        }
+                    }
+                }
+            ],
+            playerVote(voter, targetIndex){
+                if(this.abilitys.length === 1){
+                    const ability = this.abilitys[0]
+                    const vote = ability.vote
+                    const voterIndex = voter.index
+                    const {success, previousTargetIndex, voteCount} = vote.playerVote(voter.index, targetIndex)
+                    if(success){
+                        this.sendEvent(vote.type, {voterIndex, targetIndex, previousTargetIndex})
+                        this.sendEvent('MafiaKillTargets', ability.vote.getResultIndex())
+                    }
+                }
+            },
+            playerVoteCancel(voter){
+                if(this.abilitys.length === 1){
+                    const vote = this.abilitys[0].vote
+                    const voterIndex = voter.index
+                    const {success, previousTargetIndex, voteCount} = vote.playerVoteCancel(voterIndex)
+                    if(success){
+                        this.sendEvent(vote.type+'Cancel', {voterIndex, previousTargetIndex})
+                    }
+                }
+            }
         }
     ]
 }
@@ -89,7 +144,7 @@ const originalGameData = {
 export function gameDataInit(game){
     let roleSet = roleSetInit()
     let voteSet = voteSetInit(game)
-    let teamSet = teamSetInit(roleSet)
+    let teamSet = teamSetInit(game, roleSet)
 
     return {roleSet, voteSet, teamSet}
 
@@ -117,7 +172,7 @@ export function gameDataInit(game){
         return originalGameData.votes.map(v => new Vote(game, v))
     }
 
-    function teamSetInit(roleSet){
+    function teamSetInit(game, roleSet){
         let teamsData = originalGameData.teams
         let teamSet = teamsData.map(td => {
             td.includeRoles = []
@@ -136,6 +191,17 @@ export function gameDataInit(game){
                     }
 
                 }
+            }
+
+            td.sendEvent = (eventType, data)=>{
+                game.sendEventToGroup(td.playerList, eventType, data)
+            }
+
+            for(let a of td.abilitys){
+                a.team = td
+                a.game = game
+                a.voteData.team = td
+                a.vote = new Vote(game, a.voteData)
             }
 
             return td
@@ -179,12 +245,11 @@ class Vote{
     }
 
     playerVoteCancel(voterIndex){
-        const success = this.cancelVerify(this.game, this.record, voterIndex)
         const previousTargetIndex = this.record[voterIndex]
-        if(success){
+        if(previousTargetIndex !== undefined){
             this.record[voterIndex] = undefined
             const voteCount = this.getCount()
-            return {success, previousTargetIndex, voteCount}
+            return {success:true, previousTargetIndex, voteCount}
         }
 
         return {success:false}
@@ -194,7 +259,8 @@ class Vote{
         let count = new Array(this.record.length).fill(0)
         for(const [voterIndex, targetIndex] of this.record.entries()){
             const p = this.game.playerList[voterIndex]
-            count[targetIndex] += `${this.type}Weight` in p.role ? p.role[`${this.type}Weight`] : 1
+            if(targetIndex !== undefined)
+                count[targetIndex] += `${this.type}Weight` in p.role ? p.role[`${this.type}Weight`] : 1
         }
 
         return count
@@ -217,5 +283,10 @@ class Vote{
 }
 
 if(require.main === module){
-    console.log(gameDataInit({playerList:[]}))
+    console.log(gameDataInit({playerList:[]}).teamSet[0].abilitys)
+}
+
+function getRandomElement(arr){
+    const randomIndex = Math.floor(Math.random() * arr.length)
+    return arr[randomIndex]
 }

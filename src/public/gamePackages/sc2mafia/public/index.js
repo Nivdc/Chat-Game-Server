@@ -478,20 +478,25 @@ document.addEventListener('alpine:init', () => {
 
                 case 'tg':
                 case 'target':
-                    let targetIndex = Number(args.shift())-1
-                    if(this.myRole.affiliationName === 'Mafia'){
-                        if(Number.isNaN(targetIndex) === false)
-                            sendEvent('MafiaKillVote', targetIndex)
-                        else
-                            sendEvent('MafiaKillVoteCancel')
+                    const targetIndex = Number(args.shift())-1
+                    if(Number.isNaN(targetIndex) === false){
+                        sendEvent('TeamVote', targetIndex)
+                    }else{
+                        sendEvent('TeamVoteCancel')
                     }
-                    else if(this.myRole.name === 'AuxiliaryOfficer'){
-                        // todo: 提示不允许投给队友
-                        if(Number.isNaN(targetIndex) === false)
-                            sendEvent('AuxiliaryOfficerCheckVote', targetIndex)
-                        else
-                            sendEvent('AuxiliaryOfficerCheckVoteCancel')
-                    }
+                    // if(this.myRole.affiliationName === 'Mafia'){
+                    //     if(Number.isNaN(targetIndex) === false)
+                    //         sendEvent('MafiaKillVote', targetIndex)
+                    //     else
+                    //         sendEvent('MafiaKillVoteCancel')
+                    // }
+                    // else if(this.myRole.name === 'AuxiliaryOfficer'){
+                    //     // todo: 提示不允许投给队友
+                    //     if(Number.isNaN(targetIndex) === false)
+                    //         sendEvent('AuxiliaryOfficerCheckVote', targetIndex)
+                    //     else
+                    //         sendEvent('AuxiliaryOfficerCheckVoteCancel')
+                    // }
                 break
 
                 default:

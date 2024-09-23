@@ -160,7 +160,7 @@
                             <div>
                                 <span>选择游戏：</span>
                                 <select x-model="selectedGameName" disabled>
-                                    <option x-text="selectedGameName"></option>
+                                    <option x-text="selectedGamePackage?.nameZh??selectedGamePackage?.name" :value="selectedGamePackage?.name"></option>
                                     <!-- <option value="" disabled>请选择游戏</option> -->
                                     <!-- <template x-data="lobbyCreateRoom.gamePackageList" x-for="gamePackage in gamePackageList">
                                         <option x-text="gamePackage.name" :selected="gamePackage.name === selectedGameName"></option>

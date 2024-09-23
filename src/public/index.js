@@ -164,20 +164,21 @@ let lobbyCreateRoom = {
 
 let lobbyRoom = {
     showUp: false,
-    name:'测试',
+    name:'',
     host:undefined,
     status:undefined,
     userList: [],
     messageList:[],
     chatInputString:'',
     selectedGameName:'',
+    selectedGamePackage:undefined,
 
     setup(room){
         this.name = room.name
         this.host = room.host
         this.status = room.status
         this.userList = room.userList
-        this.selectedGameName = room.selectedGamePackage.nameZh??room.selectedGamePackage.name
+        this.selectedGameName = room.selectedGamePackage.name
         this.selectedGamePackage = room.selectedGamePackage
 
         this.showUp = true
@@ -328,8 +329,10 @@ function dragElement(elmnt, elmnts) {
       pos3 = e.clientX;
       pos4 = e.clientY;
       // set the element's new position:
-      elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
-      elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
+      elmnt.style.top       = (elmnt.offsetTop - pos2) + "px";
+      elmnt.style.left      = (elmnt.offsetLeft - pos1) + "px";
+      elmnt.style.bottom    = null
+      elmnt.style.right     = null
     }
   
     function closeDragElement() {

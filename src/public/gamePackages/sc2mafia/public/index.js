@@ -265,7 +265,7 @@ document.addEventListener('alpine:init', () => {
             },
 
             'SetTrialTarget':function(data){
-                this.trialTarget = data?.index? this.playerList[data.index] : undefined
+                this.trialTarget = this.playerList[data.index]
             },
 
             'SetExecutionTarget':function(data){
@@ -444,6 +444,27 @@ document.addEventListener('alpine:init', () => {
 
             'SetLynchVoteCount':function(data){
                 this.lynchVoteCount = data
+            },
+
+            'TrialVote':function(data){
+                let voter = this.playerList[data.voterIndex]
+                let message = new MagicString()
+                message.append(voter.getNameMagicString())
+                message.addText(' 已投票。')
+                message.style = `background-color: rgba(0, 0, 0, 0.5);`
+                this.addMessage(message)
+            },
+            'TrialVoteCancel':function(data){
+                let voter = this.playerList[data.voterIndex]
+                let message = new MagicString()
+                message.append(voter.getNameMagicString())
+                message.addText(' 撤销了他的投票')
+                message.style = `background-color: rgba(0, 0, 0, 0.5);`
+                this.addMessage(message)
+            },
+
+            'SetTrialVoteRecord':function(data){
+                console.log(data)
             }
         },
         commandHandler(commandString){
@@ -515,6 +536,9 @@ document.addEventListener('alpine:init', () => {
                     }
                     else
                         this.addSystemHintText("当前阶段不允许进行处决投票")
+                break
+                case 'trialVoteCancel':
+                    sendEvent('TrialVoteCancel')
                 break
 
 

@@ -304,8 +304,9 @@ class Game{
                                     this.tempDayStageCache.pause()
                                 }
                                 await game.trialCycle(lynchTarget)
-                                console.log("tv over")
-                                if(this.trialTargetIsGuilty()){
+                                const {trialTargetIsGuilty, voteRecord} = this.checkTrialVoteResult()
+                                game.sendEventToAll("SetTrialVoteRecord", voteRecord)
+                                if(trialTargetIsGuilty){
                                     game.execution(lynchTarget)
                                 }
                                 else{
@@ -328,11 +329,12 @@ class Game{
                             }
 
                             vote.resetRecord()
+                            game.sendEventToAll(`SetLynchVoteCount`, Array(game.playerList.length).fill(0))
                         }
                     // }else if(type === 'SkipVote'){
                     //     game.sendEventToAll(type, {voterIndex, voteData, previousVoteData})
                     }else if(type === 'TrialVote'){
-                        game.sendEventToAll(type, {voterIndex, voteData, previousVoteData})
+                        game.sendEventToAll(type, {voterIndex})
                     }
                 }
             },
@@ -341,17 +343,21 @@ class Game{
                 const voterIndex = voter.index
                 const {success, previousTargetIndex, voteCount} = vote.playerVoteCancel(voterIndex)
                 if(success){
-                    game.sendEventToAll(type+'Cancel', {voterIndex, previousTargetIndex})
 
-                    if(type === 'LynchVote')
+                    if(type === 'LynchVote'){
+                        game.sendEventToAll(type+'Cancel', {voterIndex, previousTargetIndex})
                         game.sendEventToAll(`SetLynchVoteCount`, voteCount)
+                    }else if(type === 'TrialVote'){
+                        game.sendEventToAll(type+'Cancel', {voterIndex})
+                    }
                 }
             },
-            trialTargetIsGuilty(){
+            checkTrialVoteResult(){
                 const trialVote = game.voteSet.find(v => v.name === 'TrialVote')
+                const record = trialVote.record.slice()
                 const result = trialVote.getResult()
                 trialVote.resetRecord()
-                return  result
+                return  {trialTargetIsGuilty:result, voteRecord:record}
             }
         }
     }
@@ -425,7 +431,6 @@ class Game{
 
 
         this.dayOver = true
-        console.log("day over")
         if(!this.atTrialOrExecutionStage)
             this.nightCycle()
     }

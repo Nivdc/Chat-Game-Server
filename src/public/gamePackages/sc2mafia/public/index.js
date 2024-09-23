@@ -464,7 +464,39 @@ document.addEventListener('alpine:init', () => {
             },
 
             'SetTrialVoteRecord':function(data){
-                console.log(data)
+                const alivePlayersIndexArray = this.playerList.filter(p => p.isAlive)
+                                                            .filter(p => p.index !== this.trialTarget.index)
+                                                            .map(p => p.index)
+                const guiltyCount = data.filter(d => d === true).length
+                const innocentCount = data.filter(d => d === false).length
+
+                let firstMessage = new MagicString()
+                firstMessage.addText("投票结果: ")
+                firstMessage.append(new MagicString({text:guiltyCount.toString(), style:"color:red;"}))
+                firstMessage.addText(" : ")
+                firstMessage.append(new MagicString({text:innocentCount.toString(), style:"color:#119111;"}))
+                firstMessage.style = `background-color: rgba(0, 0, 0, 0.2);`
+                this.addMessage(firstMessage)
+
+                for(const i of alivePlayersIndexArray){
+                    let message = new MagicString()
+                    message.addText(`${i+1} - `)
+                    message.append(this.playerList[i].getNameMagicString())
+                    if(typeof(data[i]) === 'boolean'){
+                        message.addText(" 投给 ")
+                        if(data[i] === true){
+                            message.append(new MagicString({text:"有罪", style:"color:red;"}))
+                            message.style = `background-color: ${hexToRgba(html5ColorHexMap["red"], 0.5)};`
+                        }else{
+                            message.append(new MagicString({text:"无罪", style:"color:#119111;"}))
+                            message.style = `background-color: ${hexToRgba(html5ColorHexMap["green"], 0.5)};`
+                        }
+                    }else if(typeof(data[i]) === 'undefined'){
+                        message.addText(" 弃权了")
+                        message.style = `background-color: rgba(0, 0, 0, 0.5);`
+                    }
+                    this.addMessage(message)
+                }
             }
         },
         commandHandler(commandString){

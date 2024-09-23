@@ -1,3 +1,6 @@
+import { allocUnsafe } from "bun"
+import { getParseTreeNode } from "typescript"
+
 const originalGameData = {
     tags: [
         {
@@ -44,14 +47,20 @@ const originalGameData = {
     votes: [
         {
             name: "LynchVote",
-            verify: (game, voterIndex, targetIndex, previousTargetIndex)=>{
-                let voterIsAlive = game.playerList[voterIndex].isAlive
-                let targetIsAlive = game.playerList[targetIndex]?.isAlive
-                let targetIsNotPreviousTarget = targetIndex !== previousTargetIndex
-                // 为什么玩家不能给自己投票？我觉得他可以啊
-                // let targetIsNotVoter = (voterIndex !== targetIndex)
-                let gameStatusIncludesLynchVote = game.status.split('/').includes('lynchVote')
-                return voterIsAlive && targetIsAlive && targetIsNotPreviousTarget && gameStatusIncludesLynchVote
+            verify: (game, voterIndex, voteData, previousVoteData)=>{
+                if(Number.isInteger(voteData)){
+                    const targetIndex = voteData
+                    let voterIsAlive = game.playerList[voterIndex].isAlive
+                    let targetIsAlive = game.playerList[targetIndex]?.isAlive
+                    let targetIsNotPreviousTarget = targetIndex !== previousVoteData
+                    // 为什么玩家不能给自己投票？我觉得他可以啊
+                    // let targetIsNotVoter = (voterIndex !== targetIndex)
+                    let gameStatusIncludesLynchVote = game.status.split('/').includes('lynchVote')
+                    return voterIsAlive && targetIsAlive && targetIsNotPreviousTarget && gameStatusIncludesLynchVote
+                }
+                else{
+                    return false
+                }
             },
             // cancelVerify(game, record, voterIndex){
             //     let voterHasVoteRecord = record[voterIndex] !== undefined
@@ -63,6 +72,24 @@ const originalGameData = {
                 const voteNeeded = apll % 2 === 0 ? ((apll / 2) + 1) : Math.ceil(apll / 2)
                 const resultIndex = count.findIndex(c => c >= voteNeeded)
                 return  resultIndex >= 0 ? resultIndex : undefined
+            }
+        },
+        {
+            name: "TrialVote",
+            verify: (game, voterIndex, voteData, previousVoteData)=>{
+                if(typeof(voteData) === 'boolean'){
+                    let voterIsAlive = game.playerList[voterIndex].isAlive
+                    let voterIsNotTrialTarget = voterIndex !== game.trialTarget?.index
+                    let voteDataIsNotPreviousVoteData = voteData !== previousVoteData
+                    let gameStatusIncludesTrialVote = game.status.split('/').includes('trialVote')
+                    return voterIsAlive && voterIsNotTrialTarget && voteDataIsNotPreviousVoteData && gameStatusIncludesTrialVote
+                }
+            },
+            getResultBoolean(game, record){
+                const guiltyCount = record.filter(r => r === true).length
+                const innocentCount = record.filter(r => r === false).length
+
+                return guiltyCount > innocentCount
             }
         }
 
@@ -216,24 +243,24 @@ class Vote{
         return this.data.name
     }
 
-    playerVote(voterIndex, targetIndex){
-        const previousTargetIndex = this.record[voterIndex]
-        const success = this.verify(this.game, voterIndex, targetIndex, previousTargetIndex)
+    playerVote(voterIndex, voteData){
+        const previousVoteData = this.record[voterIndex]
+        const success = this.verify(this.game, voterIndex, voteData, previousVoteData)
         if(success){
-            this.record[voterIndex] = targetIndex
+            this.record[voterIndex] = voteData
             const voteCount = this.getCount()
-            return {success, previousTargetIndex, voteCount}
+            return {success, previousVoteData, voteCount}
         }
 
         return {success:false}
     }
 
     playerVoteCancel(voterIndex){
-        const previousTargetIndex = this.record[voterIndex]
-        if(previousTargetIndex !== undefined){
+        const previousVoteData = this.record[voterIndex]
+        if(previousVoteData !== undefined){
             this.record[voterIndex] = undefined
             const voteCount = this.getCount()
-            return {success:true, previousTargetIndex, voteCount}
+            return {success:true, previousVoteData, voteCount}
         }
 
         return {success:false}
@@ -250,16 +277,24 @@ class Vote{
         return count
     }
 
+    getResult(){
+        if('getResultIndex' in this.data)
+            return this.data.getResultIndex(this.game, this.getCount())
+        else if('getResultBoolean' in this.data)
+            return this.data.getResultBoolean(this.game, this.record)
+    }
+
     getResultIndex(){
-        return this.data.getResultIndex(this.game, this.getCount())
+        if('getResultIndex' in this.data)
+            return this.data.getResultIndex(this.game, this.getCount())
     }
 
     resetRecord(){
         this.record = this.record.fill(undefined)
     }
 
-    verify(game, voterIndex, targetIndex, previousTargetIndex){
-        return this.data.verify(game, voterIndex, targetIndex, previousTargetIndex)
+    verify(game, voterIndex, voteData, previousTargetIndex){
+        return this.data.verify(game, voterIndex, voteData, previousTargetIndex)
     }
     cancelVerify(game, record, voterIndex){
         return this.data.cancelVerify(game, record, voterIndex)

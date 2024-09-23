@@ -141,10 +141,20 @@ document.addEventListener('alpine:init', () => {
                     this.createTimer('投票', this.setting.dayLength, ()=>{this.timer = undefined})
                 }
                 else if(this.status === 'day/trial/defense'){
+                    this.gamePageTipMessage = new MagicString()
+                    this.gamePageTipMessage.append(this.trialTarget.getNameMagicString())
+                    this.gamePageTipMessage.addText(" 你被控密谋对抗城镇，你还有什么要辩护的？")
+
                     this.createTimer('审判辩护', this.setting.trialTime/2, ()=>{this.timer = undefined})
                 }
                 else if(this.status === 'day/discussion/trial/trialVote'){
-                    this.createTimer('审判投票', this.setting.trialTime/2, ()=>{this.timer = undefined})
+                    this.gamePageTipMessage = new MagicString()
+                    this.gamePageTipMessage.addText("城镇现已可决定 ")
+                    this.gamePageTipMessage.append(this.trialTarget.getNameMagicString())
+                    this.gamePageTipMessage.addText(" 的命运")
+
+                    const trialVoteTime = this.setting.enableTrialDefense? this.setting.trialTime/2 : this.setting.trialTime
+                    this.createTimer('审判投票', trialVoteTime, ()=>{this.timer = undefined})
                 }
                 else if(this.status === 'day/execution/lastWord'){
                     this.gamePageTipMessage = new MagicString()
@@ -252,6 +262,10 @@ document.addEventListener('alpine:init', () => {
                 })
 
                 document.getElementById('cast').classList.add('animation-fadeIn-1s')
+            },
+
+            'SetTrialTarget':function(data){
+                this.trialTarget = data?.index? this.playerList[data.index] : undefined
             },
 
             'SetExecutionTarget':function(data){
@@ -478,26 +492,31 @@ document.addEventListener('alpine:init', () => {
 
                 case 'tg':
                 case 'target':
+                    // todo: 缺少一些投票失败的提示
                     const targetIndex = Number(args.shift())-1
                     if(Number.isNaN(targetIndex) === false){
                         sendEvent('TeamVote', targetIndex)
                     }else{
                         sendEvent('TeamVoteCancel')
                     }
-                    // if(this.myRole.affiliationName === 'Mafia'){
-                    //     if(Number.isNaN(targetIndex) === false)
-                    //         sendEvent('MafiaKillVote', targetIndex)
-                    //     else
-                    //         sendEvent('MafiaKillVoteCancel')
-                    // }
-                    // else if(this.myRole.name === 'AuxiliaryOfficer'){
-                    //     // todo: 提示不允许投给队友
-                    //     if(Number.isNaN(targetIndex) === false)
-                    //         sendEvent('AuxiliaryOfficerCheckVote', targetIndex)
-                    //     else
-                    //         sendEvent('AuxiliaryOfficerCheckVoteCancel')
-                    // }
                 break
+
+                case 'tv':
+                case 'trialVote':
+                    if(this.status.split('/').includes('trialVote')){
+                        const voteString = args.shift()
+                        if(voteString === 'guilty' || voteString === 'true')
+                            sendEvent('TrialVote', true)
+                        else if(voteString === 'innocent' || voteString === 'false')
+                            sendEvent('TrialVote', false)
+
+                        else
+                            sendEvent('TrialVoteCancel')
+                    }
+                    else
+                        this.addSystemHintText("当前阶段不允许进行处决投票")
+                break
+
 
                 default:
                     this.addSystemHintText("未知指令，请重试。")
@@ -673,19 +692,19 @@ document.addEventListener('alpine:init', () => {
                 description:"默认的设置",
                 setting:{
                     dayVoteType: "Majority",
-                    dayLength: 1.2,
+                    dayLength: 0.1,
                     
-                    enableTrial: false,
+                    enableTrial: true,
                     enableTrialDefense: true,
-                    trialTime: 0.8,
-                    pauseDayTimerDuringTrial: true,
+                    trialTime: 0.2,
+                    pauseDayTimerDuringTrial: false,
                     
-                    startAt: "day/No-Lynch",
+                    startAt: "day",
                     
                     nightType: "Classic",
                     nightLength: 0.6,
                     
-                    enableDiscussion: true,
+                    enableDiscussion: false,
                     discussionTime: 0.3,
                     
                     revealPlayerRoleOnDeath: true,

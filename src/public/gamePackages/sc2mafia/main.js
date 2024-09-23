@@ -22,6 +22,7 @@ class Game{
         // 异步函数的执行顺序和性能影响需要更多的观察
         class GameStage{
             constructor(game, name, durationMin){
+                this.game = game
                 this.name = name
                 this.controller = new AbortController()
                 this.promise = new Promise((resolve, reject)=>{
@@ -29,9 +30,18 @@ class Game{
                     this.controller.signal.addEventListener('abort', () => {
                         this.timer.clear()
                         reject(`GameStage:${this.name} aborted`);
-                    });
+                    })
                 })
-                game.setStatus(name)
+                this.game.setStatus(this.name)
+            }
+
+            pause(){
+                this.timer.pause()
+            }
+
+            start(){
+                this.game.setStatus(this.name)
+                this.timer.start()
             }
 
             end(){
@@ -173,9 +183,11 @@ class Game{
                         }
                     break
                     case "LynchVote":
+                    case "TrialVote":
                         this.gameDirector.playerVote(event.type, player, event.data)
                     break
                     case "LynchVoteCancel":
+                    case "TrialVoteCancel":
                         let voteType = event.type.slice(0, event.type.indexOf('Cancel'))
                         this.gameDirector.playerVoteCancel(voteType, player)
                     break
@@ -272,32 +284,55 @@ class Game{
         const game = this
 
         this.gameDirector = {
-            playerVote: (type, voter, data)=>{
+            async playerVote(type, voter, data){
                 const vote = game.voteSet.find(v => v.name === type)
                 const voterIndex = voter.index
-                const targetIndex = Number(data)
-                const {success, previousTargetIndex, voteCount} = vote.playerVote(voterIndex, targetIndex)
+                const voteData = data
+                // const targetIndex = Number(data)
+                const {success, previousVoteData, voteCount} = vote.playerVote(voterIndex, voteData)
                 if(success){
-                    game.sendEventToAll(type, {voterIndex, targetIndex, previousTargetIndex})
-
-                    if(type === 'LynchVote')
+                    if(type === 'LynchVote'){
+                        game.sendEventToAll(type, {voterIndex, targetIndex:voteData, previousTargetIndex:previousVoteData})
                         game.sendEventToAll(`SetLynchVoteCount`, voteCount)
-
-                    const resultIndex = vote.getResultIndex()
-                    if(resultIndex !== undefined){
-                        switch(type){
-                            case 'LynchVote':
-                                const lynchTarget = game.playerList[resultIndex]
-                                game.sendEventToAll("SetLynchTarget", lynchTarget)
-                                if(game.setting.enableTrial){
-                                    game.trialCycle(lynchTarget)
-                                }else{
+                        const resultIndex = vote.getResult()
+                        if(resultIndex !== undefined){
+                            const lynchTarget = game.playerList[resultIndex]
+                            // game.sendEventToAll("SetLynchTarget", lynchTarget)
+                            if(game.setting.enableTrial){
+                                if(game.setting.pauseDayTimerDuringTrial === true){
+                                    this.tempDayStageCache = game.gameStage
+                                    this.tempDayStageCache.pause()
+                                }
+                                await game.trialCycle(lynchTarget)
+                                console.log("tv over")
+                                if(this.trialTargetIsGuilty()){
                                     game.execution(lynchTarget)
                                 }
-                            break
-                        }
+                                else{
+                                    if(game.setting.pauseDayTimerDuringTrial === true && this.tempDayStageCache !== undefined ){
+                                        game.gameStage = this.tempDayStageCache
+                                        game.gameStage.start()
+                                        this.tempDayStageCache = undefined
+                                    }
+                                    else if(game.setting.pauseDayTimerDuringTrial === false && game.dayOver === true){
+                                        game.nightCycle()
+                                    }
+                                    else if(game.setting.pauseDayTimerDuringTrial === false && game.dayOver === false){
+                                        game.setStatus("day/discussion/lynchVote")
+                                    }
+                                }
+                                game.trialTarget = undefined
+                            }
+                            else{
+                                game.execution(lynchTarget)
+                            }
 
-                        vote.resetRecord()
+                            vote.resetRecord()
+                        }
+                    // }else if(type === 'SkipVote'){
+                    //     game.sendEventToAll(type, {voterIndex, voteData, previousVoteData})
+                    }else if(type === 'TrialVote'){
+                        game.sendEventToAll(type, {voterIndex, voteData, previousVoteData})
                     }
                 }
             },
@@ -311,6 +346,12 @@ class Game{
                     if(type === 'LynchVote')
                         game.sendEventToAll(`SetLynchVoteCount`, voteCount)
                 }
+            },
+            trialTargetIsGuilty(){
+                const trialVote = game.voteSet.find(v => v.name === 'TrialVote')
+                const result = trialVote.getResult()
+                trialVote.resetRecord()
+                return  result
             }
         }
     }
@@ -384,6 +425,7 @@ class Game{
 
 
         this.dayOver = true
+        console.log("day over")
         if(!this.atTrialOrExecutionStage)
             this.nightCycle()
     }
@@ -576,21 +618,6 @@ class Game{
             this.sendEventToGroup(targetGroup, "ChatMessage", {sender, message:data})
     }
 
-    lynchVoteCheck(){
-        let apll = this.alivePlayerList.length
-        const voteNeeded = apll % 2 === 0 ? ((apll / 2) + 1) : Math.ceil(apll / 2)
-        let lynchTarget = this.voteCheck('LynchVote', this.alivePlayerList, this.alivePlayerList, voteNeeded)
-        if(lynchTarget !== undefined){
-            this.sendEventToAll("SetLynchTarget", lynchTarget)
-            if(this.setting.enableTrial){
-                this.trialCycle(lynchTarget)
-            }else{
-                this.execution(lynchTarget)
-            }
-        }
-
-    }
-
     // 首先检查是否有一半的玩家投票重选主机，如果有，随机选择一个主机
     // 其次检查是否有一半的玩家都投票给某个特别的玩家，如果有，选择他为主机
     repickHostVoteCheck(){
@@ -669,6 +696,20 @@ class Game{
                     return voteMaxIndexArray.map((idx) => this.playerList[idx])
             }
             return undefined
+        }
+    }
+
+    async trialCycle(player){
+        let trialLenghtMin = this.setting.trialTime
+
+        this.trialTarget = player
+        this.sendEventToAll("SetTrialTarget", this.trialTarget)
+        if(this.setting.enableTrialDefense){
+            await this.newGameStage("day/trial/defense", trialLenghtMin/2)
+            await this.newGameStage("day/discussion/trial/trialVote", trialLenghtMin/2)
+        }
+        else{
+            await this.newGameStage("day/discussion/trial/trialVote", trialLenghtMin)
         }
     }
 
@@ -898,13 +939,13 @@ class Timer{
             this.start()
     }
 
-    // get remainingTime(){
-    //     if(this.id){
-    //         return this.delay - (Date.now() - this.startTime)
-    //     }else{
-    //         return undefined
-    //     }
-    // }
+    get remainingTime(){
+        if(this.id){
+            return this.delay - (Date.now() - this.startTime)
+        }else{
+            return undefined
+        }
+    }
 
     start(){
         if(!this.id){
@@ -915,8 +956,8 @@ class Timer{
 
     pause(){
         if(this.id){
+            this.delay = this.remainingTime
             this.clear()
-            this.delay = Date.now() - this.startTime
         }
     }
 

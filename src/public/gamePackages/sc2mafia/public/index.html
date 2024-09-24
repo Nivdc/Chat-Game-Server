@@ -327,13 +327,13 @@
                 </div>
                     
                 <div id="gamePageBodyMiddle" style="flex:1;display: flex;flex-direction: column;">
-                    <!-- <div style="height: 20em;display: flex;flex-direction: column;justify-content: center;text-align: center;">
-                        <p>xxxxx，你被指控密谋对抗城镇，你还有什么要说的吗？</p>
-                        <div>
-                            <button style="margin: 1em;font-size: 1.1em;padding: 0.5em 2em;" class="background-danger  background-danger-hover">有罪</button>
-                            <button style="margin: 1em;font-size: 1.1em;padding: 0.5em 2em;" class="background-success background-success-hover">无罪</button>
+                    <div style="height: 20em;display: flex;flex-direction: column;justify-content: center;text-align: center;">
+                        <!-- <p>xxxxx，你被指控密谋对抗城镇，你还有什么要说的吗？</p> -->
+                        <div  x-show="status.split('/').includes('trialVote') && myIndex !== trialTarget?.index">
+                            <button style="margin: 1em;font-size: 1.1em;padding: 0.5em 2em;" :class="`${trialVoteOption === true ? 'background-danger' :''} background-danger-hover `" @click="trialVoteOption === true  ? trialVote(undefined):trialVote(true) ">有罪</button>
+                            <button style="margin: 1em;font-size: 1.1em;padding: 0.5em 2em;" :class="`${trialVoteOption === false? 'background-success':''} background-success-hover`" @click="trialVoteOption === false ? trialVote(undefined):trialVote(false)">无罪</button>
                         </div>
-                    </div> -->
+                    </div>
                 </div>
 
                 <div id="gamePageBodyRight" style="flex:1;display: flex;flex-direction: column-reverse;">

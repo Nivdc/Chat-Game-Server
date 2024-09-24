@@ -216,6 +216,10 @@ document.addEventListener('alpine:init', () => {
                 this.addMessage(message)
             },
 
+            'SetPlayerSelfIndex':function(data){
+                this.myIndex = Number(data)
+            },
+
             'SetRole':function(data){
                 this.myRole = this.roleSet.find(r=>r.name === data.name)
             },
@@ -1031,6 +1035,7 @@ document.addEventListener('alpine:init', () => {
         // 一些游戏数据
         myRole:undefined,
         myTeam:undefined,
+        myIndex:undefined,
         lynchVoteCount:undefined,
 
         // 玩家列表...的按钮
@@ -1061,6 +1066,12 @@ document.addEventListener('alpine:init', () => {
                 this.commandHandler(`lastWill ${lws}`)
 
             this.lastWillEditorToggle = false
+        },
+
+        trialVoteOption:undefined,
+        trialVote(option){
+            this.trialVoteOption = option
+            this.commandHandler(`trialVote ${option}`)
         }
     }))
 

@@ -246,6 +246,7 @@ class Game{
                 p.role = this.roleSet.find( r => r.name === this.setting.roleList[index] )
                 p.isAlive = true
 
+                p.sendEvent("SetPlayerSelfIndex", p.index)
                 p.sendEvent("SetRole", p.role)
                 for(let t of this.teamSet){
                     if(t.includeRoles.includes(p.role)){

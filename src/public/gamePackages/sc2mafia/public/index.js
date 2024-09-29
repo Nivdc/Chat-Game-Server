@@ -107,7 +107,7 @@ document.addEventListener('alpine:init', () => {
                 this.status = data
                 if(this.status === 'begin'){
                     this.clearMssagesList()
-                    this.createTimer('试镜', 0.5, ()=>{this.timer = undefined})
+                    this.createTimer('试镜', 0.5)
                 }
                 else if(this.status === 'animation/begin'){
                     this.timer?.clear()
@@ -123,7 +123,7 @@ document.addEventListener('alpine:init', () => {
                 else if(this.status === 'day/discussion'){
                     this.clearMssagesList()
                     this.playAnimation('showDayCount')
-                    this.createTimer('讨论', this.setting.discussionTime, ()=>{this.timer = undefined})
+                    this.createTimer('讨论', this.setting.discussionTime)
                 }
                 else if(this.status === 'day/discussion/lynchVote'){
                     if(this.setting.enableDiscussion === false){
@@ -138,14 +138,38 @@ document.addEventListener('alpine:init', () => {
                     this.gamePageTipMessage.addText(`我们需要 ${voteNeeded} 票来将某人送上${this.setting.enableTrial? '审判台':'绞刑架'}。`)
                     this.gamePageTipMessage.class = 'animation-fadeIn-1s'
 
-                    this.createTimer('投票', this.setting.dayLength, ()=>{this.timer = undefined})
+                    if(this.tempDayTimerCache === undefined){
+                        // 如果是正常的投票阶段
+                        this.createTimer('投票', this.setting.dayLength)
+                    }else{
+                        // 如果是审判后继续的投票阶段
+                        if(this.setting.pauseDayTimerDuringTrial){
+                            // 如果暂停白天
+                            this.timer = this.tempDayTimerCache
+                            this.timer.update()
+                            this.tempDayTimerCache = undefined
+                            console.log(this.timer)
+                        }else{
+                            // 如果不暂停白天
+                            this.tempDayTimerCache.durationSec -= (60 * this.setting.trialTime)
+                            if(this.tempDayTimerCache.durationSec > 0){
+                                this.timer = this.tempDayTimerCache
+                                this.timer.update()
+                            }
+                            this.tempDayTimerCache = undefined
+                            console.log(this.timer)
+                        }
+                    }
                 }
                 else if(this.status === 'day/trial/defense'){
                     this.gamePageTipMessage = new MagicString()
                     this.gamePageTipMessage.append(this.trialTarget.getNameMagicString())
                     this.gamePageTipMessage.addText(" 你被控密谋对抗城镇，你还有什么要辩护的？")
 
-                    this.createTimer('审判辩护', this.setting.trialTime/2, ()=>{this.timer = undefined})
+                    this.tempDayTimerCache = this.timer
+                    this.tempDayTimerCache.clear()
+
+                    this.createTimer('审判辩护', this.setting.trialTime/2)
                 }
                 else if(this.status === 'day/discussion/trial/trialVote'){
                     this.gamePageTipMessage = new MagicString()
@@ -154,7 +178,7 @@ document.addEventListener('alpine:init', () => {
                     this.gamePageTipMessage.addText(" 的命运")
 
                     const trialVoteTime = this.setting.enableTrialDefense? this.setting.trialTime/2 : this.setting.trialTime
-                    this.createTimer('审判投票', trialVoteTime, ()=>{this.timer = undefined})
+                    this.createTimer('审判投票', trialVoteTime)
                 }
                 else if(this.status === 'day/execution/lastWord'){
                     this.gamePageTipMessage = new MagicString()
@@ -162,7 +186,7 @@ document.addEventListener('alpine:init', () => {
                     this.gamePageTipMessage.addText(" 你还有什么遗言吗？")
                     this.gamePageTipMessage.class = 'animation-fadeIn-1s'
 
-                    this.createTimer('临终遗言', 0.4/2, ()=>{this.timer = undefined})
+                    this.createTimer('临终遗言', 0.4/2)
                 }
                 else if(this.status === 'animation/execution/deathDeclear'){
                     this.playAnimation('deathDeclear')
@@ -175,9 +199,11 @@ document.addEventListener('alpine:init', () => {
                     setTimeout(()=>{
                         this.gamePageTipMessage.class = 'animation-fadeOut-2s'
                     }, 3000)
-                    this.createTimer('行刑追悼', 0.4/2, ()=>{this.timer = undefined})
+                    this.createTimer('行刑追悼', 0.4/2)
                 }
                 else if(this.status === 'animation/dayToNight'){
+                    this.timer = undefined
+
                     this.playAnimation('dayToNight')
                 }
                 else if(this.status === 'night/discussion'){
@@ -187,7 +213,7 @@ document.addEventListener('alpine:init', () => {
                     document.getElementById('music').play()
                     this.executionTarget = undefined
                     this.clearMssagesList()
-                    this.createTimer('夜晚', this.setting.nightLength, ()=>{this.timer = undefined})
+                    this.createTimer('夜晚', this.setting.nightLength)
                 }
                 else if(this.status === 'end'){
                     this.createTimer('谢幕', 0.2)
@@ -1007,7 +1033,7 @@ document.addEventListener('alpine:init', () => {
                 name,
                 durationSec: 60 * durationMin,
                 update(){
-                    if(this.durationSec === 0){
+                    if(this.durationSec <= 0){
                         clearTimeout(this.timerId)
                         if(callback??false)
                             callback()
@@ -1026,6 +1052,7 @@ document.addEventListener('alpine:init', () => {
                     clearTimeout(this.timerId)
                 },
             }
+
             this.timer.update()
         },
 

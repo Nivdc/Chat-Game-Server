@@ -478,6 +478,17 @@ ul{
     animation: actionToDay 6s forwards;
 }
 
+.background-black {
+    background-color: black;
+}
+
+.animation-mafiaKillAttack-6s {
+    animation: attack 6s forwards;
+}
+.animation-doctorHealProtect-2s {
+    animation: protect 2s forwards;
+}
+
 @keyframes dayToNight {
   0% { background-color: var(--background-highlights); }
   50% { background-color: linear-gradient(90deg,#073642 0%,#002B36 100%); }
@@ -497,6 +508,23 @@ ul{
     0% { background-color: black }
     50% { background-color: linear-gradient(90deg,black 0%,#073642 100%); }
     100% { background-color: var(--background-highlights); }
+}
+
+@keyframes attack{
+    0% { background-color: black }
+    10% { background-color: Olive }
+    20% { background-color: black }
+    30% { background-color: Olive }
+    40% { background-color: black }
+    50% { background-color: DimGray }
+    60% { background-color: black }
+    75% { background-color: darkred }
+    100% { background-color: black }
+}
+@keyframes protect {
+    0% { background-color: black }
+    50% { background-color: green }
+    100% { background-color: black }
 }
 
 

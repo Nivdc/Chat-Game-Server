@@ -174,6 +174,17 @@ class Game{
             // 因此，PublicVote应该由SystemHost来验证。
             // 而出于某些原因，在这个程序中，我会将SystemHost称之为GameDirector。
 
+
+            // 一旦我们引入了这个GameDirector，我就不得不说明一下这个设计思路了
+            // 简单来说就是，线下游戏中我们需要某个玩家来当主持人，而在线上游戏中，我们通过编程这个主持人的行为来实现更优的游戏流程
+            // 而一旦我们深究这个思路，就会发现在本项目中存在一个与该思路不符的设计: class GameStage
+            // game对象（也就是这个特别大的对象）可以继续持有各项游戏数据（也理应如此），
+            // 但是游戏阶段的控制理应转交给GameDirector决定才对，
+            // 我们有理由认为此处有可能存在一个更好的设计。
+
+            // ...然而这意味着目前项目中的很多代码都要重写，顺便还要承认我自己之前写了很多废代码...
+            // 既然现有的游戏流程还是可以满足需求的...那就暂且先放放？
+
             if(player.isAlive ?? false){
                 switch(event.type){
                     case 'SetLastWill':
@@ -412,7 +423,7 @@ class Game{
         this.dayOver = false
 
         if(this.dayCount !== 1){
-            await this.newGameStage("animation/nightToDay", 0.1)
+            await this.newGameStage("animation/actionToDay", 0.1)
             await this.deathDeclare()
         }
 
@@ -455,17 +466,12 @@ class Game{
 
         this.dayCount ++
         this.sendEventToAll("SetDayCount", this.dayCount ?? 1)
-        this.nightAction()
+        await this.newGameStage("animation/nightToAction", 0.1)
+        await this.nightAction()
         this.dayCycle()
     }
 
-
-    // generatePlayerAction
-    // 它的主要作用是为了防止反复变动造成复杂的修改
-    // 试想如果一个党徒决定在晚上杀死1号玩家，但是过了会儿他又改成2号
-    // 如果我们不引入一个生成过程，就得要对夜晚的行动队列进行反复修改
-
-    nightAction(){
+    async nightAction(){
         this.setStatus("night/action")
 
         this.generatePlayerAction()
@@ -474,6 +480,14 @@ class Game{
 
         this.nightActionProcess()
 
+        // 此处前端已经收到了所有事件通知，等待下面这个阶段出现就会播放动画队列
+        // 而这里就有一个后端究竟要等多久的问题，理想情况下，它应该等待无限久，直到所有人的所有前端动画都播放完
+        // 但是这么做就会有一点点复杂，让我们暂且先偷个懒，就先设置成12秒吧
+        await this.newGameStage("animation/actions", 0.2)
+
+        for(const dp of this.recentlyDeadPlayers){
+            dp.sendEvent("YouAreDead")
+        }
 
         function actionSequencing(a,b){
             const priorityOfActions = {
@@ -488,6 +502,10 @@ class Game{
         }
     }
 
+    // generatePlayerAction
+    // 它的主要作用是为了防止反复变动造成复杂的修改
+    // 试想如果一个党徒决定在晚上杀死1号玩家，但是过了会儿他又改成2号
+    // 如果我们不引入一个生成过程，就得要对夜晚的行动队列进行反复修改
     generatePlayerAction(){
         for(const t of this.teamSet){
             for(const ability of t.abilitys){
@@ -520,6 +538,7 @@ class Game{
         // }
     }
 
+    // 每个action都至少包含三个数据: origin/行动者, target/对象, type/类型
     nightActionProcess(){
         // If no actions happend
         if(this.nightActionSequence.length === 0){
@@ -538,6 +557,7 @@ class Game{
 
             while(anps.length > 0){
                 let action = anps.shift()
+                action.origin.sendEvent("YouGoToKill", {targetIndex: action.target.index})
                 switch(action.type){
                     case 'MafiaKillAttack':
                         p.sendEvent('MafiaKillAttack')
@@ -566,7 +586,6 @@ class Game{
 
         while(this.nightActionSequence.length > 0){
             let a = this.nightActionSequence.shift()
-            console.log(a)
             switch(a.type){
                 case 'AuxiliaryOfficerCheck':
                     if(a.origin.isAlive === true){
@@ -574,18 +593,8 @@ class Game{
                         'AuxiliaryOfficerCheckResult', {targetIndex:a.target.index, targetAffiliation:a.target.role.affiliation})
                     }
                 break
-                // case "MafiaKill":
-                //     attackCount[a.target.index] ++
-                //     // todo: 发送提示
-                // break
 
                 // case "SheriffCheck":
-                //     // todo: 没啥特别的...就是发送消息去就好
-                // break
-
-                // case "DoctorHeal":
-                //     healCount[a.target.index] ++
-                //     // todo: 发送提示
                 // break
             }
         }
@@ -665,6 +674,7 @@ class Game{
         }
     }
 
+    // 这个旧的投票检查函数目前仅用于repickHostVote
     voteCheck(voteType, checkPlayers, voteTargets, voteNeeded){
         voteType = voteType.charAt(0).toLowerCase() + voteType.slice(1)
         let voteCount = Array(this.playerList.length).fill(0)

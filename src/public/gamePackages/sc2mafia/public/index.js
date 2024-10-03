@@ -16,7 +16,10 @@ document.addEventListener('alpine:init', () => {
 
             // testCode
             // this.status = "night/discussion"
-            // this.playAnimation("actionToDay")
+            // this.actionAnimationNameSequence.push('mafiaKillAttack')
+            // this.actionAnimationNameSequence.push('doctorHealProtect')
+            // this.playActionAnimations()
+            // this.playAnimation("mafiaKillAttack")
             
 
 
@@ -115,8 +118,11 @@ document.addEventListener('alpine:init', () => {
                     this.timer = undefined
                     this.playAnimation('begin')
                 }
-                else if(this.status === 'animation/nightToDay'){
-                    this.playAnimation('nightToDay')
+                // else if(this.status === 'animation/nightToDay'){
+                //     this.playAnimation('nightToDay')
+                // }
+                else if(this.status === 'animation/actionToDay'){
+                    this.playAnimation('actionToDay')
                 }
                 else if(this.status === 'animation/daily/deathDeclear'){
                     this.playAnimation('deathDeclear')
@@ -213,6 +219,12 @@ document.addEventListener('alpine:init', () => {
                     this.executionTarget = undefined
                     this.clearMssagesList()
                     this.createTimer('夜晚', this.setting.nightLength)
+                }
+                else if(this.status === 'animation/nightToAction'){
+                    this.playAnimation('nightToAction')
+                }
+                else if(this.status === 'animation/actions'){
+                    this.playActionAnimations()
                 }
                 else if(this.status === 'end'){
                     this.createTimer('谢幕', 0.2)
@@ -526,7 +538,26 @@ document.addEventListener('alpine:init', () => {
                     }
                     this.addMessage(message)
                 }
-            }
+            },
+
+            'YouAreDead':function(data){
+                this.addSystemHintText("哦不，你死了，但是你仍可以留下来观看本局游戏。")
+            },
+
+            // night action events
+            'YouGoToKill':function(data){
+                let message = new MagicString()
+                message.addText("你前去杀死 ")
+                message.append(this.playerList[data.targetIndex].getNameMagicString())
+                message.addText("。")
+                this.addMessage(message)
+            },
+            'MafiaKillAttack':function(data){
+                this.actionAnimationNameSequence.push('mafiaKillAttack')
+            },
+            'DoctorHealProtect':function(data){
+                this.actionAnimationNameSequence.push('doctorHealProtect')
+            },
         },
         commandHandler(commandString){
             [command, ...args] = commandString.split(" ")
@@ -608,7 +639,7 @@ document.addEventListener('alpine:init', () => {
                 break
             }
         },
-        playAnimation(animationName, data){
+        async playAnimation(animationName, data){
             switch(animationName){
                 case 'begin':
                     this.gamePageTipMessage = new MagicString()
@@ -672,11 +703,13 @@ document.addEventListener('alpine:init', () => {
                         }, 1000)
                     }, 1000)
                 break
-                case 'actionToDay':
-                    document.getElementById('gamePage').classList.remove('animation-nightToAction-6s')
-                    document.getElementById('gamePage').classList.add('animation-actionToDay-6s')
-                break
-                case 'showDayCount':
+                case 'actionToDay':{
+                    const classList = document.getElementById('gamePage').classList
+                    animationClassList = [...classList].filter(className => className.startsWith('animation'))
+                    animationClassList.forEach(c => classList.remove(c))
+                    classList.add('animation-actionToDay-6s')
+                break}
+                case 'showDayCount':{
                     let time = this.status.startsWith('day') ? '白天' : '夜晚'
                     this.gamePageTipMessage = new MagicString()
                     this.gamePageTipMessage.text  = `${time}  ${this.dayCount}`
@@ -685,7 +718,7 @@ document.addEventListener('alpine:init', () => {
                     setTimeout(()=>{
                         this.gamePageTipMessage.class = 'border animation-fadeOut-2s'
                     }, 3000)
-                break
+                break}
                 case 'deathDeclear':
                     if(this.recentlyDeadPlayers.length > 0){
                         let delaySec = 0
@@ -779,7 +812,45 @@ document.addEventListener('alpine:init', () => {
                         }, 4000);
                     }
                 break
+
+                // action animations
+                // 行动动画和普通动画的区别就是它会返回一个promise，在动画结束时resolve
+                case 'mafiaKillAttack':{
+                    this.addSystemHintText("你被黑手党攻击了")
+
+                    const gamePageElement = document.getElementById('gamePage')
+                    gamePageElement.classList.remove('animation-nightToAction-6s')
+                    return new Promise((resolve) => {
+                        gamePageElement.classList.add('animation-mafiaKillAttack-6s')
+                        gamePageElement.addEventListener('animationend', () => {
+                            resolve()
+                        }, { once: true })
+                    })
+                break
+                }
+
+                case 'doctorHealProtect':{
+                    this.addSystemHintText("但是有个陌生人救了你一命")
+
+                    const gamePageElement = document.getElementById('gamePage')
+                    return new Promise((resolve) => {
+                        gamePageElement.classList.add('animation-doctorHealProtect-2s')
+                        gamePageElement.addEventListener('animationend', () => {
+                            resolve()
+                        }, { once: true })
+                    })
+                break
+                }
             }
+        },
+
+        actionAnimationNameSequence:[],
+        async playActionAnimations(){
+            while(this.actionAnimationNameSequence.length > 0){
+                let actionAnimationName = this.actionAnimationNameSequence.shift()
+                await this.playAnimation(actionAnimationName)
+            }
+            // sendEvent('AnimationsComplete')
         },
 
         get isRunning(){

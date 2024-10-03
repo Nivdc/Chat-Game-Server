@@ -471,6 +471,12 @@ ul{
 .animation-nightToDay-6s {
     animation: nightToDay 6s forwards;
 }
+.animation-nightToAction-6s {
+    animation: nightToAction 6s forwards;
+}
+.animation-actionToDay-6s {
+    animation: actionToDay 6s forwards;
+}
 
 @keyframes dayToNight {
   0% { background-color: var(--background-highlights); }
@@ -481,7 +487,18 @@ ul{
     0% { background-color: var(--background); }
     50% { background-color: linear-gradient(90deg,#002B36 0%,#073642 100%); }
     100% { background-color: var(--background-highlights); }
-}s
+}
+@keyframes nightToAction {
+    0% { background-color: var(--background); }
+    50% { background-color: linear-gradient(90deg,#002B36 0%,black 100%); }
+    100% { background-color: black }
+}
+@keyframes actionToDay {
+    0% { background-color: black }
+    50% { background-color: linear-gradient(90deg,black 0%,#073642 100%); }
+    100% { background-color: var(--background-highlights); }
+}
+
 
 a:link {color:var(--primary-content);text-decoration:underline;}      /* 未访问链接*/
 a:visited {color:var(--primary-content);text-decoration:underline;}  /* 已访问链接 */

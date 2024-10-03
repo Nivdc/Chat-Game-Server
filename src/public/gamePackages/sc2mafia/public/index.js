@@ -15,8 +15,9 @@ document.addEventListener('alpine:init', () => {
             this.loading = false
 
             // testCode
-            // this.status = 'lynchVote'
-            // this.commandHandler('lv')
+            // this.status = "night/discussion"
+            // this.playAnimation("actionToDay")
+            
 
 
             this.$watch('setting', (value, oldValue)=>{
@@ -148,7 +149,6 @@ document.addEventListener('alpine:init', () => {
                             this.timer = this.tempDayTimerCache
                             this.timer.update()
                             this.tempDayTimerCache = undefined
-                            console.log(this.timer)
                         }else{
                             // 如果不暂停白天
                             this.tempDayTimerCache.durationSec -= (60 * this.setting.trialTime)
@@ -157,7 +157,6 @@ document.addEventListener('alpine:init', () => {
                                 this.timer.update()
                             }
                             this.tempDayTimerCache = undefined
-                            console.log(this.timer)
                         }
                     }
                 }
@@ -655,6 +654,27 @@ document.addEventListener('alpine:init', () => {
                             }, 1000)
                         }, 1000)
                     }, 1000)
+                break
+                case 'nightToAction':
+                    document.getElementById('gamePage').classList.remove('animation-dayToNight-6s')
+                    document.getElementById('gamePage').classList.add('animation-nightToAction-6s')
+                    setTimeout(()=>{
+                        document.getElementById('music').volume -= 0.25
+                        setTimeout(()=>{
+                            document.getElementById('music').volume -= 0.25
+                            setTimeout(()=>{
+                                document.getElementById('music').volume -= 0.25
+                                setTimeout(()=>{
+                                    document.getElementById('music').volume -= 0.25
+                                    document.getElementById('music').pause()
+                                }, 1000)
+                            }, 1000)
+                        }, 1000)
+                    }, 1000)
+                break
+                case 'actionToDay':
+                    document.getElementById('gamePage').classList.remove('animation-nightToAction-6s')
+                    document.getElementById('gamePage').classList.add('animation-actionToDay-6s')
                 break
                 case 'showDayCount':
                     let time = this.status.startsWith('day') ? '白天' : '夜晚'

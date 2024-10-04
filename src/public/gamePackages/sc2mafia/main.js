@@ -560,7 +560,7 @@ class Game{
                 action.origin.sendEvent("YouGoToKill", {targetIndex: action.target.index})
                 switch(action.type){
                     case 'MafiaKillAttack':
-                        p.sendEvent('MafiaKillAttack')
+                        p.sendEvent('YouUnderAttack', {source:'Mafia'})
                         p.isAlive = false
                         tempDeathReason.push('MafiaKillAttack')
                     break
@@ -570,7 +570,7 @@ class Game{
                             // action.origin.sendEvent('DoctorHealProtectedTargetIsAttacked')
                         }
                         if(p.isAlive === false && p.deathReason === undefined){
-                            p.sendEvent('DoctorHealProtect')
+                            p.sendEvent('YouAreHealed')
                             p.isAlive = true
                         }
                     break

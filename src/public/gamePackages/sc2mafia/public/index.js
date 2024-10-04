@@ -8,6 +8,7 @@ document.addEventListener('alpine:init', () => {
 
         async init() {
             this.setting = cloneDeep(this.presets[0].setting)
+            this.eventHandlerInit()
             this.socketInit()
             sendEvent("FrontendReady")
             this.roleSetInit()
@@ -50,6 +51,25 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
+        eventHandlerInit(){
+            // 下面这些是夜间行动阶段会收到的事件，它们都遵循同样的处理逻辑，
+            // 先添加到actionAnimationNameSequence里面暂存起来
+            // 等到animation/actions阶段再顺序播放
+            const nightActionEvents = [
+                'YouGoToKill',
+                'YouUnderAttack',
+                'YouAreHealed',
+
+                'AuxiliaryOfficerCheckResult',
+            ]
+
+            for(const eName of nightActionEvents){
+                this.eventHandler[eName] = function(data){
+                    const animationName = eName.charAt(0).toLowerCase() + eName.slice(1)
+                    this.actionAnimationNameSequence.push({name:animationName, data})
+                }
+            }
+        },
         eventHandler:{
             'HostChangesGameSetting':function(data){
                 this.watchIgnore = true
@@ -61,7 +81,7 @@ document.addEventListener('alpine:init', () => {
                 let message = {parts:[]}
                 message.parts.push(this.host.getNameMessagePart())
                 message.parts.push({text:'  是新的主机', class:'text-warning'})
-                if(this.isRunning === false)
+                if(this.isRunning === false && this.status !== 'begin')
                     this.addMessage(message)
             },
 
@@ -455,19 +475,7 @@ document.addEventListener('alpine:init', () => {
                 }
                 this.addMessage(message)
             },
-            'AuxiliaryOfficerCheckResult':function(data){
-                let target = this.playerList[data.targetIndex]
-                let affiliation = this.affiliationSet.find(a => a.name === data.targetAffiliation)
-                let message = new MagicString()
-                message.append(target.getNameMagicString())
-                if(affiliation.name === 'Mafia'){
-                    message.addText(' 是 ')
-                    message.append(this.buildAffiliationNameMagicString(affiliation))
-                }else{
-                    message.addText(' 看起来不可疑。')
-                }
-                this.addMessage(message)
-            },
+
 
             'TeamActionNotice':function(data){
                 let message = new MagicString()
@@ -546,11 +554,7 @@ document.addEventListener('alpine:init', () => {
 
             // night action events
             'YouGoToKill':function(data){
-                let message = new MagicString()
-                message.addText("你前去杀死 ")
-                message.append(this.playerList[data.targetIndex].getNameMagicString())
-                message.addText("。")
-                this.addMessage(message)
+                this.actionAnimationNameSequence.push('youGoToKill')
             },
             'MafiaKillAttack':function(data){
                 this.actionAnimationNameSequence.push('mafiaKillAttack')
@@ -815,8 +819,23 @@ document.addEventListener('alpine:init', () => {
 
                 // action animations
                 // 行动动画和普通动画的区别就是它会返回一个promise，在动画结束时resolve
-                case 'mafiaKillAttack':{
-                    this.addSystemHintText("你被黑手党攻击了")
+                case 'youGoToKill':{
+                    let message = new MagicString()
+                    message.addText("你前去杀死 ")
+                    message.append(this.playerList[data.targetIndex].getNameMagicString())
+                    message.addText("。")
+                    this.addMessage(message)
+
+                    return new Promise((resolve) => {
+                        setTimeout(()=>{
+                            resolve()
+                        }, 2 * 1000)
+                    })
+                break}
+
+                case 'youUnderAttack':{
+                    if(data.source === 'Mafia')
+                        this.addSystemHintText("你被黑手党攻击了")
 
                     const gamePageElement = document.getElementById('gamePage')
                     gamePageElement.classList.remove('animation-nightToAction-6s')
@@ -826,10 +845,9 @@ document.addEventListener('alpine:init', () => {
                             resolve()
                         }, { once: true })
                     })
-                break
-                }
+                break}
 
-                case 'doctorHealProtect':{
+                case 'youAreHealed':{
                     this.addSystemHintText("但是有个陌生人救了你一命")
 
                     const gamePageElement = document.getElementById('gamePage')
@@ -839,16 +857,35 @@ document.addEventListener('alpine:init', () => {
                             resolve()
                         }, { once: true })
                     })
-                break
-                }
+                break}
+
+                case 'auxiliaryOfficerCheckResult':{
+                    let target = this.playerList[data.targetIndex]
+                    let affiliation = this.affiliationSet.find(a => a.name === data.targetAffiliation)
+                    let message = new MagicString()
+                    message.append(target.getNameMagicString())
+                    if(affiliation.name === 'Mafia'){
+                        message.addText(' 是 ')
+                        message.append(this.buildAffiliationNameMagicString(affiliation))
+                    }else{
+                        message.addText(' 看起来不可疑。')
+                    }
+                    this.addMessage(message)
+
+                    return new Promise((resolve) => {
+                        setTimeout(()=>{
+                            resolve()
+                        }, 2 * 1000)
+                    })
+                break}
             }
         },
 
         actionAnimationNameSequence:[],
         async playActionAnimations(){
             while(this.actionAnimationNameSequence.length > 0){
-                let actionAnimationName = this.actionAnimationNameSequence.shift()
-                await this.playAnimation(actionAnimationName)
+                const actionAnimation = this.actionAnimationNameSequence.shift()
+                await this.playAnimation(actionAnimation.name, actionAnimation.data)
             }
             // sendEvent('AnimationsComplete')
         },
@@ -920,9 +957,11 @@ document.addEventListener('alpine:init', () => {
             }
         },
         exportSetting(){
-            let s = JSON.stringify(this.setting);
-            let exportString = window.btoa(s)
-            alert("导出结果为: \n\n" + exportString);
+            const s = JSON.stringify(this.setting)
+            const exportString = window.btoa(s)
+            alert("导出结果为: \n\n" + exportString)
+            this.addSystemHintText("导出结果为:")
+            this.addSystemHintText(exportString)
         },
 
         // 聊天框及玩家列表

@@ -3,17 +3,16 @@ let socket = undefined
 document.addEventListener('alpine:init', () => {
     Alpine.data('game', () => ({
         loading:true,
-        watchIgnore:false,
+        settingWatchIgnore:false,
         setting:{},
 
         async init() {
             this.setting = cloneDeep(this.presets[0].setting)
             this.eventHandlerInit()
             this.socketInit()
-            sendEvent("FrontendReady")
             this.roleSetInit()
             this.recentlyDeadPlayers = []
-            this.loading = false
+            sendEvent("FrontendReady")
 
             // testCode
             // this.status = "night/discussion"
@@ -25,11 +24,10 @@ document.addEventListener('alpine:init', () => {
 
 
             this.$watch('setting', (value, oldValue)=>{
-                if(this.watchIgnore === false){
+                if(this.settingWatchIgnore === false){
                     sendEvent("HostChangesGameSetting", value)
-                    
                 }else{
-                    this.watchIgnore = false
+                    this.settingWatchIgnore = false
                 }
             })
         },
@@ -71,8 +69,11 @@ document.addEventListener('alpine:init', () => {
             }
         },
         eventHandler:{
+            'InitCompleted':function(data){
+                this.loading = false
+            },
             'HostChangesGameSetting':function(data){
-                this.watchIgnore = true
+                this.settingWatchIgnore = true
                 this.setting = data
             },
 
@@ -1021,11 +1022,11 @@ document.addEventListener('alpine:init', () => {
                 goalDescriptionZh:"杀光城镇以及所有想要对抗你们的人。"
 
             },
-            // {
-            //     name:"Random",
-            //     nameZh:"随机",
-            //     color:"#00ccff",
-            // },
+            {
+                name:"Random",
+                nameZh:"随机",
+                color:"#00ccff",
+            },
         ],
         selectedAffiliation:undefined,
         selectAffiliation(affiliation){
@@ -1090,6 +1091,12 @@ document.addEventListener('alpine:init', () => {
                     "在晚上你可以与其他黑手党成员交谈",
                 ]
             },
+            {
+                name:"AllRandom",
+                nameZh:"全体随机",
+                affiliationName:"Random",
+                descriptionZh:"可能是游戏中的任意角色",
+            },
         ],
         roleSetInit(){
             this.setRoleAffiliation()
@@ -1140,7 +1147,12 @@ document.addEventListener('alpine:init', () => {
         },
 
         getRoleListFromData(roleListData){
-            return roleListData.map(rd => this.roleSet.find(r => r.name === rd))
+            return roleListData.map(rd => {
+                if(typeof(rd) === 'string')
+                    return this.roleSet.find(r => r.name === rd)
+                else if('name' in rd)
+                    return this.roleSet.find(r => r.name === rd.name)
+            })
         },
 
         //开始信息及按钮
@@ -1148,7 +1160,10 @@ document.addEventListener('alpine:init', () => {
         startButtonToggle:true,
         start(){
             if(this.startButtonToggle === true){
-                sendEvent("HostSetupGame", this.setting)
+                this.settingWatchIgnore = true
+                this.setting.roleList = this.preprocessRandomRole(this.setting.roleList)
+                console.log(this.setting.roleList)
+                // sendEvent("HostSetupGame", this.setting)
             }else{
                 sendEvent("HostCancelSetup")
             }
@@ -1229,7 +1244,39 @@ document.addEventListener('alpine:init', () => {
         trialVote(option){
             this.trialVoteOption = option
             this.commandHandler(`trialVote ${option}`)
-        }
+        },
+
+        preprocessRandomRole(roleListData){
+            const randomRoleSet = Array.from(new Set(roleListData.filter(rName => rName.endsWith('Random'))))
+            if(randomRoleSet.size === 0)
+                return roleListData
+
+
+            const randomObjectSet = randomRoleSet.map(randomName => {
+                let randomObject = {name:randomName}
+                const nonRandomRoles = this.roleSet.filter(r => r.name.endsWith('Random') === false)
+
+                switch(randomName){
+                    case 'AllRandom':
+                        randomObject.possibleRoleSet = nonRandomRoles.map(r => {
+                            return {name:r.name, weight:r.weight??1}
+                        })
+                    break
+                }
+
+                return randomObject
+            })
+
+            let newRoleList = cloneDeep(roleListData)
+            for(const randomObject of randomObjectSet){
+                newRoleList.forEach((roleName, index) =>{
+                    if(roleName === randomObject.name)
+                        newRoleList[index] = randomObject
+                })
+            }
+
+            return newRoleList
+        },
     }))
 
     function cloneDeep(o){
@@ -1243,13 +1290,19 @@ document.addEventListener('alpine:init', () => {
     function onMessage(e){
         const event = JSON.parse(e.data)
         window.dispatchEvent(new CustomEvent(event.type, { detail:event.data }))
-        console.log('recive <-', "type:", event.type, "data:", event.data)
+        if(event.data)
+            console.log('recive <-', "type:", event.type, "\t data:", event.data)
+        else
+            console.log('recive <-', "type:", event.type)
     }
 
     function sendEvent(type, data){
         const event = {type,data}
-        // console.log(event)
-        socket?.send(JSON.stringify(event))
+        socket.send(JSON.stringify(event))
+        if(event.data)
+            console.log("send ->", "type:", event.type, "\t data:", event.data)
+        else
+            console.log('send ->', "type:", event.type)
     }
 
     function scrollToBottom(elementClass) {
@@ -1282,6 +1335,10 @@ class Player{
 
     get index(){
         return this.data.index
+    }
+
+    get userName(){
+        return this.data.userName
     }
 
     getIndexAndNameMagicString(){
@@ -1362,3 +1419,11 @@ const html5ColorHexMap = {
     "tomato": "#ff6347", "turquoise": "#40e0d0", "violet": "#ee82ee", "wheat": "#f5deb3", "white": "#ffffff",
     "whitesmoke": "#f5f5f5", "yellow": "#ffff00", "yellowgreen": "#9acd32"
 };
+
+
+// class Role{
+//     constructor(data, factionData){
+//         this.name = data.name
+//         this.nameZh = data.nameZh
+//     }
+// }

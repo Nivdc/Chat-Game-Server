@@ -69,6 +69,11 @@ document.addEventListener('alpine:init', () => {
             }
         },
         eventHandler:{
+            'BackendReady':function(data){
+                if(this.loading === true)
+                    sendEvent("FrontendReady")
+            },
+
             'InitCompleted':function(data){
                 this.loading = false
             },
@@ -935,6 +940,7 @@ document.addEventListener('alpine:init', () => {
                         // "Doctor",
                         "AuxiliaryOfficer",
                         "Mafioso",
+                        "AllRandom",
                     ],
                 }
             }
@@ -1162,8 +1168,7 @@ document.addEventListener('alpine:init', () => {
             if(this.startButtonToggle === true){
                 this.settingWatchIgnore = true
                 this.setting.roleList = this.preprocessRandomRole(this.setting.roleList)
-                console.log(this.setting.roleList)
-                // sendEvent("HostSetupGame", this.setting)
+                sendEvent("HostSetupGame", this.setting)
             }else{
                 sendEvent("HostCancelSetup")
             }

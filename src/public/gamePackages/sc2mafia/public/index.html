@@ -284,9 +284,39 @@
                 </div>
             </div>
 
-            <!-- <div id="gamePageHead">
+            <div id="gamePageHead" x-show="possibleRoleSet" style="opacity: 0;">
+                <!-- <i class="fa-solid fa-user border" style="padding: 0.1em;position:relative;color: green;border-color: green;background-color:rgba(0, 0, 0, 0.2);"><span style="position: absolute;bottom: 1px;right: 1px;text-shadow: 1px 1px 2px black;;">A</span></i> -->
+                <template x-for="possibleRole in getPossibleRoleData(possibleRoleSet)">
+                    <i class="fa-solid fa-user border" :style="`padding: 0.1em;margin:0.2em;position:relative;color: ${possibleRole.color};border-color: ${possibleRole.color};background-color:rgba(0, 0, 0, 0.2);`" @mouseenter="openRoleCard($event, possibleRole)" @mouseleave="closeRoleCard()">
+                        <span x-text="possibleRole.name.charAt(0).toUpperCase()" style="position: absolute;bottom: 1px;right: 1px;text-shadow: 1px 1px 2px black;font-size: 0.8em;user-select: none;"></span>
+                    </i>
+                </template>
+            </div>
 
-            </div> -->
+            <div id="roleCard" style="position:absolute;min-height:15em;background-color: rgba(0, 0, 0, 0.7);flex: initial;margin-bottom: 1em;display: flex;flex-direction: column;row-gap:0.2em;padding: 0.2em;z-index: 99;" class="border" x-show="roleCardData !== undefined">
+                <h3 x-text="roleCardData?.nameZh??roleCardData?.name" :style="`color:${roleCardData?.affiliation.color}`"></h3>
+                <p style="color:plum">阵营：<span :style="`color: ${roleCardData?.affiliation.color};`" x-text="roleCardData?.affiliation.nameZh??roleCardData?.affiliation.name"></span></p>
+                <p style="color:LightSkyBlue">能力：</p>
+                <ul style="color: var(--emphasized-content);">
+                    <template x-for="abilityDetail in roleCardData?.abilityDetails">
+                        <li x-text ="abilityDetail"></li>
+                    </template>
+                </ul>
+                <p style="color:LightGreen">特性：</p>
+                <ul style="color: var(--emphasized-content);">
+                    <template x-for="featureDetail in roleCardData?.featureDetails">
+                        <li x-text ="featureDetail"></li>
+                    </template>
+                </ul>
+                <p style="color:LightSalmon">
+                    目标：
+                    <span  style="color: var(--emphasized-content);" x-text="roleCardData?.affiliation.goalDescriptionZh"></span>
+                </p>
+
+                <p style="color:LightSkyBlue">出现几率：<span x-text="`${(roleCardData?.probability * 100).toFixed(1)}%`" style="color: LimeGreen;"></span></p>
+                <p style="color:LightSkyBlue">预计出现数量：<span x-text="roleCardData?.expectation" style="color:yellow;"></span></p>
+
+            </div>
 
             <div id="gamePageBody" style="display: flex;flex: auto;width: 100%;opacity: 0;">
                 <div id="gamePageBodyLeft"style="display:flex;flex-direction:column;flex:1;margin:1em;">

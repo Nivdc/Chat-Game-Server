@@ -12,10 +12,15 @@ document.addEventListener('alpine:init', () => {
             this.socketInit()
             this.roleSetInit()
             this.recentlyDeadPlayers = []
+            this.possibleRoleSet = undefined
             sendEvent("FrontendReady")
 
             // testCode
+            // showGamePage
+            // this.loading = false
             // this.status = "night/discussion"
+            // this.playAnimation('begin')
+
             // this.actionAnimationNameSequence.push('mafiaKillAttack')
             // this.actionAnimationNameSequence.push('doctorHealProtect')
             // this.playActionAnimations()
@@ -70,6 +75,11 @@ document.addEventListener('alpine:init', () => {
         },
         eventHandler:{
             'BackendReady':function(data){
+                // 前端加载完毕，后端有可能仍未加载完毕（特别是在首次启动的时候
+                // 在上面的代码里一旦前端加载完毕就会发送一个FrontendReady
+                // 后端加载完毕后会发送一个BackendReady
+                // 如果收到BackendReady时，页面仍然在loading，说明后端没有收到前面那个FrontendReady
+                // 因此此时必须再发送一次FrontendReady
                 if(this.loading === true)
                     sendEvent("FrontendReady")
             },
@@ -89,6 +99,10 @@ document.addEventListener('alpine:init', () => {
                 message.parts.push({text:'  是新的主机', class:'text-warning'})
                 if(this.isRunning === false && this.status !== 'begin')
                     this.addMessage(message)
+            },
+
+            'SetPossibleRoleSet'(data){
+                this.possibleRoleSet = data
             },
 
             'SetPlayerList':function(data){
@@ -663,6 +677,7 @@ document.addEventListener('alpine:init', () => {
                     setTimeout(()=>{
                         this.gamePageTipMessage.class = 'animation-fadeOut-2s'
                         document.getElementById('gamePageBody').classList.add('animation-fadeIn-3s')
+                        document.getElementById('gamePageHead').classList.add('animation-fadeIn-3s')
                         document.getElementById('gamePageBody').style.display = 'flex'
                         if(this.setting.startAt.startsWith('day'))
                             document.getElementById('gamePage').classList.add('animation-nightToDay-6s')
@@ -1161,6 +1176,20 @@ document.addEventListener('alpine:init', () => {
             })
         },
 
+        getPossibleRoleData(possibleRoleSet){
+            let possibleRoleDataArray = possibleRoleSet.map(prd => {
+                let roleData = this.roleSet.find(r => r.name === prd.name)
+                roleData.expectation = prd.expectation
+                roleData.probability = prd.probability
+
+                return roleData
+            })
+
+            return possibleRoleDataArray.sort((a,b)=>{
+                    return this.roleSet.indexOf(this.roleSet.find(r => r.name === a.name)) - this.roleSet.indexOf(this.roleSet.find(r => r.name === b.name))
+                })
+        },
+
         //开始信息及按钮
         startInfo:"",
         startButtonToggle:true,
@@ -1282,6 +1311,18 @@ document.addEventListener('alpine:init', () => {
 
             return newRoleList
         },
+
+        roleCardData:undefined,
+        openRoleCard(event, roleData){
+            this.roleCardData = roleData
+            const roleCardElement = document.getElementById("roleCard")
+            // roleCardElement本身会影响到鼠标移入移出的判定，所以要加上一个5px的偏差值
+            roleCardElement.style.top  = event.clientY + 5 + "px"
+            roleCardElement.style.left = event.clientX + 5 + "px"
+        },
+        closeRoleCard(){
+            this.roleCardData = undefined
+        }
     }))
 
     function cloneDeep(o){

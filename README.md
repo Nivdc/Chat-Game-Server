@@ -3,7 +3,7 @@
 The goal of this project is to create a simple, easy-to-use web-based online gaming platform, currently used primarily for hosting the web version of SC2Mafia.  
 
 ## 如何帮助本项目/How to help this project
-请随意以任何方式询问任何问题，只有当你提出了一个问题之后文档里才会多一个答案。
+请随意以任何方式询问任何问题，只有当你提出了一个问题之后文档里才会多一个答案。  
 Please feel free to ask any questions in any way, only when you ask a question there will be one more answer in the document.
 
 ## 已知问题

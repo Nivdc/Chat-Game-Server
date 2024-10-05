@@ -14,10 +14,11 @@ export function start(room){
 class Game{
     constructor(room){
         this.playerList = room.user_list.map(user => new Player(user))
-        this.playerList.forEach((p) => {p.setPlayerList(this.playerList)})
-        this.host = this.playerList.find((p)=> p.user === room.host)
+        this.playerList.forEach(p => p.setPlayerList(this.playerList))
+        this.host = this.playerList.find(p => p.user === room.host)
         this.room = room
         this.status = "init"
+        this.sendEventToAll('BackendReady')
 
         // 异步函数的执行顺序和性能影响需要更多的观察
         class GameStage{
@@ -86,7 +87,7 @@ class Game{
     game_ws_message_router(ws, message){
         const event = JSON.parse(message)
         let player = this.playerList.find(player => {return player.uuid === ws.data.uuid})
-    
+
         if (player !== undefined){
             console.log("recive <-", event)
             switch(event.type){
@@ -248,13 +249,17 @@ class Game{
             this.setting = {...defaultSetting, ...setting}
             await this.newGameStage("begin", 0.05)
             // todo:此处应有根据随机规则生成真正角色列表的逻辑
+            let {realRoleNameList, possibleRoleSet} = this.processRandomRole(this.setting.roleList)
+            this.sendEventToAll("SetPossibleRoleSet", possibleRoleSet)
+            console.log('rrl:', realRoleNameList)
+            console.log('prs:', possibleRoleSet)
             // todo:检查玩家人数是否与角色列表匹配
             // todo:为没有自定义名字的玩家随机分配名字
-            shuffleArray(this.setting.roleList)
+            shuffleArray(realRoleNameList)
             shuffleArray(this.playerList)
             this.sendEventToAll("SetPlayerList", this.playerList)
             for(let [index, p] of this.playerList.entries()){
-                p.role = this.roleSet.find( r => r.name === this.setting.roleList[index] )
+                p.role = this.roleSet.find( r => r.name === realRoleNameList[index] )
                 p.isAlive = true
 
                 p.sendEvent("SetPlayerSelfIndex", p.index)
@@ -290,6 +295,54 @@ class Game{
             if(e === "GameStage:setup aborted")
                 return
         }
+    }
+
+    processRandomRole(roleListData){
+        let realRoleNameList = roleListData.map((r) => {
+            if(typeof(r) === 'string'){
+                return r
+            }else{
+                return weightedRandom(r.possibleRoleSet)
+            }
+        })
+
+        const fixedRoleNameList       = roleListData.filter(r => typeof(r) === 'string')
+        const fixedRoleNameSet        = new Set(fixedRoleNameList)
+        const randomObjectList        = roleListData.filter(r => r.name?.endsWith('Random'))
+        const possibleRoleNameList    = randomObjectList.map(ro => ro.possibleRoleSet.map(pr => pr.name)).flat(Infinity)
+        const possibleRoleNameSet     = new Set(possibleRoleNameList)
+
+        let possibleRoleArray = []
+        for(const possibleRoleName of possibleRoleNameSet){
+            let totalExpectation = 0
+            let totalProbability_NotCurrentRole = 1
+
+            for(const randomObject of randomObjectList){
+                const currentRandomProbability = calculateProbability(possibleRoleName, randomObject.possibleRoleSet)
+                const currentRandomExpectation = currentRandomProbability
+                totalExpectation += currentRandomExpectation
+
+                const probability_NotCurrentRole = 1 - currentRandomProbability
+                totalProbability_NotCurrentRole *= probability_NotCurrentRole
+            }
+
+            const totalProbability = 1 - totalProbability_NotCurrentRole
+
+            let possibleRoleData = {name:possibleRoleName, expectation:Number(totalExpectation.toFixed(3)), probability:Number(totalProbability.toFixed(3))}
+            possibleRoleArray.push(possibleRoleData)
+        }
+
+        for(const fixedRoleName of fixedRoleNameSet){
+            if(possibleRoleNameSet.has(fixedRoleName)){
+                let prd = possibleRoleArray.find(pr => pr.name === fixedRoleName)
+                prd.expectation = Number(prd.expectation) + fixedRoleNameList.filter(rn => rn === fixedRoleName).length
+                prd.probability = 1
+            }else{
+                possibleRoleArray.push({name:fixedRoleName, expectation:fixedRoleNameList.filter(rn => rn === fixedRoleName).length, probability:1})
+            }
+        }
+
+        return {realRoleNameList, possibleRoleSet:possibleRoleArray}
     }
 
     gameDirectorInit(){
@@ -482,8 +535,8 @@ class Game{
 
         // 此处前端已经收到了所有事件通知，等待下面这个阶段出现就会播放动画队列
         // 而这里就有一个后端究竟要等多久的问题，理想情况下，它应该等待无限久，直到所有人的所有前端动画都播放完
-        // 但是这么做就会有一点点复杂，让我们暂且先偷个懒，就先设置成12秒吧
-        await this.newGameStage("animation/actions", 0.2)
+        // 但是这么做就会有一点点复杂，让我们暂且先偷个懒，就先设置成30秒吧
+        await this.newGameStage("animation/actions", 0.5)
 
         for(const dp of this.recentlyDeadPlayers){
             dp.sendEvent("YouAreDead")
@@ -871,6 +924,32 @@ function interleaveArrays(arr1, arr2) {
     return result;
 }
 
+function weightedRandom(possibleRoles) {
+    const totalWeight = possibleRoles.reduce((sum, role) => sum + role.weight, 0)
+
+    const randomNum = Math.random() * totalWeight
+
+    let cumulativeWeight = 0
+
+    for (let i = 0; i < possibleRoles.length; i++) {
+        cumulativeWeight += possibleRoles[i].weight
+        if (randomNum < cumulativeWeight) {
+            return possibleRoles[i].name
+        }
+    }
+
+    return undefined
+}
+
+function calculateProbability(roleName, possibleRoles) {
+    const totalWeight = possibleRoles.reduce((sum, role) => sum + role.weight, 0)
+
+    const roleWeight  = possibleRoles.find(r => r.name === roleName).weight
+    const probability = roleWeight / totalWeight
+
+    return probability
+}
+
 class Player{
     constructor(user){
         this.user = user
@@ -940,6 +1019,7 @@ class Player{
     toJSON(){
         return {
             name: this.name,
+            userName: this.user.name,
             index:this.index,
             hasCustomName:this.hasCustomName,
         }

@@ -179,12 +179,38 @@ hr{
     z-index: 99;
 }
 
+#welcomeForm{
+    position: absolute;
+    top: 30%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 99;
+}
+
+#welcomeForm .formBody{
+    height: auto;
+    width: auto;
+}
+
 #consoleMessageForm{
     display:flex;
     flex-direction:column-reverse;
 }
 
+#lobbyChatForm{
+    position: absolute;
+    /* 由于拖拽函数不修改right和bottom，
+        使用下面这个很方便的方法会导致一个很鬼畜的效果 */
+    /* right: 0px;
+    bottom: 0px; */
+    top: 100%;
+    left: 100%;
+    transform: translate(-100%, -100%);
+}
+
 #lobbyChatMessageForm{
+    height: 15em;
+    width: 30em;
     display:flex;
     flex-direction:column-reverse;
 }
@@ -199,7 +225,9 @@ hr{
     flex:initial;
     word-break:break-all;
 }
-
+#lobbyChatInput > input:nth-child(1){
+    width: 30em;
+}
 
 /* #lobbyRoomListFormBody{
     display: flex;

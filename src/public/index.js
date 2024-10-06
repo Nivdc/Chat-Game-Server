@@ -98,7 +98,7 @@ let lobbyConsole = {
 }
 
 let lobbyChat = {
-    showUp: false,
+    showUp: true,
     messageList:[],
     inputString:'',
 
@@ -303,8 +303,10 @@ function dragElement(elmnt, elmnts) {
       document.getElementById(elmnt.id + "Head").onmousedown = dragMouseDown;
 
     elmnt.onmousedown = ()=>{
-        for(const el of elmnts)
-            el.style.zIndex = 0
+        for(const el of elmnts){
+            if(el.id !== 'welcomeForm')
+                el.style.zIndex = 0
+        }
         elmnt.style.zIndex=1
     }
 

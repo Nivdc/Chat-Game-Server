@@ -1168,6 +1168,7 @@ document.addEventListener('alpine:init', () => {
         },
 
         getRoleListFromData(roleListData){
+            if(roleListData === undefined) return;
             return roleListData.map(rd => {
                 if(typeof(rd) === 'string')
                     return this.roleSet.find(r => r.name === rd)
@@ -1177,6 +1178,7 @@ document.addEventListener('alpine:init', () => {
         },
 
         getPossibleRoleData(possibleRoleSet){
+            if(possibleRoleSet === undefined) return;
             let possibleRoleDataArray = possibleRoleSet.map(prd => {
                 let roleData = this.roleSet.find(r => r.name === prd.name)
                 roleData.expectation = prd.expectation

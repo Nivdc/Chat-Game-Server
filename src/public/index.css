@@ -210,7 +210,7 @@ hr{
 
 #lobbyChatMessageForm{
     height: 15em;
-    width: 30em;
+    width: auto;
     display:flex;
     flex-direction:column-reverse;
 }

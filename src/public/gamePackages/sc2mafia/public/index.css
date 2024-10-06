@@ -343,6 +343,7 @@ ul{
 .roleContainer span:hover{
     background-color: #123956;
     cursor:pointer;
+    user-select: none;
 }
 
 .roleSet{

@@ -119,7 +119,6 @@ document.addEventListener('alpine:init', () => {
             },
 
             // 'SetRoleSet':function(data){},
-            // 'InitCompleted':function(data){this.loading = false},
             
             'ChatMessage':function(data){
                 let message = {parts:[]}
@@ -595,6 +594,8 @@ document.addEventListener('alpine:init', () => {
                 case 'rename':
                     if(this.status === 'begin' && this.setting.enableCustomName)
                         sendEvent("PlayerRename", args.shift())
+                    else
+                        this.addSystemHintText("本局游戏没有启用自设名字，或尚未处于准备阶段")
                 break
 
                 case 'lw':

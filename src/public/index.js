@@ -231,19 +231,18 @@ document.addEventListener("alpine:init", () => {
 
 function init(){
     socket = new WebSocket(`ws://${window.location.host}/session`)
-    socket.onopen = ()=>{
-        userSelf.uuid = document.cookie.split('=')[1]
-    }
-    socket.onclose = ()=>{
-        alert("与服务器的连接已断开")
-    }
     init_socket()
 }
 
 function init_socket(){
-    // socket.onopen = () => {
-    //     inputHandler("/cr")
-    // }
+    socket.onopen = ()=>{
+        userSelf.uuid = document.cookie.split('=')[1]
+        document.getElementById('serverState').dispatchEvent(new CustomEvent('server-state-update', { detail:'open' }))
+    }
+    socket.onclose = ()=>{
+        alert("与服务器的连接已断开")
+        document.getElementById('serverState').dispatchEvent(new CustomEvent('server-state-update', { detail:'close' }))
+    }
     socket.onmessage = (e) => {
         const event = JSON.parse(e.data)
         switch(event.type){
@@ -255,11 +254,19 @@ function init_socket(){
                 lobbyRoom.addMessage(event.data.sender_name, event.data.message)
             break
 
-            case "UserListUpdate":
+            case "UserListUpdate":{
                 userList = event.data.map(userData => JSON.parse(userData))
                 userSelf = userList.find(user => {return user.uuid === userSelf.uuid})
-                document.getElementById('userCounter').dispatchEvent(new CustomEvent('user-counter-update', { detail:userList.length }))
-            break
+
+                const onlinePlayerNumber = userList.length
+                const inGamePlayerNumber = userList.filter(u => {
+                    if(u.current_room_id !== undefined)
+                        return lobbyRoomList.roomList.find(r => r.id === u.current_room_id).status === 'inGame'
+                    return false
+                }).length
+                const idlePlayerNumber = onlinePlayerNumber - inGamePlayerNumber
+                document.getElementById('userCounter').dispatchEvent(new CustomEvent('user-counter-update', { detail:{onlinePlayerNumber, inGamePlayerNumber, idlePlayerNumber} }))
+            break}
 
             case "RoomListUpdate":
                 lobbyRoomList.roomList = event.data.map(roomData => JSON.parse(roomData))

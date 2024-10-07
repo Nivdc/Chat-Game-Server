@@ -21,7 +21,7 @@
             <!-- Welconme/欢迎窗口 -->
             <div id="welcomeForm" class="form" x-data="{ open:true }" x-show="open" x-transition>
                 <div id="welcomeFormHead" class="formHead">
-                    <span>欢迎/Welcome</span>
+                    <span>欢迎 / Welcome</span>
                     <button @click="open = false"><i class="fa-solid fa-xmark"></i></button>
                 </div>
                 <div id="welcomeMessageForm" class="formBody">
@@ -35,7 +35,7 @@
             <!-- ConsoleForm/控制台窗口 -->
             <div id="consoleForm" class="form" x-data="lobbyConsole" x-show="showUp" x-transition>
                 <div id="consoleFormHead" class="formHead">
-                    <span>控制台/Console</span>
+                    <span>控制台 / Console</span>
                     <button @click="close"><i class="fa-solid fa-xmark"></i></button>
                 </div>
                 <div id="consoleMessageForm" class="formBody">
@@ -53,7 +53,7 @@
             <!-- LobbyChatForm/大厅聊天窗口 -->
             <div id="lobbyChatForm" class="form" x-data="lobbyChat" x-show="showUp" x-transition>
                 <div id="lobbyChatFormHead" class="formHead">
-                    <span>聊天室/Chat</span>
+                    <span>聊天室 / Chat</span>
                     <button @click="close"><i class="fa-solid fa-xmark"></i></button>
                 </div>
                 <div id="lobbyChatMessageForm" class="formBody">
@@ -74,7 +74,7 @@
             <!-- LobbyRoomListForm/房间列表窗口 -->
             <div id="lobbyRoomListForm" class="form" x-data="lobbyRoomList" x-show="showUp" x-transition>
                 <div id="lobbyRoomListFormHead" class="formHead">
-                    <span>房间列表/RoomList</span>
+                    <span>房间列表 / RoomList</span>
                     <button @click="close"><i class="fa-solid fa-xmark"></i></button>
                 </div>
                 <div id="lobbyRoomListFormBody" class="formBody">
@@ -114,7 +114,7 @@
             <!-- LobbyCreateRoomForm/创建房间窗口 -->
             <div id="lobbyCreateRoomForm" class="form" x-data="lobbyCreateRoom" x-show="showUp" x-transition>
                 <div id="lobbyCreateRoomFormHead" class="formHead">
-                    <span>创建房间/CreateRoom</span>
+                    <span>创建房间 / CreateRoom</span>
                     <button @click="close"><i class="fa-solid fa-xmark"></i></button>
                 </div>
                 <div id="lobbyCreateRoomFormBody" class="formBody">
@@ -140,7 +140,7 @@
             <!-- lobbyRoomForm/房间窗口 -->
             <div id="lobbyRoomForm" class="form" x-data="lobbyRoom" x-show="showUp" x-transition>
                 <div id="lobbyRoomFormHead" class="formHead">
-                    <span>房间/Room</span>
+                    <span>房间 / Room</span>
                     <button @click="close"><i class="fa-solid fa-xmark"></i></button>
                 </div>
                 <div id="lobbyRoomFormRoom" class="formBody">
@@ -194,7 +194,8 @@
                 </div>
             </div>
 
-            <p id="userCounter" x-data=" { userCount:0 } " style="position: absolute;top:5%;right: 5%;padding: 0.5em;background-color: rgba(0, 0, 0, 0.2);" x-text="`当前在线人数: ${userCount} `" @user-counter-update="userCount = $event.detail"></p>
+            <p id="userCounter" x-data=" { userCount:undefined } " style="position: absolute;top:5%;right: 5%;padding: 0.5em;background-color: rgba(0, 0, 0, 0.2);" @user-counter-update="userCount = $event.detail">当前在线人数: <span style="color: yellowgreen;" x-text="`${userCount?.onlinePlayerNumber}`"></span> ( 游戏中：<span style="color: limegreen;" x-text="`${userCount?.inGamePlayerNumber}`"></span> - 空闲：<span style="color: green;" x-text="`${userCount?.idlePlayerNumber}`"></span> ) </p>
+            <p id="serverState" x-data=" { state:'close' } " style="position: absolute;top:11%;right: 5%;padding: 0.5em;background-color: rgba(0, 0, 0, 0.2);" @server-state-update="state = $event.detail">服务器状态: <span :style="state === 'open'? 'color:green;':'color:red;'" x-text="state === 'open'? '在线':'离线'"></span></p>
         </div>
     </body>
 </html>

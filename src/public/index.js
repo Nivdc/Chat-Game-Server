@@ -258,6 +258,7 @@ function init_socket(){
             case "UserListUpdate":
                 userList = event.data.map(userData => JSON.parse(userData))
                 userSelf = userList.find(user => {return user.uuid === userSelf.uuid})
+                document.getElementById('userCounter').dispatchEvent(new CustomEvent('user-counter-update', { detail:userList.length }))
             break
 
             case "RoomListUpdate":

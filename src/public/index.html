@@ -193,6 +193,8 @@
                     </div>
                 </div>
             </div>
+
+            <p id="userCounter" x-data=" { userCount:0 } " style="position: absolute;top:5%;right: 5%;padding: 0.5em;background-color: rgba(0, 0, 0, 0.2);" x-text="`当前在线人数: ${userCount} `" @user-counter-update="userCount = $event.detail"></p>
         </div>
     </body>
 </html>

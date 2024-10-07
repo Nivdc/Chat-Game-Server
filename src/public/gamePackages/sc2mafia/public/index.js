@@ -18,6 +18,8 @@ document.addEventListener('alpine:init', () => {
             // testCode
             // showGamePage
             // this.loading = false
+            // document.getElementById('gamePageBody').classList.add('animation-fadeIn-3s')
+
             // this.status = "night/discussion"
             // this.playAnimation('begin')
 
@@ -94,9 +96,9 @@ document.addEventListener('alpine:init', () => {
 
             "SetHost":function (data){
                 this.host = this.playerList[data.index]
-                let message = {parts:[]}
-                message.parts.push(this.host.getNameMessagePart())
-                message.parts.push({text:'  是新的主机', class:'text-warning'})
+                let message = new MagicString()
+                message.append(this.host.getNameMagicString_Bold())
+                message.append({text:'  是新的主机', class:'text-warning'})
                 if(this.isRunning === false && this.status !== 'begin')
                     this.addMessage(message)
             },
@@ -121,10 +123,16 @@ document.addEventListener('alpine:init', () => {
             // 'SetRoleSet':function(data){},
             
             'ChatMessage':function(data){
-                let message = {parts:[]}
                 let sender  = this.playerList[data.sender.index]
-                message.parts.push(sender.getNameMessagePart(': '))
-                message.parts.push({text:data.message})
+                let message = new MagicString()
+                message.append(sender.getNameMagicStringWithExtras({text:': ', style:`font-weight:bold;`}))
+                message.addText(data.message)
+
+                if(sender.isAlive === false)
+                    message.style = `background-color:${hexToRgba(html5ColorHexMap['darkred'], 0.7)};`
+                if(sender === this.executionTarget || sender === this.trialTarget)
+                    message.style = `background-color:${hexToRgba(html5ColorHexMap['dodgerblue'], 0.3)};`
+
                 this.addMessage(message)
             },
 
@@ -135,14 +143,25 @@ document.addEventListener('alpine:init', () => {
 
             'HostCancelSetup':function(data){
                 this.addMessageWithoutLog({text:"主机取消了开始", style:"color:yellow;"})
+
+                // Undo changes made by preprocessRandomRole()
+                this.settingWatchIgnore = true
+                this.setting.roleList = this.setting.roleList.map(r => {
+                    if(typeof(r) === 'string'){
+                        return r
+                    }else{
+                        return r.name
+                    }
+                })
+
                 this.startButtonToggle = true
             },
 
             'PlayerQuit':function(data){
-                let message = {parts:[], style:'background-color:darkred;text-shadow: 1px 1px 0px #000000;'}
+                let message = new MagicString({style:'background-color:darkred;text-shadow: 1px 1px 0px #000000;'})
                 let player  = this.playerList[data.index]
-                message.parts.push(player.getNameMessagePart())
-                message.parts.push({text:' 退出了游戏'})
+                message.append(player.getNameMagicString_Bold())
+                message.append({text:' 退出了游戏'})
                 this.addMessage(message)
             },
 
@@ -281,13 +300,13 @@ document.addEventListener('alpine:init', () => {
             'RepickHost':function(data){
                 let message = new MagicString()
                 let player  = this.playerList[data.player.index]
-                message.parts.push(player.getNameMessagePart())
+                message.append(player.getNameMagicString_Bold())
                 if(data.targetIndex == null)
-                    message.parts.push({text:' 提议重选主机', style:'color:yellow;'})
+                    message.append({text:' 提议重选主机', style:'color:yellow;'})
                 else{
                     let target = this.playerList[data.targetIndex]
-                    message.parts.push({text:' 提议重选主机为 ', style:'color:yellow;'})
-                    message.parts.push(target.getNameMessagePart())
+                    message.append({text:' 提议重选主机为 ', style:'color:yellow;'})
+                    message.append(target.getNameMagicString_Bold())
                 }
                 this.addMessage(message)
             },
@@ -375,7 +394,7 @@ document.addEventListener('alpine:init', () => {
                 else
                     message.addText(' 将他的投票改为 ')
                 message.append(target.getNameMagicString())
-                message.style = `background-color:${hexToRgba(target.color, 0.5)};text-shadow: 1px 1px 0px #000000;`
+                message.style = `background-color:${hexToRgba(target.color, 0.2)};text-shadow: 1px 1px 0px #000000;`
                 this.addMessage(message)
             },
             'LynchVoteCancel':function(data){
@@ -559,16 +578,18 @@ document.addEventListener('alpine:init', () => {
                             message.append(new MagicString({text:"无罪", style:"color:#119111;"}))
                             message.style = `background-color: ${hexToRgba(html5ColorHexMap["green"], 0.5)};`
                         }
-                    }else if(typeof(data[i]) === 'undefined'){
+                    }else if(data[i] === null){
                         message.addText(" 弃权了")
                         message.style = `background-color: rgba(0, 0, 0, 0.5);`
                     }
                     this.addMessage(message)
                 }
+
+                this.trialTarget = undefined
             },
 
             'YouAreDead':function(data){
-                this.addSystemHintText("哦不，你死了，但是你仍可以留下来观看本局游戏。")
+                this.addSystemHintText("哦不，你死了，但是你仍可以留下来观看本局游戏。", 'darkred')
             },
 
             // night action events
@@ -857,12 +878,12 @@ document.addEventListener('alpine:init', () => {
 
                 case 'youUnderAttack':{
                     if(data.source === 'Mafia')
-                        this.addSystemHintText("你被黑手党攻击了")
+                        this.addSystemHintText("你被黑手党攻击了", 'darkred')
 
                     const gamePageElement = document.getElementById('gamePage')
                     gamePageElement.classList.remove('animation-nightToAction-6s')
                     return new Promise((resolve) => {
-                        gamePageElement.classList.add('animation-mafiaKillAttack-6s')
+                        gamePageElement.classList.add('animation-underAttack-6s')
                         gamePageElement.addEventListener('animationend', () => {
                             resolve()
                         }, { once: true })
@@ -870,7 +891,7 @@ document.addEventListener('alpine:init', () => {
                 break}
 
                 case 'youAreHealed':{
-                    this.addSystemHintText("但是有个陌生人救了你一命")
+                    this.addSystemHintText("但是有个陌生人救了你一命", 'limegreen')
 
                     const gamePageElement = document.getElementById('gamePage')
                     return new Promise((resolve) => {
@@ -999,8 +1020,8 @@ document.addEventListener('alpine:init', () => {
             this.messageList.push(message)
             this.$nextTick(()=>{scrollToBottom('chatMessageList')})
         },
-        addSystemHintText(text){
-            this.addMessageWithoutLog({text, style:'color:NavajoWhite;background-color:rgba(0, 0, 0, 0.1);'})
+        addSystemHintText(text, color){
+            this.addMessageWithoutLog({text, style:`color:${color??'NavajoWhite'};background-color:rgba(0, 0, 0, 0.1);`})
         },
 
         playerList:[],
@@ -1394,16 +1415,16 @@ class Player{
         return new MagicString({text:`${this.index+1}.${this.name}`, style:`color:${this.color};`})
     }
 
-    getNameMessagePart(additionalString){
-        return {text:this.name+(additionalString??''), style:`font-weight:bold;color:${this.color};`}
-    }
-
     getNameMagicString(){
         return new MagicString({text:this.name, style:`color:${this.color};`})
     }
+
+    getNameMagicString_Bold(){
+        return new MagicString({text:this.name, style:`color:${this.color};font-weight:bold;`})
+    }
     
-    getNameMagicStringWithAdditionalContent({text:adtext, style:adstyle}){
-        return new MagicString({text:this.name+adtext, style:`color:${this.color};`+adstyle})
+    getNameMagicStringWithExtras({text:extext, style:exstyle}){
+        return new MagicString({text:this.name+extext, style:`color:${this.color};`+exstyle})
     }
 
 }

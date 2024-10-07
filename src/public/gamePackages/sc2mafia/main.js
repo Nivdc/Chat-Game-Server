@@ -248,11 +248,8 @@ class Game{
             await this.newGameStage("setup", 0.025)
             this.setting = {...defaultSetting, ...setting}
             await this.newGameStage("begin", 0.05)
-            // todo:此处应有根据随机规则生成真正角色列表的逻辑
             let {realRoleNameList, possibleRoleSet} = this.processRandomRole(this.setting.roleList)
             this.sendEventToAll("SetPossibleRoleSet", possibleRoleSet)
-            console.log('rrl:', realRoleNameList)
-            console.log('prs:', possibleRoleSet)
             // todo:检查玩家人数是否与角色列表匹配
             // todo:为没有自定义名字的玩家随机分配名字
             shuffleArray(realRoleNameList)
@@ -270,11 +267,6 @@ class Game{
                         p.team = t
                     }
                 }
-                // if(p.role.affiliation === "Mafia")
-                //     p.sendEvent("SetTeam", this.queryAlivePlayersByRoleTag("Mafia").map(p=>p.toJSON_includeRole()))
-                // else if(p.role.name === "AuxiliaryOfficer")
-                //     p.sendEvent("SetTeam", this.queryAlivePlayersByRoleName("AuxiliaryOfficer").map(p=>p.toJSON_includeRole()))
-
             }
 
             for(const t of this.teamSet){
@@ -285,8 +277,6 @@ class Game{
 
             this.gameDirectorInit()
 
-
-            // 游戏环境变量初始化...可能不全，因为js可以随时添加上去，欸嘿
             this.dayCount = 1
 
             await this.newGameStage("animation/begin", 0.1)
@@ -297,6 +287,7 @@ class Game{
         }
     }
 
+    // 死去的概率论在攻击我，还是得靠GPT救命
     processRandomRole(roleListData){
         let realRoleNameList = roleListData.map((r) => {
             if(typeof(r) === 'string'){
@@ -670,7 +661,7 @@ class Game{
         else{
             if(sender.isAlive === true){
                 if(this.status.startsWith("day") && this.status.split('/').includes("discussion")){
-                    targetGroup = this.alivePlayerList
+                    targetGroup = this.onlinePlayerList
                 }else if(this.status.startsWith("night") && this.status.split('/').includes("discussion")){
                     if(sender.role.affiliation === "Mafia")
                         targetGroup = this.queryAlivePlayersByRoleTag(sender.role.affiliation)
@@ -680,6 +671,12 @@ class Game{
             }else{
                 targetGroup = this.deadPlayerList
             }
+        }
+
+        if(this.status.split('/').includes('lastWord') && sender === this.executionTarget)
+            targetGroup = this.onlinePlayerList
+        if(this.status.split('/').includes('defense')  && sender === this.trialTarget){
+            targetGroup = this.onlinePlayerList
         }
 
         if(targetGroup !== undefined)

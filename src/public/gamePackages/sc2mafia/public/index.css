@@ -483,8 +483,8 @@ ul{
     background-color: black;
 }
 
-.animation-mafiaKillAttack-6s {
-    animation: attack 6s forwards;
+.animation-underAttack-6s {
+    animation: underAttack 6s forwards;
 }
 .animation-doctorHealProtect-2s {
     animation: protect 2s forwards;
@@ -511,7 +511,7 @@ ul{
     100% { background-color: var(--background-highlights); }
 }
 
-@keyframes attack{
+@keyframes underAttack{
     0% { background-color: black }
     10% { background-color: Olive }
     20% { background-color: black }

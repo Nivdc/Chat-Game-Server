@@ -109,8 +109,8 @@ function send_event_to(user_list: User[],type:string, data? :any){
 }
 
 function all_user_update_all(){
-    send_event_to(user_list, "UserListUpdate", user_list.map(user => JSON.stringify(user)))
     send_event_to(user_list, "RoomListUpdate", room_list.map(room => JSON.stringify(room)))
+    send_event_to(user_list, "UserListUpdate", user_list.map(user => JSON.stringify(user)))
     send_event_to(user_list, "GamePackagesUpdate", game_package_list.map(pkg => JSON.stringify(pkg)))
 }
 

@@ -188,12 +188,6 @@ class Game{
 
             if(player.isAlive ?? false){
                 switch(event.type){
-                    case 'SetLastWill':
-                        if(this.setting.enableLastWill){
-                            player.lastWill = event.data
-                            player.sendEvent("SetLastWill", player.lastWill)
-                        }
-                    break
                     case "LynchVote":
                     case "TrialVote":
                         this.gameDirector.playerVote(event.type, player, event.data)
@@ -213,6 +207,19 @@ class Game{
                     // case "UseAbility":
                     //     player.role.useAblity(data)
                     // break
+
+                    case 'SetLastWill':
+                        if(this.setting.enableLastWill){
+                            player.lastWill = event.data
+                            player.sendEvent("SetLastWill", player.lastWill)
+                        }
+                    break
+                    case 'SetKillerMessage':
+                        if(this.setting.enableLastWill){
+                            player.killerMessage = event.data
+                            player.sendEvent("SetKillerMessage", player.killerMessage)
+                        }
+                    break
                 }
             }
         }
@@ -601,21 +608,27 @@ class Game{
 
             while(anps.length > 0){
                 let action = anps.shift()
-                action.origin.sendEvent("YouGoToKill", {targetIndex: action.target.index})
+                // fixme: 这里有个小问题要解决，如果杀手已经死了，还是会发送这个消息。
+                // action.origin.sendEvent("YouGoToKill", {targetIndex: action.target.index})
                 switch(action.type){
                     case 'MafiaKillAttack':
-                        p.sendEvent('YouUnderAttack', {source:'Mafia'})
-                        p.isAlive = false
+                        action.target.sendEvent('YouUnderAttack', {source:'Mafia'})
+                        action.target.isAlive = false
                         tempDeathReason.push('MafiaKillAttack')
+
+                        if('killerMessage' in action.origin)
+                            action.target.messageLeftByKiller = action.origin.killerMessage
+                        else
+                            action.target.messageLeftByKiller = undefined
                     break
 
                     case 'DoctorHealProtect':
                         if(tempDeathReason.length !== 0){
                             // action.origin.sendEvent('DoctorHealProtectedTargetIsAttacked')
                         }
-                        if(p.isAlive === false && p.deathReason === undefined){
-                            p.sendEvent('YouAreHealed')
-                            p.isAlive = true
+                        if(action.target.isAlive === false && p.deathReason === undefined){
+                            action.target.sendEvent('YouAreHealed')
+                            action.target.isAlive = true
                         }
                     break
                 }
@@ -809,10 +822,12 @@ class Game{
         let data = {}
         data.index = deadPlayer.index
         data.deathReason = deadPlayer.deathReason
-        if(this.setting.revealPlayerRoleOnDeath === true)
+        if(this.setting.revealPlayerRoleOnDeath)
             data.roleName = deadPlayer.role.name
-        if(this.setting.enableLastWill === true)
+        if(this.setting.enableLastWill)
             data.lastWill = deadPlayer.lastWill
+        if(this.setting.enableKillerMessage)
+            data.messageLeftByKiller = deadPlayer.messageLeftByKiller
 
         return data
     }

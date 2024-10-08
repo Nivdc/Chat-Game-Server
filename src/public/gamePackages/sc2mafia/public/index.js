@@ -136,6 +136,14 @@ document.addEventListener('alpine:init', () => {
                 this.addMessage(message)
             },
 
+            // 'PrivateMessage':function(data){
+            //     let sender  = this.playerList[data.sender.index]
+            //     let message = new MagicString()
+            //     message.append(sender.getNameMagicStringWithExtras({text:': ', style:`font-weight:bold;`}))
+            //     message.addText(data.message)
+            //     this.addMessage(message)
+            // },
+
             'HostSetupGame':function(){
                 this.addMessageWithoutLog({text:"游戏将在15秒后开始", style:"color:LawnGreen;"})
                 this.startButtonToggle = false
@@ -372,7 +380,7 @@ document.addEventListener('alpine:init', () => {
                 let message = new MagicString()
                 message.append(this.executionTarget.getNameMagicString())
                 message.addText(' 将会被处决！')
-                message.style = 'color:NavajoWhite;background-color:rgba(0, 0, 0, 0.1);'
+                message.style = 'color:NavajoWhite;background-color:rgba(0, 0, 0, 0.2);'
                 this.addMessage(message)
             },
 
@@ -414,20 +422,27 @@ document.addEventListener('alpine:init', () => {
 
                 this.addSystemHintText('你已将自己的遗言设置为：')
 
-                let lastWillContent = new MagicString()
-                lastWillContent.addText(lws1)
-                lastWillContent.style = 'color:NavajoWhite;background-color:rgba(0, 0, 0, 0.2);'
-                this.addMessageWithoutLog(lastWillContent)
+                this.addSystemHintText(lws1)
+
 
                 if(isEmpty(lws2) === false){
-                    let lastWillContent2 = new MagicString()
-                    lastWillContent2.addText(lws2)
-                    lastWillContent2.style = 'color:NavajoWhite;background-color:rgba(0, 0, 0, 0.2);'
-                    this.addMessageWithoutLog(lastWillContent2)
+                    this.addSystemHintText(lws2)
                 }
 
                 document.getElementById('lastWillInput1').value = lws1
                 document.getElementById('lastWillInput2').value = lws2
+            },
+
+            'SetKillerMessage':function(data){
+                let killerMessageString = data
+
+                if(killerMessageString !== undefined){
+                    this.addSystemHintText('你写下了你的杀手信息: ')
+                    this.addSystemHintText(killerMessageString)
+                }
+                else{
+                    this.addSystemHintText('你清除了你的杀手信息。')
+                }
             },
 
             'MafiaKillVote':function(data){
@@ -562,7 +577,7 @@ document.addEventListener('alpine:init', () => {
                 firstMessage.append(new MagicString({text:guiltyCount.toString(), style:"color:red;"}))
                 firstMessage.addText(" : ")
                 firstMessage.append(new MagicString({text:innocentCount.toString(), style:"color:#119111;"}))
-                firstMessage.style = `background-color: rgba(0, 0, 0, 0.2);`
+                firstMessage.style = `background-color: rgba(0, 0, 0, 0.7);`
                 this.addMessage(firstMessage)
 
                 for(const i of alivePlayersIndexArray){
@@ -629,6 +644,21 @@ document.addEventListener('alpine:init', () => {
                         }
                     }else{
                         this.addSystemHintText("抱歉，现在不能设置遗嘱")
+                    }
+                break
+
+                case 'dn':
+                case 'deathNote':
+                case 'km':
+                case 'killerMessage':
+                    if(this.isRunningAndNoAnimation){
+                        if(this.setting.enableLastWill){
+                            sendEvent("SetKillerMessage", args.shift())
+                        }else{
+                            this.addSystemHintText("本局游戏没有启用杀手留言")
+                        }
+                    }else{
+                        this.addSystemHintText("抱歉，现在不能设置杀手留言")
                     }
                 break
 
@@ -798,6 +828,7 @@ document.addEventListener('alpine:init', () => {
                         let player      = this.playerList[deadPlayerData.index]
                         let role        = this.roleSet.find(r => r.name === deadPlayerData.roleName)
                         let lastWill    = deadPlayerData.lastWill
+                        let messageLeftByKiller = deadPlayerData.messageLeftByKiller
 
                         if(this.status === 'animation/daily/deathDeclear'){
                             this.gamePageTipMessage = new MagicString()
@@ -818,21 +849,21 @@ document.addEventListener('alpine:init', () => {
                             this.gamePageTipMessage.append(player.getNameMagicString())
                             this.gamePageTipMessage.addText(' 的角色是 ')
                             this.gamePageTipMessage.append(role.getNameMessagePart())
+                            this.gamePageTipMessage.class = 'animation-fadeIn-1s'
                             let newMessage = cloneDeep(this.gamePageTipMessage)
                             newMessage.style = 'background-color:rgba(0, 0, 0, 0.2);'
                             this.addMessage(newMessage)
-                            this.gamePageTipMessage.class = 'animation-fadeIn-1s'
 
                             player.isAlive  = false
                             player.role     = role
                             player.lastWill = lastWill
                         }, 2000)
                         setTimeout(() => {
-                            if(this.setting.enableLastWill === true){
+                            if(this.setting.enableLastWill){
                                 if(lastWill !== undefined){
                                     let lastWillTitle = new MagicString()
                                     lastWillTitle.append(player.getNameMagicString())
-                                    lastWillTitle.addText(' 给我们留下了他的遗嘱：')
+                                    lastWillTitle.addText(' 给我们留下了他的遗嘱:')
                                     lastWillTitle.style = 'color:NavajoWhite;background-color:rgba(0, 0, 0, 0.2);'
                                     this.addMessage(lastWillTitle)
 
@@ -840,23 +871,25 @@ document.addEventListener('alpine:init', () => {
                                     let lws1 = lwsa[0] ?? ""
                                     let lws2 = lwsa[1] ?? ""
                     
-                                    let lastWillContent = new MagicString()
-                                    lastWillContent.addText(lws1)
-                                    lastWillContent.style = 'color:NavajoWhite;background-color:rgba(0, 0, 0, 0.2);'
-                                    this.addMessage(lastWillContent)
+                                    this.addSystemHintText(lws1)
                     
                                     if(isEmpty(lws2) === false){
-                                        let lastWillContent2 = new MagicString()
-                                        lastWillContent2.addText(lws2)
-                                        lastWillContent2.style = 'color:NavajoWhite;background-color:rgba(0, 0, 0, 0.2);'
-                                        this.addMessage(lastWillContent2)
+                                        this.addSystemHintText(lws2)
                                     }
                                 }else{
                                     this.addSystemHintText('我们未能找到他的遗嘱。')
                                 }
                             }
                             this.gamePageTipMessage.class = 'animation-fadeOut-2s'
-                        }, 4000);
+                        }, 2000);
+                        setTimeout(() => {
+                            if(this.setting.enableKillerMessage){
+                                if(messageLeftByKiller !== undefined){
+                                    this.addSystemHintText("与此同时，我们在他的尸体旁边发现了杀手信息:")
+                                    this.addSystemHintText(messageLeftByKiller)
+                                }
+                            }
+                        }, 2000);
                     }
                 break
 
@@ -967,7 +1000,7 @@ document.addEventListener('alpine:init', () => {
                     revealPlayerRoleOnDeath: true,
                     protectCitizensMode:false,
                     enableCustomName: true,
-                    enableKillMessage: true,
+                    enableKillerMessage: true,
                     enableLastWill: true,
                     enablePrivateMessage: true,
                     
@@ -1021,7 +1054,7 @@ document.addEventListener('alpine:init', () => {
             this.$nextTick(()=>{scrollToBottom('chatMessageList')})
         },
         addSystemHintText(text, color){
-            this.addMessageWithoutLog({text, style:`color:${color??'NavajoWhite'};background-color:rgba(0, 0, 0, 0.1);`})
+            this.addMessageWithoutLog({text, style:`color:${color??'NavajoWhite'};background-color:rgba(0, 0, 0, 0.2);`})
         },
 
         playerList:[],
@@ -1032,7 +1065,7 @@ document.addEventListener('alpine:init', () => {
                 }
                 else{
                     let str = this.inputString.substring(1); // remove '-'
-                    if(this.status === 'begin' && this.setting.enableCustomName)
+                    if(this.status === 'begin')
                         this.commandHandler(`rename ${str}`)
                     else
                         this.commandHandler(str)

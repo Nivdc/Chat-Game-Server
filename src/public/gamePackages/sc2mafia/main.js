@@ -220,6 +220,17 @@ class Game{
                             player.sendEvent("SetKillerMessage", player.killerMessage)
                         }
                     break
+                    case 'PrivateMessage':
+                        // fixme: 后端的检测不是很严谨，动画阶段也能发送私信
+                        if(this.setting.enablePrivateMessage){
+                            const data = event.data
+                            const target  = this.playerList[data.targetIndex]
+                            if(target.isAlive){
+                                this.sendEventToGroup(this.onlinePlayerList.filter(p => p !== target), 'PrivateMessage-PublicNotice', {senderIndex:player.index, targetIndex:target.index})
+                                target.sendEvent('PrivateMessage-Receiver', {senderIndex:player.index, message:data.message})
+                            }
+                        }
+                    break
                 }
             }
         }
@@ -693,7 +704,7 @@ class Game{
         }
 
         if(targetGroup !== undefined)
-            this.sendEventToGroup(targetGroup, "ChatMessage", {sender, message:data})
+            this.sendEventToGroup(targetGroup, "ChatMessage", {senderIndex:sender.index, message:data})
     }
 
     // 首先检查是否有一半的玩家投票重选主机，如果有，随机选择一个主机

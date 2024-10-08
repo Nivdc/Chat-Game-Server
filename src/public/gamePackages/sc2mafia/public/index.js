@@ -123,7 +123,8 @@ document.addEventListener('alpine:init', () => {
             // 'SetRoleSet':function(data){},
             
             'ChatMessage':function(data){
-                let sender  = this.playerList[data.sender.index]
+                const sender  = this.playerList[data.senderIndex]
+
                 let message = new MagicString()
                 message.append(sender.getNameMagicStringWithExtras({text:': ', style:`font-weight:bold;`}))
                 message.addText(data.message)
@@ -136,13 +137,29 @@ document.addEventListener('alpine:init', () => {
                 this.addMessage(message)
             },
 
-            // 'PrivateMessage':function(data){
-            //     let sender  = this.playerList[data.sender.index]
-            //     let message = new MagicString()
-            //     message.append(sender.getNameMagicStringWithExtras({text:': ', style:`font-weight:bold;`}))
-            //     message.addText(data.message)
-            //     this.addMessage(message)
-            // },
+            'PrivateMessage-PublicNotice':function(data){
+                const sender  = this.playerList[data.senderIndex]
+                const target  = this.playerList[data.targetIndex]
+
+                let message = new MagicString()
+                message.append(sender.getNameMagicStringWithExtras({style:`font-weight:bold;`}))
+                message.addText(' 发送了一条私密消息给 ')
+                message.append(target.getNameMagicStringWithExtras({style:`font-weight:bold;`}))
+                message.style = 'color:NavajoWhite;background-color:rgba(0, 0, 0, 0.2);'
+                this.addMessage(message)
+            },
+            'PrivateMessage-Receiver':function(data){
+                const sender  = this.playerList[data.senderIndex]
+                const target  = this.playerList[data.targetIndex]
+
+                let message = new MagicString()
+                message.append(sender.getNameMagicStringWithExtras({style:`font-weight:bold;`}))
+                message.addText(' 发送了一条私密消息给你: ')
+                message.addText(data.message)
+                message.style = 'color:NavajoWhite;background-color:rgba(0, 0, 0, 0.2);'
+                this.addMessage(message)
+
+            },
 
             'HostSetupGame':function(){
                 this.addMessageWithoutLog({text:"游戏将在15秒后开始", style:"color:LawnGreen;"})
@@ -436,7 +453,7 @@ document.addEventListener('alpine:init', () => {
             'SetKillerMessage':function(data){
                 let killerMessageString = data
 
-                if(killerMessageString !== undefined){
+                if(killerMessageString != undefined){
                     this.addSystemHintText('你写下了你的杀手信息: ')
                     this.addSystemHintText(killerMessageString)
                 }
@@ -628,8 +645,11 @@ document.addEventListener('alpine:init', () => {
                 break
 
                 case 'rename':
-                    if(this.status === 'begin' && this.setting.enableCustomName)
-                        sendEvent("PlayerRename", args.shift())
+                    if(this.status === 'begin' && this.setting.enableCustomName){
+                        const newName = args.shift()
+                        if(isEmpty(newName) === false)
+                            sendEvent("PlayerRename", newName)
+                    }
                     else
                         this.addSystemHintText("本局游戏没有启用自设名字，或尚未处于准备阶段")
                 break
@@ -659,6 +679,23 @@ document.addEventListener('alpine:init', () => {
                         }
                     }else{
                         this.addSystemHintText("抱歉，现在不能设置杀手留言")
+                    }
+                break
+
+                case 'pm':
+                case 'privateMessage':
+                    if(this.isRunningAndNoAnimation){
+                        if(this.setting.enablePrivateMessage){
+                            let targetIndex = Number(args.shift())-1
+                            let message = args.shift()
+                            if(isEmpty(message) === false){
+                                sendEvent("PrivateMessage", {targetIndex, message})
+                            }
+                        }else{
+                            this.addSystemHintText("本局游戏没有启用私信")
+                        }
+                    }else{
+                        this.addSystemHintText("抱歉，现在不能发送私信")
                     }
                 break
 
@@ -881,7 +918,7 @@ document.addEventListener('alpine:init', () => {
                                 }
                             }
                             this.gamePageTipMessage.class = 'animation-fadeOut-2s'
-                        }, 2000);
+                        }, 4000);
                         setTimeout(() => {
                             if(this.setting.enableKillerMessage){
                                 if(messageLeftByKiller !== undefined){
@@ -889,7 +926,7 @@ document.addEventListener('alpine:init', () => {
                                     this.addSystemHintText(messageLeftByKiller)
                                 }
                             }
-                        }, 2000);
+                        }, 6000);
                     }
                 break
 
@@ -1059,7 +1096,7 @@ document.addEventListener('alpine:init', () => {
 
         playerList:[],
         submit(){
-            if(/^\s*$/.test(this.inputString) === false){
+            if(isEmpty(this.inputString) === false){
                 if(/^-/.test(this.inputString) === false){
                     sendEvent("ChatMessage", this.inputString)
                 }
@@ -1457,7 +1494,7 @@ class Player{
     }
     
     getNameMagicStringWithExtras({text:extext, style:exstyle}){
-        return new MagicString({text:this.name+extext, style:`color:${this.color};`+exstyle})
+        return new MagicString({text:this.name+(extext??''), style:`color:${this.color};`+(exstyle??'')})
     }
 
 }

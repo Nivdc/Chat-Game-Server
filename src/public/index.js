@@ -254,22 +254,13 @@ function init_socket(){
                 lobbyRoom.addMessage(event.data.sender_name, event.data.message)
             break
 
+            case "RoomListUpdate":
+                lobbyRoomList.roomList = event.data.map(roomData => JSON.parse(roomData))
+            break
+
             case "UserListUpdate":{
                 userList = event.data.map(userData => JSON.parse(userData))
                 userSelf = userList.find(user => {return user.uuid === userSelf.uuid})
-
-                const onlinePlayerNumber = userList.length
-                const inGamePlayerNumber = userList.filter(u => {
-                    if(u.current_room_id !== undefined)
-                        return lobbyRoomList.roomList.find(r => r.id === u.current_room_id).status === 'inGame'
-                    return false
-                }).length
-                const idlePlayerNumber = onlinePlayerNumber - inGamePlayerNumber
-                document.getElementById('userCounter').dispatchEvent(new CustomEvent('user-counter-update', { detail:{onlinePlayerNumber, inGamePlayerNumber, idlePlayerNumber} }))
-            break}
-
-            case "RoomListUpdate":
-                lobbyRoomList.roomList = event.data.map(roomData => JSON.parse(roomData))
                 if(userSelf.current_room_id){
                     let room = lobbyRoomList.roomList.find(room => {return room.id === userSelf.current_room_id})
                     if(room){
@@ -277,7 +268,17 @@ function init_socket(){
                         document.getElementById("lobbyRoomForm").style.zIndex = 2
                     }
                 }
-            break
+
+                const onlinePlayerNumber = userList.length
+                const inGamePlayerNumber = userList.filter(u => {
+                    if(u.current_room_id !== undefined)
+                        return lobbyRoomList.roomList?.find(r => r.id === u.current_room_id).status === 'inGame'
+                    return false
+                }).length
+                const idlePlayerNumber = onlinePlayerNumber - inGamePlayerNumber
+                document.getElementById('userCounter').dispatchEvent(new CustomEvent('user-counter-update', { detail:{onlinePlayerNumber, inGamePlayerNumber, idlePlayerNumber} }))
+            break}
+
 
             case "GamePackagesUpdate":
                 lobbyCreateRoom.gamePackageList = event.data.map(gaamePackageData => JSON.parse(gaamePackageData))

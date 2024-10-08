@@ -325,9 +325,11 @@
                             <div class="scrollbar">
                                 <template x-for="player in playerList.filter(p => p.isAlive===false)">
                                     <p class="flex" style="column-gap: 0.2em;">
-                                        <span x-text="`${player.index+1}. `"></span>
-                                        <span x-text="player.name" :style="`color:${player.color};flex:auto;`"></span>
+                                        <span x-text="`${player.index+1} - `"></span>
+                                        <span x-text="player.name" :style="`color:${player.color};`"></span>
+                                        <span>(</span>
                                         <span x-text="`${player.role.getNameMessagePart().text}`" :style="`${player.role.getNameMessagePart().style}`"></span>
+                                        <span>)</span>
                                     </p>
                                 </template>
                             </div>

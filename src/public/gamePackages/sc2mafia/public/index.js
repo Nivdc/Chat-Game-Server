@@ -887,7 +887,9 @@ document.addEventListener('alpine:init', () => {
                             this.gamePageTipMessage.addText(' 的角色是 ')
                             this.gamePageTipMessage.append(role.getNameMessagePart())
                             this.gamePageTipMessage.class = 'animation-fadeIn-1s'
+
                             let newMessage = cloneDeep(this.gamePageTipMessage)
+                            newMessage.class = ''
                             newMessage.style = 'background-color:rgba(0, 0, 0, 0.2);'
                             this.addMessage(newMessage)
 

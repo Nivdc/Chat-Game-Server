@@ -271,8 +271,9 @@ function init_socket(){
 
                 const onlinePlayerNumber = userList.length
                 const inGamePlayerNumber = userList.filter(u => {
-                    if(u.current_room_id !== undefined)
-                        return lobbyRoomList.roomList?.find(r => r.id === u.current_room_id).status === 'inGame'
+                    if(u.current_room_id !== undefined){
+                        return lobbyRoomList.roomList.find(r => r.id === u.current_room_id)?.status === 'inGame'
+                    }
                     return false
                 }).length
                 const idlePlayerNumber = onlinePlayerNumber - inGamePlayerNumber

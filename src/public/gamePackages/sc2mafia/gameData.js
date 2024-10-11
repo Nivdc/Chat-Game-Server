@@ -3,7 +3,7 @@ const originalGameData = {
         {
             name: "Town",
             isFaction: true,
-            includeRoles: [
+            includeRoleNames: [
                 "Citizen",
                 "Sheriff",
                 "Doctor",
@@ -13,15 +13,19 @@ const originalGameData = {
         {
             name: "Mafia",
             isFaction: true,
-            includeRoles: [
+            includeRoleNames: [
                 "Mafioso"
             ]
         },
         {
             name: "Killing",
-            includeRoles: [
+            includeRoleNames: [
                 "Mafioso"
             ]
+        },
+        {
+            name:"Team",
+            includeRoleNames: [] // auto generate
         }
     ],
     roles: [
@@ -32,7 +36,31 @@ const originalGameData = {
             name: "Sheriff"
         },
         {
-            name: "Doctor"
+            name: "Doctor",
+            abilitys:[
+                {
+                    name: 'DoctorHealProtect',
+                    use(game, data){
+                        if(this.verify(game, data)){
+                            this.target = target
+                            return true
+                        }
+                        return false
+                    },
+                    verify(game, data){
+                        const user = game.playerList[data.userIndex]
+                        const target = game.playerList[data.targetIndex]
+                        return user !== target
+                    },
+                    generateAction(user){
+                        if(this.target !== undefined){
+                            const abilityTarget = this.target
+                            this.target = undefined
+                            return {type:this.name, origin:user, target:abilityTarget}
+                        }
+                    }
+                }
+            ]
         },
         {
             name: "AuxiliaryOfficer"
@@ -59,11 +87,6 @@ const originalGameData = {
                     return false
                 }
             },
-            // cancelVerify(game, record, voterIndex){
-            //     let voterHasVoteRecord = record[voterIndex] !== undefined
-            //     let gameStatusIncludesLynchVote = game.status.split('/').includes('lynchVote')
-            //     return voterHasVoteRecord && gameStatusIncludesLynchVote
-            // },
             getResultIndex(game, count){
                 const apll = game.alivePlayerList.length
                 const voteNeeded = apll % 2 === 0 ? ((apll / 2) + 1) : Math.ceil(apll / 2)
@@ -184,27 +207,38 @@ const originalGameData = {
 }
 
 export function gameDataInit(game){
-    let roleSet = roleSetInit()
+    let tagSet  = tagSetInit() 
+    let roleSet = roleSetInit(game)
     let voteSet = voteSetInit(game)
     let teamSet = teamSetInit(game, roleSet)
 
-    return {roleSet, voteSet, teamSet}
+    return {tagSet, roleSet, voteSet, teamSet}
 
-    function roleSetInit(){
+    function tagSetInit(){
+        let tagSet = originalGameData.tags
+        let teamTag = tagSet.find(t => t.name === 'Team')
+
+        for(const team of originalGameData.teams){
+            if('includeRoleNames' in team){
+                teamTag.includeRoleNames = teamTag.includeRoleNames.concat(team.includeRoleNames)
+            }
+
+            if('includeRoleTag' in team){
+                const irn = tagSet.find(t => t.name === team.includeRoleTag).includeRoleNames
+                teamTag.includeRoleNames = teamTag.includeRoleNames.concat(irn)
+            }
+        }
+
+        return tagSet
+    }
+
+    function roleSetInit(game){
         let roleSet = []
-        let roleData = originalGameData.roles
+        let rolesData = originalGameData.roles
         let tagsData = originalGameData.tags
 
-        for(let r of roleData){
-            r.tags = tagsData.map(t => t.includeRoles.includes(r.name)? t.name:undefined).filter(t => t !== undefined)
-
-            // set affiliation
-            // 设置角色的从属关系，不属于“城镇”、“黑手党”、“三合会”的角色会被设置为中立
-            r.affiliation = r.tags.find(tName => tagsData.find(t => t.name === tName).isFaction) ?? "Neutral"
-            if(r.affiliation === "Neutral")
-                r.tags.unshift("Neutral")
-
-            roleSet.push(r)
+        for(let roleData of rolesData){
+            roleSet.push(new Role(game, roleData, tagsData))
         }
 
         return roleSet
@@ -219,8 +253,41 @@ export function gameDataInit(game){
     }
 }
 
+// 注意，这里设置的role涵盖了同一角色的所有代码，但是具体到角色行为需要的数据，则并不在这个类中
+// 举例来说，某一市民的防弹衣还剩下多少使用次数并不保存在此。
+// 我暂时还没找到很好的解决办法，就先放在玩家对象里面吧。
+class Role{
+    constructor(game, roleData, tagsData){
+        this.name = roleData.name
+        this.abilitys = roleData.abilitys
+        this.data = roleData
+        this.game = game
+        this.tags = tagsData.map(t => t.includeRoleNames.includes(this.name)? t.name:undefined).filter(t => t !== undefined)
 
+        // set affiliation
+        // 设置角色的从属关系，不属于“城镇”、“黑手党”、“三合会”的角色会被设置为中立
+        this.affiliation = this.tags.find(tName => tagsData.find(t => t.name === tName).isFaction) ?? "Neutral"
+        if(this.affiliation === "Neutral")
+            this.tags.unshift("Neutral")
+    }
 
+    useAblity(data){
+        const user = this.game.playerList[data.userIndex]
+        if(this.abilitys.length === 1){
+            const success = this.abilitys[0].use(this.game, data)
+            if(success){
+                user.sendEvent('UseAblitySuccess', data)
+            }
+        }
+    }
+
+    setRoleData(player){
+        for(a of this.abilitys){
+            if('setRoleData' in a)
+                a.setRoleData(this.game, player)
+        }
+    }
+}
 
 // 在这个类中，
 // record记录了谁投票给谁，record[1]读取出来的就是2号玩家投票的对象

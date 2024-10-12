@@ -39,6 +39,7 @@ const originalGameData = {
             name: "Doctor",
             abilities:[
                 {
+                    // require data:{targetIndex}
                     name: 'DoctorHealProtect',
                     setRoleData(game, player){
                         player.roleData[`${this.name}Target`] = undefined
@@ -303,9 +304,11 @@ class Role{
     setRoleData(player){
         player.roleData = {}
 
-        for(const a of this.abilities){
-            if('setRoleData' in a)
-                a.setRoleData(this.game, player)
+        if(this.abilities !== undefined){
+            for(const a of this.abilities){
+                if('setRoleData' in a)
+                    a.setRoleData(this.game, player)
+            }
         }
     }
 

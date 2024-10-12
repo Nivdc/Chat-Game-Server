@@ -304,6 +304,8 @@ class Game{
         }catch(e){
             if(e === "GameStage:setup aborted")
                 return
+            else
+                throw e
         }
     }
 

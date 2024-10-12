@@ -342,6 +342,7 @@ document.addEventListener('alpine:init', () => {
 
             'SetRole':function(data){
                 this.myRole = this.roleSet.find(r=>r.name === data.name)
+                this.myRole.abilityNames = data.abilityNames
             },
 
             'SetTeam':function(data){
@@ -746,6 +747,20 @@ document.addEventListener('alpine:init', () => {
                     sendEvent('TrialVoteCancel')
                 break
 
+                case 'use':
+                case 'useAbility':
+                    const usedAbilityName = args.shift()
+                    if(this.myRole.abilityNames.includes(usedAbilityName)){
+                        switch(usedAbilityName){
+                            case 'DoctorHealProtect':
+                                let targetIndex = Number(args.shift())-1
+                                if(Number.isNaN(targetIndex) === false)
+                                    sendEvent('UseAbility', {name:usedAbilityName, targetIndex})
+                            break
+                        }
+                    }
+                break
+
 
                 default:
                     this.addSystemHintText("未知指令，请重试。")
@@ -1028,7 +1043,7 @@ document.addEventListener('alpine:init', () => {
                     trialTime: 0.2,
                     pauseDayTimerDuringTrial: false,
                     
-                    startAt: "day",
+                    startAt: "night",
                     
                     nightType: "Classic",
                     nightLength: 0.6,
@@ -1047,9 +1062,9 @@ document.addEventListener('alpine:init', () => {
                         // "Citizen", "Citizen",
                         // "Sheriff",
                         // "Doctor",
-                        "AuxiliaryOfficer",
+                        "Doctor",
                         "Mafioso",
-                        "AllRandom",
+                        // "AllRandom",
                     ],
                 }
             }
@@ -1188,13 +1203,15 @@ document.addEventListener('alpine:init', () => {
                     "调查结果全团可知，但如果调查人被杀，则没有结果。"
                 ]
             },
-            // {
-            //     name:"Doctor",
-            //     nameZh:"医生",
-            //     affiliationName:"Town",
-            //     descriptionZh:"一个熟练于医治外伤的秘密外科医生。",
-            //     abilityDescriptionZh:"这个角色有每晚救治一人，使其免受一次死亡的能力。",
-            // },
+            {
+                name:"Doctor",
+                nameZh:"医生",
+                affiliationName:"Town",
+                descriptionZh:"一个熟练于医治外伤的秘密外科医生。",
+                abilityDescriptionZh:"这个角色有每晚救治一人，使其免受一次死亡的能力。",
+                abilityDetails:["每晚救治一人，使其免受一次死亡。"],
+                featureDetails:["还没空写"]
+            },
             {
                 name:"Mafioso",
                 nameZh:"党徒",
@@ -1341,12 +1358,15 @@ document.addEventListener('alpine:init', () => {
         lynchVoteCount:undefined,
 
         // 玩家列表...的按钮
-        clickTempButton(player){
-            let targetIndex = player.index + 1
+        clickTempButton(target){
+            let targetIndex = target.index + 1
             if(this.status.split('/').includes('lynchVote')){
                 this.commandHandler(`lynchVote ${targetIndex}`)
             }else if(this.status === 'night/discussion'){
-                this.commandHandler(`target ${targetIndex}`)
+                if(this.myRole.name === 'Doctor')
+                    this.commandHandler(`useAbility DoctorHealProtect ${targetIndex}`)
+                else
+                    this.commandHandler(`target ${targetIndex}`)
             }
         },
 

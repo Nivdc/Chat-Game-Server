@@ -37,27 +37,32 @@ const originalGameData = {
         },
         {
             name: "Doctor",
-            abilitys:[
+            abilities:[
                 {
                     name: 'DoctorHealProtect',
-                    use(game, data){
-                        if(this.verify(game, data)){
-                            this.target = target
+                    setRoleData(game, player){
+                        player.roleData[`${this.name}Target`] = undefined
+                    },
+                    use(game, user, data){
+                        const target = game.playerList[data.targetIndex]
+                        if(this.verify(user, target)){
+                            user.roleData[`${this.name}Target`] = target
                             return true
                         }
                         return false
                     },
-                    verify(game, data){
-                        const user = game.playerList[data.userIndex]
-                        const target = game.playerList[data.targetIndex]
-                        return user !== target
+                    verify(user, target){
+                        const userIsAlive = user.isAlive
+                        const userIsNotTarget = (user !== target)
+                        return userIsAlive && userIsNotTarget
                     },
                     generateAction(user){
-                        if(this.target !== undefined){
-                            const abilityTarget = this.target
-                            this.target = undefined
+                        if(user.roleData[`${this.name}Target`] !== undefined){
+                            const abilityTarget = user.roleData[`${this.name}Target`]
+                            user.roleData[`${this.name}Target`] = undefined
                             return {type:this.name, origin:user, target:abilityTarget}
                         }
+                        return undefined
                     }
                 }
             ]
@@ -118,7 +123,7 @@ const originalGameData = {
         {
             name: "Mafia",
             includeRoleTag: "Mafia",
-            abilitys:[
+            abilities:[
                 {
                     name:"MafiaKillAttack",
                     targetNoticeEventType:"MafiaKillTargets",
@@ -164,7 +169,7 @@ const originalGameData = {
         {
             name:"AuxiliaryOfficers",
             includeRoleNames:["AuxiliaryOfficer"],
-            abilitys:[
+            abilities:[
                 {
                     name:"AuxiliaryOfficerCheck",
                     targetNoticeEventType:"AuxiliaryOfficerCheckTargets",
@@ -190,6 +195,7 @@ const originalGameData = {
                     },
                     generateAction(){
                         const targetIndexArray = this.vote.getResultIndex()
+                        this.vote.resetRecord()
                         if(targetIndexArray !== undefined && targetIndexArray.length !== 0){
                             const realOrigin = getRandomElement(this.team.alivePlayerList)
                             const realTargetIndex = getRandomElement(targetIndexArray)
@@ -256,10 +262,17 @@ export function gameDataInit(game){
 // 注意，这里设置的role涵盖了同一角色的所有代码，但是具体到角色行为需要的数据，则并不在这个类中
 // 举例来说，某一市民的防弹衣还剩下多少使用次数并不保存在此。
 // 我暂时还没找到很好的解决办法，就先放在玩家对象里面吧。
+// 所以，与其说这里写的是Role类，它反倒是更像某种RoleMate
+// 仔细思考一下就会发现，这么做是正确的，
+// 因为同一个角色只会遵循同一个逻辑，没有理由将这些逻辑复制给每个玩家（虽然这么做可以带来使用上的方便
+// 也许有某种方法可以兼顾方便和正确，但是我还没找到它
+
+// ...确实有种方法可以兼顾方便和正确，只需要将下面这个类称之为RoleMate，
+// 然后再在Player类与RoleMate类之间补充一个包含数据的中间层即可...
 class Role{
     constructor(game, roleData, tagsData){
         this.name = roleData.name
-        this.abilitys = roleData.abilitys
+        this.abilities = roleData.abilities
         this.data = roleData
         this.game = game
         this.tags = tagsData.map(t => t.includeRoleNames.includes(this.name)? t.name:undefined).filter(t => t !== undefined)
@@ -271,10 +284,16 @@ class Role{
             this.tags.unshift("Neutral")
     }
 
-    useAblity(data){
-        const user = this.game.playerList[data.userIndex]
-        if(this.abilitys.length === 1){
-            const success = this.abilitys[0].use(this.game, data)
+    useAblity(user, data){
+        if(this.abilities.length === 1){
+            const success = this.abilities[0].use(this.game, user, data)
+            if(success){
+                user.sendEvent('UseAblitySuccess', data)
+            }
+        }
+        else if('name' in data){
+            const ability = this.abilities.find(a => a.name === data.name)
+            const success = ability.use(this.game, user, data)
             if(success){
                 user.sendEvent('UseAblitySuccess', data)
             }
@@ -282,9 +301,18 @@ class Role{
     }
 
     setRoleData(player){
-        for(a of this.abilitys){
+        player.roleData = {}
+
+        for(const a of this.abilities){
             if('setRoleData' in a)
                 a.setRoleData(this.game, player)
+        }
+    }
+
+    toJSON(){
+        return {
+            name: this.name,
+            abilityNames: this.abilities.map(a => a.name)
         }
     }
 }
@@ -391,7 +419,7 @@ class Team{
             }
         }
 
-        for(let a of data.abilitys){
+        for(let a of data.abilities){
             a.team = this
             a.game = game
             a.voteData.team = this
@@ -407,13 +435,13 @@ class Team{
         return this.playerList.filter(p => p.isAlive)
     }
 
-    get abilitys(){
-        return this.data.abilitys
+    get abilities(){
+        return this.data.abilities
     }
 
     playerVote(voter, targetIndex){
-        if(this.abilitys.length === 1){
-            const ability = this.abilitys[0]
+        if(this.abilities.length === 1){
+            const ability = this.abilities[0]
             const vote = ability.vote
             const voterIndex = voter.index
             const {success, previousTargetIndex, voteCount} = vote.playerVote(voter.index, targetIndex)
@@ -426,8 +454,8 @@ class Team{
     }
 
     playerVoteCancel(voter){
-        if(this.abilitys.length === 1){
-            const ability = this.abilitys[0]
+        if(this.abilities.length === 1){
+            const ability = this.abilities[0]
             const vote = ability.vote
             const voterIndex = voter.index
             const {success, previousTargetIndex, voteCount} = vote.playerVoteCancel(voterIndex)

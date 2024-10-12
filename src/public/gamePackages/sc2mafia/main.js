@@ -18,6 +18,12 @@ class Game{
         this.host = this.playerList.find(p => p.user === room.host)
         this.room = room
         this.status = "init"
+
+        const {roleSet, voteSet, teamSet} = gameDataInit(this)
+        this.roleSet = roleSet
+        this.voteSet = voteSet
+        this.teamSet = teamSet
+
         this.sendEventToAll('BackendReady')
 
         // 异步函数的执行顺序和性能影响需要更多的观察
@@ -204,9 +210,9 @@ class Game{
                         player.team.playerVoteCancel(player, event.data)
                     break
 
-                    // case "UseAbility":
-                    //     player.role.useAblity(data)
-                    // break
+                    case "UseAbility":
+                        player.role.useAblity(player, event.data)
+                    break
 
                     case 'SetLastWill':
                         if(this.setting.enableLastWill){
@@ -258,11 +264,6 @@ class Game{
 
     async setup(setting){
         try{
-            const {roleSet, voteSet, teamSet} = gameDataInit(this)
-            this.roleSet = roleSet
-            this.voteSet = voteSet
-            this.teamSet = teamSet
-
             await this.newGameStage("setup", 0.025)
             this.setting = {...defaultSetting, ...setting}
             await this.newGameStage("begin", 0.05)
@@ -275,6 +276,7 @@ class Game{
             this.sendEventToAll("SetPlayerList", this.playerList)
             for(let [index, p] of this.playerList.entries()){
                 p.role = this.roleSet.find( r => r.name === realRoleNameList[index] )
+                p.role.setRoleData(p)
                 p.isAlive = true
 
                 p.sendEvent("SetPlayerSelfIndex", p.index)
@@ -554,7 +556,7 @@ class Game{
         function actionSequencing(a,b){
             const priorityOfActions = {
                 "MafiaKillAttack":9,
-                // "DoctorHealProtect":19,
+                "DoctorHealProtect":19,
 
                 // "SheriffCheck":20,
                 "AuxiliaryOfficerCheck":21,
@@ -570,34 +572,21 @@ class Game{
     // 如果我们不引入一个生成过程，就得要对夜晚的行动队列进行反复修改
     generatePlayerAction(){
         for(const t of this.teamSet){
-            for(const ability of t.abilitys){
+            for(const ability of t.abilities){
                 const action = ability.generateAction()
                 if(action !== undefined)
                     this.nightActionSequence.push(action)
-
-                ability.vote.resetRecord()
             }
         }
 
         // SoloPlayer
-        // for(const p of this.playerList){
-        //     if(p.abilityTargetIndex !== undefined){
-        //         let targetPlayer = this.playerList[p.abilityTargetIndex]
-        //         let actionType = undefined
-
-        //         switch(p.role.name){
-        //             case "Sheriff":
-        //                 actionType = "SheriffCheck"
-        //             break
-        //             case "Doctor":
-        //                 actionType = "DoctorHeal"
-        //             break
-        //         }
-
-        //         if(actionType ?? false)
-        //             nightActionSequence.push({type:actionType, origin:p, target:targetPlayer})
-        //     }
-        // }
+        for(const p of this.alivePlayerList){
+            for(const a of p.role.abilities){
+                const action = a.generateAction(p)
+                if(action !== undefined)
+                    this.nightActionSequence.push(action)
+            }
+        }
     }
 
     // 每个action都至少包含三个数据: origin/行动者, target/对象, type/类型

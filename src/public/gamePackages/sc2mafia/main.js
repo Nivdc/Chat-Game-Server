@@ -19,8 +19,8 @@ class Game{
         this.room = room
         this.status = "init"
 
-        const {roleSet, voteSet, teamSet} = gameDataInit(this)
-        this.roleSet = roleSet
+        const {roleMetaSet, voteSet, teamSet} = gameDataInit(this)
+        this.roleMetaSet = roleMetaSet
         this.voteSet = voteSet
         this.teamSet = teamSet
 
@@ -211,7 +211,7 @@ class Game{
                     break
 
                     case "UseAbility":
-                        player.role.useAblity(player, event.data)
+                        player.role.useAblity(event.data)
                     break
 
                     case 'SetLastWill':
@@ -258,7 +258,7 @@ class Game{
         p.sendEvent("SetHost", this.host)
         p.sendEvent("SetStatus", this.status)
         p.sendEvent("SetDayCount", this.dayCount ?? 1)
-        // p.sendEvent("SetRoleSet", this.roleSet)
+        // p.sendEvent("SetRoleSet", this.roleMetaSet)
         p.sendEvent("InitCompleted")
     }
 
@@ -275,14 +275,13 @@ class Game{
             shuffleArray(this.playerList)
             this.sendEventToAll("SetPlayerList", this.playerList)
             for(let [index, p] of this.playerList.entries()){
-                p.role = this.roleSet.find( r => r.name === realRoleNameList[index] )
-                p.role.setRoleData(p)
+                p.setRole(this.roleMetaSet.find( r => r.name === realRoleNameList[index] ))
                 p.isAlive = true
 
                 p.sendEvent("SetPlayerSelfIndex", p.index)
                 p.sendEvent("SetRole", p.role)
                 for(let t of this.teamSet){
-                    if(t.includeRoles.includes(p.role)){
+                    if(t.includeRoleNames.includes(p.role.name)){
                         t.playerList.push(p)
                         p.team = t
                     }
@@ -574,11 +573,7 @@ class Game{
     // 如果我们不引入一个生成过程，就得要对夜晚的行动队列进行反复修改
     generatePlayerAction(){
         for(const t of this.teamSet){
-            for(const ability of t.abilities){
-                const action = ability.generateAction()
-                if(action !== undefined)
-                    this.nightActionSequence.push(action)
-            }
+            this.nightActionSequence.push(...t.generateAction())
         }
 
         // SoloPlayer
@@ -967,6 +962,7 @@ function calculateProbability(roleName, possibleRoles) {
 class Player{
     constructor(user){
         this.user = user
+        this.playedRoleNameRecord = []
     }
 
     get uuid(){
@@ -1020,6 +1016,25 @@ class Player{
             if(key.endsWith("TargetIndex"))
                 this[key] = undefined
         }
+    }
+
+    setRole(roleMeta){
+        this.playedRoleNameRecord.push(roleMeta.name)
+        const player = this
+        this.role = {
+            player,
+            roleMeta,
+            get name(){
+                return this.roleMeta.name
+            },
+            useAblity(data){
+                this.roleMeta.useAblity(this.player, data)
+            },
+            toJSON(){
+                return this.roleMeta.toJSON()
+            }
+        }
+        this.role.roleMeta.setRoleData(this)
     }
 
     toJSON_includeRole(){

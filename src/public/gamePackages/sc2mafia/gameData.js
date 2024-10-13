@@ -42,12 +42,12 @@ const originalGameData = {
                     // require data:{targetIndex}
                     name: 'DoctorHealProtect',
                     setRoleData(game, player){
-                        player.roleData[`${this.name}Target`] = undefined
+                        player.role[`${this.name}Target`] = undefined
                     },
                     use(game, user, data){
                         const target = game.playerList[data.targetIndex]
                         if(this.verify(user, target)){
-                            user.roleData[`${this.name}Target`] = target
+                            user.role[`${this.name}Target`] = target
                             return true
                         }
                         return false
@@ -55,12 +55,13 @@ const originalGameData = {
                     verify(user, target){
                         const userIsAlive = user.isAlive
                         const userIsNotTarget = (user !== target)
-                        return userIsAlive && userIsNotTarget
+                        const targetIsNotDead_Yet = target.isAlive
+                        return userIsAlive && userIsNotTarget && targetIsNotDead_Yet
                     },
                     generateAction(user){
-                        if(user.roleData[`${this.name}Target`] !== undefined){
-                            const abilityTarget = user.roleData[`${this.name}Target`]
-                            user.roleData[`${this.name}Target`] = undefined
+                        if(user.role[`${this.name}Target`] !== undefined){
+                            const abilityTarget = user.role[`${this.name}Target`]
+                            user.role[`${this.name}Target`] = undefined
                             return {type:this.name, origin:user, target:abilityTarget}
                         }
                         return undefined
@@ -196,7 +197,6 @@ const originalGameData = {
                     },
                     generateAction(){
                         const targetIndexArray = this.vote.getResultIndex()
-                        this.vote.resetRecord()
                         if(targetIndexArray !== undefined && targetIndexArray.length !== 0){
                             const realOrigin = getRandomElement(this.team.alivePlayerList)
                             const realTargetIndex = getRandomElement(targetIndexArray)
@@ -215,74 +215,76 @@ const originalGameData = {
 
 export function gameDataInit(game){
     let tagSet  = tagSetInit() 
-    let roleSet = roleSetInit(game)
+    let roleMetaSet = roleMetaSetInit(game)
     let voteSet = voteSetInit(game)
-    let teamSet = teamSetInit(game, roleSet)
+    let teamSet = teamSetInit(game, roleMetaSet)
 
-    return {tagSet, roleSet, voteSet, teamSet}
+    return {tagSet, roleMetaSet, voteSet, teamSet}
 
     function tagSetInit(){
         let tagSet = originalGameData.tags
         let teamTag = tagSet.find(t => t.name === 'Team')
 
-        for(const team of originalGameData.teams){
-            if('includeRoleNames' in team){
-                teamTag.includeRoleNames = teamTag.includeRoleNames.concat(team.includeRoleNames)
+        for(const teamData of originalGameData.teams){
+            if('includeRoleNames' in teamData){
+                teamTag.includeRoleNames.push(...teamData.includeRoleNames)
             }
 
-            if('includeRoleTag' in team){
-                const irn = tagSet.find(t => t.name === team.includeRoleTag).includeRoleNames
-                teamTag.includeRoleNames = teamTag.includeRoleNames.concat(irn)
+            if('includeRoleTag' in teamData){
+                const irn = tagSet.find(t => t.name === teamData.includeRoleTag).includeRoleNames
+                teamTag.includeRoleNames.push(...irn)
             }
         }
 
         return tagSet
     }
 
-    function roleSetInit(game){
-        let roleSet = []
+    function roleMetaSetInit(game){
+        let roleMetaSet = []
         let rolesData = originalGameData.roles
         let tagsData = originalGameData.tags
 
         for(let roleData of rolesData){
-            roleSet.push(new Role(game, roleData, tagsData))
+            roleMetaSet.push(new RoleMeta(game, roleData, tagsData))
         }
 
-        return roleSet
+        return roleMetaSet
     }
 
     function voteSetInit(game){
         return originalGameData.votes.map(v => new Vote(game, v))
     }
 
-    function teamSetInit(game, roleSet){
-        return originalGameData.teams.map(t => new Team(game, t, roleSet))
+    function teamSetInit(game, roleMetaSet){
+        return originalGameData.teams.map(t => new Team(game, t, roleMetaSet))
     }
 }
 
 // 注意，这里设置的role涵盖了同一角色的所有代码，但是具体到角色行为需要的数据，则并不在这个类中
 // 举例来说，某一市民的防弹衣还剩下多少使用次数并不保存在此。
 // 我暂时还没找到很好的解决办法，就先放在玩家对象里面吧。
-// 所以，与其说这里写的是Role类，它反倒是更像某种RoleMate
+// 所以，与其说这里写的是Role类，它反倒是更像某种RoleMeta
 // 仔细思考一下就会发现，这么做是正确的，
 // 因为同一个角色只会遵循同一个逻辑，没有理由将这些逻辑复制给每个玩家（虽然这么做可以带来使用上的方便
 // 也许有某种方法可以兼顾方便和正确，但是我还没找到它
 
-// ...确实有种方法可以兼顾方便和正确，只需要将下面这个类称之为RoleMate，
-// 然后再在Player类与RoleMate类之间补充一个包含数据的中间层即可...
-class Role{
+// ...确实有种方法可以兼顾方便和正确，只需要将下面这个类称之为RoleMeta，
+// 然后再在Player类与RoleMeta类之间补充一个包含数据的中间层即可...
+
+// 就这么干吧，Player类里面多出来一个roleData实在太奇怪了，应该也没啥坏处
+class RoleMeta{
     constructor(game, roleData, tagsData){
         this.name = roleData.name
         this.abilities = roleData.abilities
         this.data = roleData
         this.game = game
-        this.tags = tagsData.map(t => t.includeRoleNames.includes(this.name)? t.name:undefined).filter(t => t !== undefined)
+        this.tagStrings = tagsData.map(t => t.includeRoleNames.includes(this.name)? t.name:undefined).filter(t => t !== undefined)
 
         // set affiliation
         // 设置角色的从属关系，不属于“城镇”、“黑手党”、“三合会”的角色会被设置为中立
-        this.affiliation = this.tags.find(tName => tagsData.find(t => t.name === tName).isFaction) ?? "Neutral"
+        this.affiliation = this.tagStrings.find(ts => tagsData.find(t => t.name === ts).isFaction) ?? "Neutral"
         if(this.affiliation === "Neutral")
-            this.tags.unshift("Neutral")
+            this.tagStrings.unshift("Neutral")
     }
 
     useAblity(user, data){
@@ -302,8 +304,6 @@ class Role{
     }
 
     setRoleData(player){
-        player.roleData = {}
-
         if(this.abilities !== undefined){
             for(const a of this.abilities){
                 if('setRoleData' in a)
@@ -397,29 +397,23 @@ class Vote{
 }
 
 class Team{
-    constructor(game, data, roleSet){
+    constructor(game, data, roleMetaSet){
         this.name = data.name
         this.game = game
         this.data = data
 
         this.playerList = []
 
-        this.includeRoles = []
-        for(const r of roleSet){
+        this.includeRoleNames = []
+        for(const r of roleMetaSet){
             if('includeRoleTag' in data){
-                if(r.tags.includes(data.includeRoleTag)){
-                    this.includeRoles.push(r)
+                if(r.tagStrings.includes(data.includeRoleTag)){
+                    this.includeRoleNames.push(r.name)
                 }
             }
-
-            if('includeRoleNames' in data){
-                for(const roleName of data.includeRoleNames){
-                    if(r.name === roleName && (this.includeRoles.includes(r) === false)){
-                        this.includeRoles.push(r)
-                    }
-                }
-
-            }
+        }
+        if('includeRoleNames' in data){
+            this.includeRoleNames.push(...data.includeRoleNames)
         }
 
         for(let a of data.abilities){
@@ -468,6 +462,19 @@ class Team{
                     this.sendEvent(ability.targetNoticeEventType, ability.vote.getResultIndex())
             }
         }
+    }
+
+    generateAction(){
+        let actionSequence = []
+        for(const ability of this.abilities){
+            const action = ability.generateAction()
+            if(action !== undefined)
+                actionSequence.push(action)
+
+            ability.vote.resetRecord()
+        }
+
+        return actionSequence
     }
 }
 

@@ -225,14 +225,16 @@ export function gameDataInit(game){
         let tagSet = originalGameData.tags
         let teamTag = tagSet.find(t => t.name === 'Team')
 
-        for(const teamData of originalGameData.teams){
-            if('includeRoleNames' in teamData){
-                teamTag.includeRoleNames.push(...teamData.includeRoleNames)
-            }
+        if(teamTag.includeRoleNames.length === 0){        
+            for(const teamData of originalGameData.teams){
+                if('includeRoleNames' in teamData){
+                    teamTag.includeRoleNames.push(...teamData.includeRoleNames)
+                }
 
-            if('includeRoleTag' in teamData){
-                const irn = tagSet.find(t => t.name === teamData.includeRoleTag).includeRoleNames
-                teamTag.includeRoleNames.push(...irn)
+                if('includeRoleTag' in teamData){
+                    const irn = tagSet.find(t => t.name === teamData.includeRoleTag).includeRoleNames
+                    teamTag.includeRoleNames.push(...irn)
+                }
             }
         }
 
@@ -314,8 +316,10 @@ class RoleMeta{
 
     toJSON(){
         return {
-            name: this.name,
-            abilityNames: this.abilities.map(a => a.name)
+            name:this.name,
+            tags:this.tagStrings,
+            affiliation:this.affiliation,
+            abilityNames:this.abilities?.map(a => a.name)
         }
     }
 }
@@ -478,11 +482,17 @@ class Team{
     }
 }
 
-if(require.main === module){
-    console.log(gameDataInit({playerList:[]}))
-}
+// 下面这个输出和浏览器环境不兼容因此只能注释掉
+// if(require.main === module){
+//     console.log(gameDataInit({playerList:[]}))
+// }
 
 function getRandomElement(arr){
     const randomIndex = Math.floor(Math.random() * arr.length)
     return arr[randomIndex]
+}
+
+// todo
+export function abilityUseVerify(roleName, abilityName){
+    
 }

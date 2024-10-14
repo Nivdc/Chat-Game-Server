@@ -19,7 +19,8 @@ class Game{
         this.room = room
         this.status = "init"
 
-        const {roleMetaSet, voteSet, teamSet} = gameDataInit(this)
+        const {tagSet, roleMetaSet, voteSet, teamSet} = gameDataInit(this)
+        this.tagSet = tagSet
         this.roleMetaSet = roleMetaSet
         this.voteSet = voteSet
         this.teamSet = teamSet
@@ -254,11 +255,13 @@ class Game{
     }
 
     sendInitData(p){
+        // todo: 以下数据也许可以整合到一起发送以提高压缩率。
         p.sendEvent("SetPlayerList", this.playerList)
         p.sendEvent("SetHost", this.host)
         p.sendEvent("SetStatus", this.status)
         p.sendEvent("SetDayCount", this.dayCount ?? 1)
-        // p.sendEvent("SetRoleSet", this.roleMetaSet)
+        p.sendEvent("SetTagSet", this.tagSet)
+        p.sendEvent("SetRoleSet", this.roleMetaSet)
         p.sendEvent("InitCompleted")
     }
 

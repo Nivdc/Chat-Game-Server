@@ -6,9 +6,9 @@
         <title>sc2mafia</title>
         <link href="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" type="text/css">
         <link href="index.css" rel="stylesheet" type="text/css">
+        <script type="module" src="index.js"></script>
         <script defer src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/alpinejs/3.14.0/cdn.min.js"></script>
         <!-- <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script> -->
-        <script src="index.js"></script>
     </head>
 
     <body x-data="game">
@@ -198,13 +198,13 @@
                             <h3 style="margin-bottom: 0.2em;flex: initial;">角色目录</h3>
                             <div style="display: flex;flex-direction: column;flex: auto;">
                                 <div id="roleAffiliationSet" class="roleContainer">
-                                    <template x-for="affiliation in affiliationSet" :key="affiliation.name">
-                                        <span x-text="affiliation.nameZh??affiliation.name" :style="`color:${affiliation.color};background-color:${selectedAffiliation===affiliation? '#012845':'none'};`" @click="selectAffiliation(affiliation)"></span>
+                                    <template x-for="category in categoryList" :key="category.name">
+                                        <span x-text="category.nameTranslate??category.name" :style="`color:${category.color};background-color:${selectedCategory===category? '#012845':'none'};`" @click="selectCategory(category)"></span>
                                     </template>
                                 </div>
-                                <div id="roleSet" x-show="selectedAffiliation" class="roleContainer" x-transition>
-                                    <template x-for="role in getRoleSetByAffiliationName(selectedAffiliation?.name)" :key="role.name">
-                                        <span x-text="role.nameZh??role.name" :style="`color:${role.affiliation.color};background-color:${selectedRole===role? '#012845':'none'};`" @click="selectRole(role)" @dblclick="addSelectedRole()"></span>
+                                <div id="roleSet" x-show="selectedCategory" class="roleContainer" x-transition>
+                                    <template x-for="role in getRoleSetByCategoryName(selectedCategory?.name)" :key="role.name">
+                                        <span x-text="role.nameZh??role.name" :style="`color:${role.affiliation?.color};background-color:${selectedRole===role? '#012845':'none'};`" @click="selectRole(role)" @dblclick="addSelectedRole()"></span>
                                     </template>
                                 </div>
                             </div>
@@ -225,13 +225,13 @@
                             <h3 style="margin-bottom: 0.2em;flex: initial;">角色列表</h3>
                             <div class="roleList roleContainer scrollbar">
                                 <template x-for="role in getRoleListFromData(setting.roleList)">
-                                    <span x-text="role.nameZh??role.name" :style="`color:${role.affiliation.color};background-color:${selectedRole===role? '#012845':'none'};`" @click="selectRole(role)" @dblclick="removeSelectedRole()"></span>
+                                    <span x-text="role.nameZh??role.name" :style="`color:${role.affiliation?.color};background-color:${selectedRole===role? '#012845':'none'};`" @click="selectRole(role)" @dblclick="removeSelectedRole()"></span>
                                 </template>
                             </div>
                             <!-- <h3 style="margin-bottom: 0.2em;flex: initial;">禁用列表</h3>
                             <div id="roleList" class="roleContainer">
                                 <template x-for="role in getRoleListFromData(setting.bannedRoleList)">
-                                    <span x-text="role.nameZh??role.name" :style="`color:${role.affiliation.color};background-color:${selectedRole===role? '#012845':'none'};`" @click="selectRole(role)"></span>
+                                    <span x-text="role.nameZh??role.name" :style="`color:${role.affiliation?.color};background-color:${selectedRole===role? '#012845':'none'};`" @click="selectRole(role)"></span>
                                 </template>
                             </div> -->
                         </div>
@@ -294,7 +294,7 @@
 
             <div id="roleCard" style="position:absolute;min-height:15em;background-color: rgba(0, 0, 0, 0.7);flex: initial;margin-bottom: 1em;display: flex;flex-direction: column;row-gap:0.2em;padding: 0.2em;z-index: 99;" class="border" x-show="roleCardData !== undefined">
                 <h3 x-text="roleCardData?.nameZh??roleCardData?.name" :style="`color:${roleCardData?.affiliation.color}`"></h3>
-                <p style="color:plum">阵营：<span :style="`color: ${roleCardData?.affiliation.color};`" x-text="roleCardData?.affiliation.nameZh??roleCardData?.affiliation.name"></span></p>
+                <p style="color:plum">阵营：<span :style="`color: ${roleCardData?.affiliation.color};`" x-text="roleCardData?.affiliation.nameTranslate??roleCardData?.affiliation.name"></span></p>
                 <p style="color:LightSkyBlue">能力：</p>
                 <ul style="color: var(--emphasized-content);">
                     <template x-for="abilityDetail in roleCardData?.abilityDetails">
@@ -338,7 +338,7 @@
                             <h3 style="margin-bottom: 0.2em;flex: initial;">角色列表</h3>
                             <div class="roleList scrollbar">
                                 <template x-for="role in getRoleListFromData(setting.roleList)">
-                                    <span x-text="role.nameZh??role.name" :style="`color:${role.affiliation.color};`"></span>
+                                    <span x-text="role.nameZh??role.name" :style="`color:${role.affiliation?.color};`"></span>
                                 </template>
                             </div>
                         </div>
@@ -385,7 +385,7 @@
                         <div style="flex:2;display: flex;flex-direction: column;margin: 1em;max-width: 30em;">
                             <div style="min-height:15em;background-color: rgba(0, 0, 0, 0.1);flex: initial;margin-bottom: 1em;display: flex;flex-direction: column;row-gap:0.2em;">
                                 <h3 x-text="myRole?.nameZh??myRole?.name" :style="`color:${myRole?.affiliation.color}`"></h3>
-                                <p style="color:plum">阵营：<span :style="`color: ${myRole?.affiliation.color};`" x-text="myRole?.affiliation.nameZh??myRole?.affiliation.name"></span></p>
+                                <p style="color:plum">阵营：<span :style="`color: ${myRole?.affiliation.color};`" x-text="myRole?.affiliation.nameTranslate??myRole?.affiliation.name"></span></p>
                                 <p style="color:LightSkyBlue">能力：</p>
                                 <ul style="color: var(--emphasized-content);">
                                     <template x-for="abilityDetail in myRole?.abilityDetails">

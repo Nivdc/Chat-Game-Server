@@ -1,3 +1,5 @@
+// import { abilityUseVerify } from "../gameData.js"
+
 let socket = undefined
 
 document.addEventListener('alpine:init', () => {
@@ -10,7 +12,8 @@ document.addEventListener('alpine:init', () => {
             this.setting = cloneDeep(this.presets[0].setting)
             this.eventHandlerInit()
             this.socketInit()
-            this.roleSetInit()
+            this.tagSet = undefined
+            this.categoryList = undefined
             this.recentlyDeadPlayers = []
             this.possibleRoleSet = undefined
             sendEvent("FrontendReady")
@@ -367,12 +370,12 @@ document.addEventListener('alpine:init', () => {
             },
 
             'SetWinner':function(data){
-                let winningFaction = this.affiliationSet.find(a => a.name === data.winningFactionName)
+                let winningFaction = this.tagSet.find(t => t.name === data.winningFactionName)
                 let winners = data.winners.map(dw => this.playerList[dw.index])
 
                 this.gamePageTipMessage = new MagicString()
                 this.gamePageTipMessage.addText("我们得到的结果是 ... ")
-                this.gamePageTipMessage.append(this.buildAffiliationNameMagicString(winningFaction))
+                this.gamePageTipMessage.append(winningFaction.getNameMagicString())
                 this.gamePageTipMessage.addText(" 胜利！")
                 this.gamePageTipMessage.class = 'animation-fadeIn-1s'
             },
@@ -404,6 +407,17 @@ document.addEventListener('alpine:init', () => {
 
             'SetDayCount':function(data){
                 this.dayCount = Number(data)
+            },
+            'SetTagSet':function(data){
+                const tagFrontendDatas = frontendData.tags
+                const tagBackendDatas = data
+                let tagSet = tagFrontendDatas.map(tfd => new Tag(tfd, tagBackendDatas.find(tbd => tbd.name === tfd.name)))
+
+                this.categoryList = tagSet.filter(t => (t.isFaction || t.name === 'Random'))
+                this.tagSet = tagSet
+            },
+            'SetRoleSet':function(data){
+                this.roleSetInit()
             },
 
             'SetRecentlyDeadPlayers':function(data){
@@ -991,12 +1005,12 @@ document.addEventListener('alpine:init', () => {
 
                 case 'auxiliaryOfficerCheckResult':{
                     let target = this.playerList[data.targetIndex]
-                    let affiliation = this.affiliationSet.find(a => a.name === data.targetAffiliation)
+                    let affiliation = this.tagSet.find(t => t.name === data.targetAffiliation)
                     let message = new MagicString()
                     message.append(target.getNameMagicString())
                     if(affiliation.name === 'Mafia'){
                         message.addText(' 是 ')
-                        message.append(this.buildAffiliationNameMagicString(affiliation))
+                        message.append(affiliation.getNameMagicString())
                     }else{
                         message.addText(' 看起来不可疑。')
                     }
@@ -1138,36 +1152,10 @@ document.addEventListener('alpine:init', () => {
         },
 
         //角色目录与列表
-        affiliationSet:[
-            {
-                name:"Town",
-                nameZh:"城镇",
-                color:"lime",
-                goalDescriptionZh:"处死所有罪犯和恶人。"
-            },
-            {
-                name:"Mafia",
-                nameZh:"黑手党",
-                color:"red",
-                goalDescriptionZh:"杀光城镇以及所有想要对抗你们的人。"
-
-            },
-            {
-                name:"Random",
-                nameZh:"随机",
-                color:"#00ccff",
-            },
-        ],
-        selectedAffiliation:undefined,
-        selectAffiliation(affiliation){
-            this.selectedAffiliation = affiliation
+        selectedCategory:undefined,
+        selectCategory(category){
+            this.selectedCategory = category
             this.selectedRole = undefined
-        },
-        getAffiliationByName(affiliationName){
-            return this.affiliationSet.find( a => a.name === affiliationName )
-        },
-        buildAffiliationNameMagicString(affiliation){
-            return new MagicString({text:affiliation.nameZh, style:`color:${affiliation.color}`})
         },
 
         roleSet:[
@@ -1223,12 +1211,12 @@ document.addEventListener('alpine:init', () => {
                     "在晚上你可以与其他黑手党成员交谈",
                 ]
             },
-            {
-                name:"AllRandom",
-                nameZh:"全体随机",
-                affiliationName:"Random",
-                descriptionZh:"可能是游戏中的任意角色",
-            },
+            // {
+            //     name:"AllRandom",
+            //     nameZh:"全体随机",
+            //     affiliationName:"Random",
+            //     descriptionZh:"可能是游戏中的任意角色",
+            // },
         ],
         roleSetInit(){
             this.setRoleAffiliation()
@@ -1241,7 +1229,7 @@ document.addEventListener('alpine:init', () => {
         },
         setRoleAffiliation(){
             this.roleSet.forEach(r => {
-                r.affiliation = this.affiliationSet.find(a => a.name === r.affiliationName)
+                r.affiliation = this.tagSet.find(t => t.name === r.affiliationName)
             })
         },
         setRoleColor(){
@@ -1255,8 +1243,8 @@ document.addEventListener('alpine:init', () => {
                 })
             })
         },
-        getRoleSetByAffiliationName(affiliationName){
-            return  this.roleSet.filter(r => r.affiliationName === affiliationName)
+        getRoleSetByCategoryName(categoryName){
+            return  this.roleSet.filter(r => r.affiliationName === categoryName)
         },
         selectedRole:undefined,
         selectRole(role){
@@ -1582,6 +1570,159 @@ const html5ColorHexMap = {
     "whitesmoke": "#f5f5f5", "yellow": "#ffff00", "yellowgreen": "#9acd32"
 };
 
+const frontendData = {
+    tags :[
+        {
+            name:"Town",
+            nameTranslate:'城镇',
+            color:"lime",
+        },
+        {
+            name:"Mafia",
+            nameTranslate:'黑手党',
+            color:"red",
+        },
+        {
+            name:"Random",
+            nameTranslate:'随机',
+            color:"#00ccff",
+        },
+        {
+            name: "Killing",
+            nameTranslate:'致命',
+        },
+        {
+            name: "Team",
+            nameTranslate:'团队',
+        },
+    ],
+    factions:[
+        {
+            name:'Town',
+            goalDescriptionTranslate:"处死所有罪犯和恶人。"
+        },
+        {
+            name:'Mafia',
+            goalDescriptionTranslate:"杀光城镇以及所有想要对抗你们的人。"
+        },
+    ],
+    roles:[
+        {
+            name:"Citizen",
+            nameTranslate:"市民",
+            descriptionTranslate:"一个相信真理和正义的普通人",
+            abilityDescriptionTranslate:"市民默认没有任何特殊能力",
+            otherDescriptionTranslate:"市民在这个游戏中默认为最为普遍的角色",
+            abilityDetails:["你没有任何特殊能力。"],
+            featureDetails:["如果所有市民死亡，则城镇输掉这场游戏。"]
+        },
+        // {
+        //     name:"Sheriff",
+        //     nameTranslate:"警长",
+        //     descriptionTranslate:"一个执法机构的成员，迫于谋杀的威胁而身处隐匿。",
+        //     abilityDescriptionTranslate:"这个角色有每晚侦查一人有无犯罪活动的能力。",
+        // },
+        {
+            name:"AuxiliaryOfficer",
+            nameTranslate:"辅警",
+            descriptionTranslate:"一名与同僚熟络的辅助警员。",
+            abilityDescriptionTranslate:"这个角色有在夜晚与其他辅警合作侦查的能力。",
+            abilityDetails:["每晚投票调查一人的阵营。"],
+            featureDetails:[
+                "在晚上你可以与其他辅警交谈。",
+                "你知道其他辅警的身份。" ,
+                "辅警团队在晚上可以投票（随机）派出一人调查某人的阵营。",
+                "调查结果全团可知，但如果调查人被杀，则没有结果。"
+            ]
+        },
+        {
+            name:"Doctor",
+            nameTranslate:"医生",
+            descriptionTranslate:"一个熟练于医治外伤的秘密外科医生。",
+            abilityDescriptionTranslate:"这个角色有每晚救治一人，使其免受一次死亡的能力。",
+            abilityDetails:["每晚救治一人，使其免受一次死亡。"],
+            featureDetails:["还没空写"]
+        },
+        {
+            name:"Mafioso",
+            nameTranslate:"党徒",
+            descriptionTranslate:"一个犯罪组织的成员。",
+            abilityDescriptionTranslate:"这个角色有在夜晚与其他黑手党合作杀人的能力。",
+            abilityDetails:["每晚投票杀死一人。"],
+            featureDetails:[
+                "在晚上你可以与其他黑手党成员交谈",
+            ]
+        },
+        {
+            name:"AllRandom",
+            nameTranslate:"全体随机",
+            descriptionTranslate:"可能是游戏中的任意角色",
+        },
+    ],
+
+    // 我觉得还不到引入一个本地化系统的时候
+    // translateData:{
+    //     chinese:{
+    //         tags:[
+    //             {
+    //                 name:'Town',
+    //                 nameTranslate:'城镇'
+    //             },
+    //             {
+    //                 name:'Mafia',
+    //                 nameTranslate:'黑手党'
+    //             },
+    //             {
+    //                 name:'Random',
+    //                 nameTranslate:'随机'
+    //             },
+    //         ],
+    //         factions:[
+    //             {
+    //                 name:'Town',
+    //                 goalDescriptionTranslate:"处死所有罪犯和恶人。"
+    //             },
+    //             {
+    //                 name:'Mafia',
+    //                 goalDescriptionTranslate:"杀光城镇以及所有想要对抗你们的人。"
+    //             },
+    //         ]
+    //     }
+    // }
+}
+
+class Tag{
+    constructor(tagFrontendData, tagBackendData){
+        this.data = tagFrontendData
+        this.data = {...this.data, ...tagBackendData}
+
+        if(this.data.isFaction){
+            const fnfd = frontendData.factions.find(fnfd => fnfd.name === this.data.name)
+            this.data = {...this.data, ...fnfd}
+        }
+    }
+
+    get name(){
+        return this.data.name
+    }
+
+    get nameTranslate(){
+        return this.data.nameTranslate
+    }
+
+    get color(){
+        return this.data.color ?? ''
+    }
+
+    get isFaction(){
+        return this.data.isFaction
+    }
+
+    getNameMagicString(){
+        const name = this.data.nameTranslate ?? this.name
+        return new MagicString({text:name, style:`color:${this.color};`})
+    }
+}
 
 // class Role{
 //     constructor(data, factionData){

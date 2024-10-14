@@ -1700,22 +1700,12 @@ class Tag{
             const fnfd = frontendData.factions.find(fnfd => fnfd.name === this.data.name)
             this.data = {...this.data, ...fnfd}
         }
-    }
 
-    get name(){
-        return this.data.name
-    }
-
-    get nameTranslate(){
-        return this.data.nameTranslate
-    }
-
-    get color(){
-        return this.data.color ?? ''
-    }
-
-    get isFaction(){
-        return this.data.isFaction
+        return new Proxy(this, {
+            get(target, prop) {
+                return prop in target ? target[prop] : target.data[prop]
+            }
+        })
     }
 
     getNameMagicString(){

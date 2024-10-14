@@ -276,17 +276,21 @@ export function gameDataInit(game){
 // 就这么干吧，Player类里面多出来一个roleData实在太奇怪了，应该也没啥坏处
 class RoleMeta{
     constructor(game, roleData, tagsData){
-        this.name = roleData.name
-        this.abilities = roleData.abilities
         this.data = roleData
         this.game = game
-        this.tagStrings = tagsData.map(t => t.includeRoleNames.includes(this.name)? t.name:undefined).filter(t => t !== undefined)
+        this.tagStrings = tagsData.map(t => t.includeRoleNames.includes(roleData.name)? t.name:undefined).filter(t => t !== undefined)
 
         // set affiliation
         // 设置角色的从属关系，不属于“城镇”、“黑手党”、“三合会”的角色会被设置为中立
         this.affiliation = this.tagStrings.find(ts => tagsData.find(t => t.name === ts).isFaction) ?? "Neutral"
         if(this.affiliation === "Neutral")
             this.tagStrings.unshift("Neutral")
+
+        return new Proxy(this, {
+            get(target, prop) {
+                return prop in target ? target[prop] : target.data[prop]
+            }
+        })
     }
 
     useAblity(user, data){
@@ -484,7 +488,7 @@ class Team{
 
 // 下面这个输出和浏览器环境不兼容因此只能注释掉
 // if(require.main === module){
-//     console.log(gameDataInit({playerList:[]}))
+//     console.log(gameDataInit({playerList:[]}).roleMetaSet.map(rm => rm.toJSON()))
 // }
 
 function getRandomElement(arr){

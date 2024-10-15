@@ -205,6 +205,12 @@
                                 <div id="roleSet" x-show="selectedCategory" class="roleContainer" x-transition>
                                     <template x-for="role in getRoleSetByCategoryName(selectedCategory?.name)" :key="role?.name">
                                         <span x-text="role?.nameTranslate??role?.name" :style="`color:${role?.affiliation?.color};background-color:${selectedRole===role? '#012845':'none'};`" @click="selectRole(role)" @dblclick="addSelectedRole()"></span>
+                                        <!-- <span x-data="{ magicString:role.getNameMagicString() }" :style="`${magicString?.style};background-color:${selectedRole===role? '#012845':'none'};`" :class="magicString.class"  @click="selectRole(role)" @dblclick="addSelectedRole()">
+                                            <span x-text="magicString.text"></span>
+                                            <template x-for="magicStringPart in magicString.parts">
+                                                <span x-text="magicStringPart.text" :style="magicStringPart.style" :class="magicStringPart.class"></span>
+                                            </template>
+                                        </span> -->
                                     </template>
                                 </div>
                             </div>
@@ -285,9 +291,9 @@
 
             <div id="gamePageHead" x-show="possibleRoleSet" style="opacity: 0;">
                 <!-- <i class="fa-solid fa-user border" style="padding: 0.1em;position:relative;color: green;border-color: green;background-color:rgba(0, 0, 0, 0.2);"><span style="position: absolute;bottom: 1px;right: 1px;text-shadow: 1px 1px 2px black;;">A</span></i> -->
-                <template x-for="possibleRole in getPossibleRoleData(possibleRoleSet)">
-                    <i class="fa-solid fa-user border" :style="`padding: 0.1em;margin:0.2em;position:relative;color: ${possiblerole?.color};border-color: ${possiblerole?.color};background-color:rgba(0, 0, 0, 0.2);`" @mouseenter="openRoleCard($event, possibleRole)" @mouseleave="closeRoleCard()">
-                        <span x-text="possiblerole?.name.charAt(0).toUpperCase()" style="position: absolute;bottom: 1px;right: 1px;text-shadow: 1px 1px 2px black;font-size: 0.8em;user-select: none;"></span>
+                <template x-for="possibleRole in getPossibleRoleData()">
+                    <i class="fa-solid fa-user border" :style="`padding: 0.1em;margin:0.2em;position:relative;color: ${possibleRole?.color};border-color: ${possibleRole?.color};background-color:rgba(0, 0, 0, 0.2);`" @mouseenter="openRoleCard($event, possibleRole)" @mouseleave="closeRoleCard()">
+                        <span x-text="possibleRole?.name.charAt(0).toUpperCase()" style="position: absolute;bottom: 1px;right: 1px;text-shadow: 1px 1px 2px black;font-size: 0.8em;user-select: none;"></span>
                     </i>
                 </template>
             </div>
@@ -328,7 +334,7 @@
                                         <span x-text="`${player.index+1} - `"></span>
                                         <span x-text="player.name" :style="`color:${player.color};`"></span>
                                         <span>(</span>
-                                        <span x-text="`${player.role?.getNameMessagePart().text}`" :style="`${player.role?.getNameMessagePart().style}`"></span>
+                                        <span x-text="`${player.role?.getNameMagicString().text}`" :style="`${player.role?.getNameMagicString().style}`"></span>
                                         <span>)</span>
                                     </p>
                                 </template>

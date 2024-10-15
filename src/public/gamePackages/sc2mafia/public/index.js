@@ -361,7 +361,7 @@ document.addEventListener('alpine:init', () => {
                         let ms = new MagicString()
                         ms.append(p.getIndexAndNameMagicString())
                         ms.addText(' (')
-                        ms.append(p.role.getNameMessagePart())
+                        ms.append(p.role.getNameMagicString())
                         ms.addText(')')
                         return ms
                     })
@@ -384,7 +384,7 @@ document.addEventListener('alpine:init', () => {
                     let ms = new MagicString
                     ms.append(this.playerList[pd.index].getNameMagicString())
                     ms.addText(" 饰演 ")
-                    ms.append(this.roleSet.find(r => r.name === pd.role.name).getNameMessagePart())
+                    ms.append(this.roleSet.find(r => r.name === pd.role.name).getNameMagicString())
                     return ms
                 })
 
@@ -419,6 +419,7 @@ document.addEventListener('alpine:init', () => {
                 const roleBackendDatas = data.filter(rd => roleFrontendDatas.find(rfd => rfd.name === rd.name) !== undefined)
 
                 this.roleSet = roleFrontendDatas.map(rfd => new Role(rfd, roleBackendDatas.find(rbd => rbd.name === rfd.name), this.tagSet))
+                this.addRandomRoles()
             },
 
             'SetRecentlyDeadPlayers':function(data){
@@ -787,7 +788,7 @@ document.addEventListener('alpine:init', () => {
                 case 'begin':
                     this.gamePageTipMessage = new MagicString()
                     this.gamePageTipMessage.addText("您将要扮演的角色是 ... ")
-                    let mrnmp = this.myRole?.getNameMessagePart()
+                    let mrnmp = this.myRole?.getNameMagicString()
                     if(mrnmp)
                         mrnmp.style += 'font-weight:bold;'
                     this.gamePageTipMessage.parts.push(mrnmp)
@@ -915,7 +916,7 @@ document.addEventListener('alpine:init', () => {
                             this.gamePageTipMessage = new MagicString()
                             this.gamePageTipMessage.append(player.getNameMagicString())
                             this.gamePageTipMessage.addText(' 的角色是 ')
-                            this.gamePageTipMessage.append(role.getNameMessagePart())
+                            this.gamePageTipMessage.append(role.getNameMagicString())
                             this.gamePageTipMessage.class = 'animation-fadeIn-1s'
 
                             let newMessage = cloneDeep(this.gamePageTipMessage)
@@ -1153,6 +1154,33 @@ document.addEventListener('alpine:init', () => {
         },
 
         //角色目录与列表
+        addRandomRoles(){
+            // 首先添加AllRandom
+            const allTag = {name:'All', nameTranslate:'全体', color:'white', includeRoleNames:this.roleSet.map(r => r.name)}
+            const randomTag = this.tagSet.find(t => t.name === 'Random')
+            this.roleSet.push(new RandomRole({factionTag:allTag, randomTag, roleSet:this.roleSet}))
+
+            // 然后剩下的标签与Faction标签排列组合
+            const factionTags = this.tagSet.filter(t => t.isFaction)
+            const nonFactionTags = this.tagSet.filter(t => (t.isFaction !== true))
+            for(const factionTag of factionTags){
+                this.roleSet.push(new RandomRole({factionTag, randomTag, roleSet:this.roleSet}))
+                for(const nonFactionTag of nonFactionTags){
+                    if(nonFactionTag.name !== 'Random'){
+                        // 先看一下nonFactionTag.includeRoleNames和factionTag.includeRoleNames有没有交集
+                        const roleNameIntersection = factionTag.includeRoleNames.filter(rName => nonFactionTag.includeRoleNames.includes(rName))
+                        if(roleNameIntersection.length > 0){
+                            // 如果有交集，再看一下交集是否和factionTag.includeRoleNames完全一致
+                            const ftirn = factionTag.includeRoleNames.sort()
+                            const rni = roleNameIntersection.sort()
+                            if(ftirn.every((rName, index) => rName === rni[index]) === false){
+                                this.roleSet.push(new RandomRole({factionTag, nonFactionTag, randomTag, roleSet:this.roleSet}))
+                            }
+                        }
+                    }
+                }
+            }
+        },
         selectedCategory:undefined,
         selectCategory(category){
             this.selectedCategory = category
@@ -1192,16 +1220,16 @@ document.addEventListener('alpine:init', () => {
             })
         },
 
-        getPossibleRoleData(possibleRoleSet){
-            if(possibleRoleSet === undefined) return;
-            let possibleRoleDataArray = possibleRoleSet.map(prd => {
+        getPossibleRoleData(){
+            if(this.possibleRoleSet === undefined) return;
+            let possibleRoleDataArray = this.possibleRoleSet.map(prd => {
                 let roleData = this.roleSet.find(r => r.name === prd.name)
                 roleData.expectation = prd.expectation
                 roleData.probability = prd.probability
 
                 return roleData
             })
-
+            console.log(possibleRoleDataArray)
             return possibleRoleDataArray.sort((a,b)=>{
                     return this.roleSet.indexOf(this.roleSet.find(r => r.name === a.name)) - this.roleSet.indexOf(this.roleSet.find(r => r.name === b.name))
                 })
@@ -1307,18 +1335,7 @@ document.addEventListener('alpine:init', () => {
 
 
             const randomObjectSet = randomRoleSet.map(randomName => {
-                let randomObject = {name:randomName}
-                const nonRandomRoles = this.roleSet.filter(r => r.name.endsWith('Random') === false)
-
-                switch(randomName){
-                    case 'AllRandom':
-                        randomObject.possibleRoleSet = nonRandomRoles.map(r => {
-                            return {name:r.name, weight:r.weight??1}
-                        })
-                    break
-                }
-
-                return randomObject
+                return this.roleSet.find(r => r.name === randomName).generateRandomObject()
             })
 
             let newRoleList = cloneDeep(roleListData)
@@ -1569,11 +1586,11 @@ const frontendData = {
                 "在晚上你可以与其他黑手党成员交谈",
             ]
         },
-        {
-            name:"AllRandom",
-            nameTranslate:"全体随机",
-            descriptionTranslate:"可能是游戏中的任意角色",
-        },
+        // {
+        //     name:"AllRandom",
+        //     nameTranslate:"全体随机",
+        //     descriptionTranslate:"可能是游戏中的任意角色",
+        // },
     ],
 
     // 我觉得还不到引入一个本地化系统的时候
@@ -1644,7 +1661,7 @@ class Role{
     }
 
     get color(){
-        return this.color ?? this.affiliation?.color
+        return this.data.color ?? this.affiliation?.color
     }
 
     getNameMagicString(){
@@ -1653,16 +1670,46 @@ class Role{
     }
 }
 
-// class RandomRole{
-//     constructor({factionTag, nonFactionTag, randomTag, roleSet}){
-//         this.factionTag = factionTag
-//         this.nonFactionTag = nonFactionTag ?? undefined
-//         this.randomTag = randomTag
-//         this.affiliation = randomTag
-//         this.roleSet = roleSet
-//     }
+class RandomRole{
+    constructor({factionTag, nonFactionTag, randomTag, roleSet}){
+        this.factionTag = factionTag
+        this.nonFactionTag = nonFactionTag ?? undefined
+        this.randomTag = randomTag
+        this.affiliationName = randomTag.name
+        this.affiliation = randomTag
+        this.roleSet = roleSet
+    }
 
-//     get name(){
-//         return this.factionTag.name + this.nonFactionTag?.name + this.randomTag.name
-//     }
-// }
+    get name(){
+        return this.factionTag.name + (this.nonFactionTag?.name ?? '') + this.randomTag.name
+    }
+
+    get nameTranslate(){
+        return this.factionTag.nameTranslate + (this.nonFactionTag?.nameTranslate ?? '') + this.randomTag.nameTranslate
+    }
+
+    get includeRoleNames(){
+        const nonFactionRoleNameSet = new Set(this.nonFactionTag?.includeRoleNames)
+        if(nonFactionRoleNameSet.size > 0)
+            return this.factionTag.includeRoleNames.filter(rName => nonFactionRoleNameSet.has(rName))
+        else
+            return this.factionTag.includeRoleNames
+    }
+
+    getNameMagicString(){
+        let ms = new MagicString({text:this.factionTag.nameTranslate, style:`color:${this.factionTag.color};`})
+        ms.append(new MagicString({text:(this.nonFactionTag?.nameTranslate ?? this.randomTag.nameTranslate), style:`color:${this.randomTag.color};`}))
+        return ms
+    }
+
+    generateRandomObject(){
+        const includeRoles = this.includeRoleNames.map(rName => this.roleSet.find(r => r.name === rName)).filter(r => r !== undefined)
+
+        return {
+            name:this.name,
+            possibleRoleSet:includeRoles.map(r => {
+                return {name:r.name, weight:r.weight ?? 1}
+            })
+        }
+    }
+}

@@ -1210,14 +1210,19 @@ document.addEventListener('alpine:init', () => {
                 this.setting.roleList.splice(roleIndex, 1)
         },
 
-        getRoleListFromData(roleListData){
+        getRoleListMagicStrings(roleListData){
             if(roleListData === undefined) return;
-            return roleListData.map(rd => {
+            let magicStrings = roleListData.map(rd => {
                 if(typeof(rd) === 'string')
                     return this.roleSet?.find(r => r.name === rd)
                 else if('name' in rd)
                     return this.roleSet?.find(r => r.name === rd.name)
             })
+            .filter(r => r !== undefined)
+            .map(r => {
+                return {magicString:r.getNameMagicString(), role:r}
+            })
+            return magicStrings
         },
 
         getPossibleRoleData(){
@@ -1229,7 +1234,7 @@ document.addEventListener('alpine:init', () => {
 
                 return roleData
             })
-            console.log(possibleRoleDataArray)
+
             return possibleRoleDataArray.sort((a,b)=>{
                     return this.roleSet.indexOf(this.roleSet.find(r => r.name === a.name)) - this.roleSet.indexOf(this.roleSet.find(r => r.name === b.name))
                 })

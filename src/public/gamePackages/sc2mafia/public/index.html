@@ -7,7 +7,7 @@
         <link href="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" type="text/css">
         <link href="index.css" rel="stylesheet" type="text/css">
         <script type="module" src="index.js"></script>
-        <script defer src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/alpinejs/3.14.0/cdn.min.js"></script>
+        <script defer src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/alpinejs/3.14.1/cdn.min.js"></script>
         <!-- <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script> -->
     </head>
 
@@ -204,13 +204,12 @@
                                 </div>
                                 <div id="roleSet" x-show="selectedCategory" class="roleContainer" x-transition>
                                     <template x-for="role in getRoleSetByCategoryName(selectedCategory?.name)" :key="role?.name">
-                                        <span x-text="role?.nameTranslate??role?.name" :style="`color:${role?.affiliation?.color};background-color:${selectedRole===role? '#012845':'none'};`" @click="selectRole(role)" @dblclick="addSelectedRole()"></span>
-                                        <!-- <span x-data="{ magicString:role.getNameMagicString() }" :style="`${magicString?.style};background-color:${selectedRole===role? '#012845':'none'};`" :class="magicString.class"  @click="selectRole(role)" @dblclick="addSelectedRole()">
+                                        <span x-data="{ magicString:role.getNameMagicString() }" :style="`${magicString?.style};background-color:${selectedRole===role? '#012845':'none'};`" :class="magicString.class"  @click="selectRole(role)" @dblclick="addSelectedRole()">
                                             <span x-text="magicString.text"></span>
                                             <template x-for="magicStringPart in magicString.parts">
                                                 <span x-text="magicStringPart.text" :style="magicStringPart.style" :class="magicStringPart.class"></span>
                                             </template>
-                                        </span> -->
+                                        </span>
                                     </template>
                                 </div>
                             </div>
@@ -230,13 +229,20 @@
                         <div style="display:flex;flex: auto;flex-direction: column;">
                             <h3 style="margin-bottom: 0.2em;flex: initial;">角色列表</h3>
                             <div class="roleList roleContainer scrollbar">
-                                <template x-for="role in getRoleListFromData(setting.roleList)">
-                                    <span x-text="role?.nameTranslate??role?.name" :style="`color:${role?.affiliation?.color};background-color:${selectedRole===role? '#012845':'none'};`" @click="selectRole(role)" @dblclick="removeSelectedRole()"></span>
+                                <template x-for="{magicString, role} in getRoleListMagicStrings(setting.roleList)">
+                                    <!-- <span x-text="role?.nameTranslate??role?.name" :style="`color:${role?.affiliation?.color};background-color:${selectedRole===role? '#012845':'none'};`" @click="selectRole(role)" @dblclick="removeSelectedRole()"></span> -->
+
+                                    <span :style="`${magicString?.style};background-color:${selectedRole===role? '#012845':'none'};`" :class="magicString?.class"   @click="selectRole(role)" @dblclick="removeSelectedRole()">
+                                        <span x-text="magicString?.text"></span>
+                                        <template x-for="magicStringPart in magicString?.parts">
+                                            <span x-text="magicStringPart.text" :style="magicStringPart.style" :class="magicStringPart.class"></span>
+                                        </template>
+                                    </span>
                                 </template>
                             </div>
                             <!-- <h3 style="margin-bottom: 0.2em;flex: initial;">禁用列表</h3>
                             <div id="roleList" class="roleContainer">
-                                <template x-for="role in getRoleListFromData(setting.bannedRoleList)">
+                                <template x-for="role in getRoleListMagicStrings(setting.bannedRoleList)">
                                     <span x-text="role?.nameTranslate??role?.name" :style="`color:${role?.affiliation?.color};background-color:${selectedRole===role? '#012845':'none'};`" @click="selectRole(role)"></span>
                                 </template>
                             </div> -->
@@ -343,8 +349,13 @@
                         <div style="display: flex;flex-direction: column;position: relative;flex: initial;width: 10em;background-color: rgba(0, 0, 0, 0.1);">
                             <h3 style="margin-bottom: 0.2em;flex: initial;">角色列表</h3>
                             <div class="roleList scrollbar">
-                                <template x-for="role in getRoleListFromData(setting.roleList)">
-                                    <span x-text="role?.nameTranslate??role?.name" :style="`color:${role?.affiliation?.color};`"></span>
+                                <template x-for="{magicString} in getRoleListMagicStrings(setting.roleList)">
+                                    <span :style="magicString?.style" :class="magicString?.class">
+                                        <span x-text="magicString?.text"></span>
+                                        <template x-for="magicStringPart in magicString?.parts">
+                                            <span x-text="magicStringPart.text" :style="magicStringPart.style" :class="magicStringPart.class"></span>
+                                        </template>
+                                    </span>
                                 </template>
                             </div>
                         </div>

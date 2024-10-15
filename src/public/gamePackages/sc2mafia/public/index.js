@@ -14,6 +14,7 @@ document.addEventListener('alpine:init', () => {
             this.socketInit()
             this.tagSet = undefined
             this.categoryList = undefined
+            this.roleSet = undefined
             this.recentlyDeadPlayers = []
             this.possibleRoleSet = undefined
             sendEvent("FrontendReady")
@@ -123,8 +124,6 @@ document.addEventListener('alpine:init', () => {
                 this.playerList = playerDatas.map(pd => new Player(pd, playerColors[pd.index]))
             },
 
-            // 'SetRoleSet':function(data){},
-            
             'ChatMessage':function(data){
                 const sender  = this.playerList[data.senderIndex]
 
@@ -411,13 +410,15 @@ document.addEventListener('alpine:init', () => {
             'SetTagSet':function(data){
                 const tagFrontendDatas = frontendData.tags
                 const tagBackendDatas = data
-                let tagSet = tagFrontendDatas.map(tfd => new Tag(tfd, tagBackendDatas.find(tbd => tbd.name === tfd.name)))
 
-                this.categoryList = tagSet.filter(t => (t.isFaction || t.name === 'Random'))
-                this.tagSet = tagSet
+                this.tagSet = tagFrontendDatas.map(tfd => new Tag(tfd, tagBackendDatas.find(tbd => tbd.name === tfd.name)))
+                this.categoryList = this.tagSet.filter(t => (t.isFaction || t.name === 'Random'))
             },
             'SetRoleSet':function(data){
-                this.roleSetInit()
+                const roleFrontendDatas = frontendData.roles
+                const roleBackendDatas = data.filter(rd => roleFrontendDatas.find(rfd => rfd.name === rd.name) !== undefined)
+
+                this.roleSet = roleFrontendDatas.map(rfd => new Role(rfd, roleBackendDatas.find(rbd => rbd.name === rfd.name), this.tagSet))
             },
 
             'SetRecentlyDeadPlayers':function(data){
@@ -1158,98 +1159,13 @@ document.addEventListener('alpine:init', () => {
             this.selectedRole = undefined
         },
 
-        roleSet:[
-            {
-                name:"Citizen",
-                nameZh:"市民",
-                affiliationName:"Town",
-                descriptionZh:"一个相信真理和正义的普通人",
-                abilityDescriptionZh:"市民默认没有任何特殊能力",
-                // victoryGoalDescriptionZh:"",
-                otherDescriptionZh:"市民在这个游戏中默认为最为普遍的角色",
-                abilityDetails:["你没有任何特殊能力。"],
-                featureDetails:["如果所有市民死亡，则城镇输掉这场游戏。"]
-            },
-            // {
-            //     name:"Sheriff",
-            //     nameZh:"警长",
-            //     affiliationName:"Town",
-            //     descriptionZh:"一个执法机构的成员，迫于谋杀的威胁而身处隐匿。",
-            //     abilityDescriptionZh:"这个角色有每晚侦查一人有无犯罪活动的能力。",
-            // },
-            {
-                name:"AuxiliaryOfficer",
-                nameZh:"辅警",
-                affiliationName:"Town",
-                descriptionZh:"一名与同僚熟络的辅助警员。",
-                abilityDescriptionZh:"这个角色有在夜晚与其他辅警合作侦查的能力。",
-                abilityDetails:["每晚投票调查一人的阵营。"],
-                featureDetails:[
-                    "在晚上你可以与其他辅警交谈。",
-                    "你知道其他辅警的身份。" ,
-                    "辅警团队在晚上可以投票（随机）派出一人调查某人的阵营。",
-                    "调查结果全团可知，但如果调查人被杀，则没有结果。"
-                ]
-            },
-            {
-                name:"Doctor",
-                nameZh:"医生",
-                affiliationName:"Town",
-                descriptionZh:"一个熟练于医治外伤的秘密外科医生。",
-                abilityDescriptionZh:"这个角色有每晚救治一人，使其免受一次死亡的能力。",
-                abilityDetails:["每晚救治一人，使其免受一次死亡。"],
-                featureDetails:["还没空写"]
-            },
-            {
-                name:"Mafioso",
-                nameZh:"党徒",
-                affiliationName:"Mafia",
-                descriptionZh:"一个犯罪组织的成员。",
-                abilityDescriptionZh:"这个角色有在夜晚与其他黑手党合作杀人的能力。",
-                abilityDetails:["每晚投票杀死一人。"],
-                featureDetails:[
-                    "在晚上你可以与其他黑手党成员交谈",
-                ]
-            },
-            // {
-            //     name:"AllRandom",
-            //     nameZh:"全体随机",
-            //     affiliationName:"Random",
-            //     descriptionZh:"可能是游戏中的任意角色",
-            // },
-        ],
-        roleSetInit(){
-            this.setRoleAffiliation()
-            this.setRoleColor()
-            this.roleSet.forEach(r=>{
-                r.getNameMessagePart = (additionalString)=>{
-                    return {text:r.nameZh+(additionalString??''), style:`color:${r.color};`}
-                }
-            })
-        },
-        setRoleAffiliation(){
-            this.roleSet.forEach(r => {
-                r.affiliation = this.tagSet.find(t => t.name === r.affiliationName)
-            })
-        },
-        setRoleColor(){
-            this.roleSet.forEach(r =>{
-                Object.defineProperty(r, 'color', {
-                    get: function() {
-                      return this.affiliation?.color
-                    },
-                    enumerable: true,
-                    configurable: true
-                })
-            })
-        },
         getRoleSetByCategoryName(categoryName){
-            return  this.roleSet.filter(r => r.affiliationName === categoryName)
+            return  this.roleSet?.filter(r => r.affiliationName === categoryName)
         },
         selectedRole:undefined,
         selectRole(role){
             this.selectedRole = role
-            this.selectedAffiliation = role.affiliation
+            this.selectedCategory = role.affiliation
         },
 
         addSelectedRole(){
@@ -1270,9 +1186,9 @@ document.addEventListener('alpine:init', () => {
             if(roleListData === undefined) return;
             return roleListData.map(rd => {
                 if(typeof(rd) === 'string')
-                    return this.roleSet.find(r => r.name === rd)
+                    return this.roleSet?.find(r => r.name === rd)
                 else if('name' in rd)
-                    return this.roleSet.find(r => r.name === rd.name)
+                    return this.roleSet?.find(r => r.name === rd.name)
             })
         },
 
@@ -1714,9 +1630,39 @@ class Tag{
     }
 }
 
-// class Role{
-//     constructor(data, factionData){
-//         this.name = data.name
-//         this.nameZh = data.nameZh
+class Role{
+    constructor(roleFrontendData, roleBackendData, tagSet){
+        this.data = roleFrontendData
+        this.data = {...this.data, ...roleBackendData}
+        this.affiliation = tagSet.find(t => (t.isFaction && t.name === this.data.affiliationName))
+
+        return new Proxy(this, {
+            get(target, prop) {
+                return prop in target ? target[prop] : target.data[prop]
+            }
+        })
+    }
+
+    get color(){
+        return this.color ?? this.affiliation?.color
+    }
+
+    getNameMagicString(){
+        const name = this.data.nameTranslate ?? this.name
+        return new MagicString({text:name, style:`color:${this.color};`})
+    }
+}
+
+// class RandomRole{
+//     constructor({factionTag, nonFactionTag, randomTag, roleSet}){
+//         this.factionTag = factionTag
+//         this.nonFactionTag = nonFactionTag ?? undefined
+//         this.randomTag = randomTag
+//         this.affiliation = randomTag
+//         this.roleSet = roleSet
+//     }
+
+//     get name(){
+//         return this.factionTag.name + this.nonFactionTag?.name + this.randomTag.name
 //     }
 // }

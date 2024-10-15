@@ -311,7 +311,7 @@ class Game{
         }
     }
 
-    // 死去的概率论在攻击我，还是得靠GPT救命
+    // 死去的概率论在攻击我，还是得靠GPT，G老师救场
     processRandomRole(roleListData){
         let realRoleNameList = roleListData.map((r) => {
             if(typeof(r) === 'string'){
@@ -647,7 +647,7 @@ class Game{
                 case 'AuxiliaryOfficerCheck':
                     if(a.origin.isAlive === true){
                         this.sendEventToGroup(this.queryAlivePlayersByRoleName('AuxiliaryOfficer'), 
-                        'AuxiliaryOfficerCheckResult', {targetIndex:a.target.index, targetAffiliation:a.target.role.affiliation})
+                        'AuxiliaryOfficerCheckResult', {targetIndex:a.target.index, targetAffiliationName:a.target.role.affiliationName})
                     }
                 break
 
@@ -676,8 +676,8 @@ class Game{
                 if(this.status.startsWith("day") && this.status.split('/').includes("discussion")){
                     targetGroup = this.onlinePlayerList
                 }else if(this.status.startsWith("night") && this.status.split('/').includes("discussion")){
-                    if(sender.role.affiliation === "Mafia")
-                        targetGroup = this.queryAlivePlayersByRoleTag(sender.role.affiliation)
+                    if(sender.role.affiliationName === "Mafia")
+                        targetGroup = this.queryAlivePlayersByRoleTag(sender.role.affiliationName)
                     else if(sender.role.name === "AuxiliaryOfficer")
                         targetGroup = this.queryAlivePlayersByRoleName("AuxiliaryOfficer")
                 }
@@ -865,7 +865,7 @@ class Game{
 
     queryAlivePlayersByRoleTag(tagString){
         return this.alivePlayerList.filter((p)=>{
-            return p.role.tags.includes(tagString)
+            return p.role.tagStrings.includes(tagString)
         })
     }
 
@@ -1024,19 +1024,17 @@ class Player{
     setRole(roleMeta){
         this.playedRoleNameRecord.push(roleMeta.name)
         const player = this
-        this.role = {
+        this.role = new Proxy({
             player,
             roleMeta,
-            get name(){
-                return this.roleMeta.name
-            },
             useAblity(data){
                 this.roleMeta.useAblity(this.player, data)
             },
-            toJSON(){
-                return this.roleMeta.toJSON()
+        }, {
+            get(target, prop) {
+                return prop in target ? target[prop] : target.roleMeta[prop]
             }
-        }
+        })
         this.role.roleMeta.setRoleData(this)
     }
 

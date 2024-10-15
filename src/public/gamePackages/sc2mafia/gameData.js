@@ -280,10 +280,10 @@ class RoleMeta{
         this.game = game
         this.tagStrings = tagsData.map(t => t.includeRoleNames.includes(roleData.name)? t.name:undefined).filter(t => t !== undefined)
 
-        // set affiliation
+        // set affiliationName
         // 设置角色的从属关系，不属于“城镇”、“黑手党”、“三合会”的角色会被设置为中立
-        this.affiliation = this.tagStrings.find(ts => tagsData.find(t => t.name === ts).isFaction) ?? "Neutral"
-        if(this.affiliation === "Neutral")
+        this.affiliationName = this.tagStrings.find(ts => tagsData.find(t => t.name === ts).isFaction) ?? "Neutral"
+        if(this.affiliationName === "Neutral")
             this.tagStrings.unshift("Neutral")
 
         return new Proxy(this, {
@@ -321,8 +321,8 @@ class RoleMeta{
     toJSON(){
         return {
             name:this.name,
-            tags:this.tagStrings,
-            affiliation:this.affiliation,
+            tagStrings:this.tagStrings,
+            affiliationName:this.affiliationName,
             abilityNames:this.abilities?.map(a => a.name)
         }
     }

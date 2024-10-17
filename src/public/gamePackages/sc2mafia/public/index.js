@@ -1188,6 +1188,7 @@ document.addEventListener('alpine:init', () => {
         },
 
         getRoleSetByCategoryName(categoryName){
+            console.log(this.roleSet?.map(r => r.descriptionTranslate))
             return  this.roleSet?.filter(r => r.affiliationName === categoryName)
         },
         selectedRole:undefined,
@@ -1591,12 +1592,14 @@ const frontendData = {
                 "在晚上你可以与其他黑手党成员交谈",
             ]
         },
-        // {
-        //     name:"AllRandom",
-        //     nameTranslate:"全体随机",
-        //     descriptionTranslate:"可能是游戏中的任意角色",
-        // },
+
     ],
+    randomRoles:[
+        {
+            name:"AllRandom",
+            descriptionTranslate:"可能是游戏中的任意角色",
+        },
+    ]
 
     // 我觉得还不到引入一个本地化系统的时候
     // translateData:{
@@ -1683,6 +1686,13 @@ class RandomRole{
         this.affiliationName = randomTag.name
         this.affiliation = randomTag
         this.roleSet = roleSet
+
+        const thisRandomRoleData = frontendData.randomRoles.find(r => r.name === this.name)
+        for(const key in thisRandomRoleData){
+            if(key in this === false){
+                this[key] = thisRandomRoleData[key]
+            }
+        }
     }
 
     get name(){

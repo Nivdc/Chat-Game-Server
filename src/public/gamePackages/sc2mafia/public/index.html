@@ -214,10 +214,19 @@
                                 </div>
                             </div>
                             <div id="roleDescriptionSection" x-show="selectedRole" x-transition>
-                                <h3 x-text="selectedRole?.nameTranslate??selectedRole?.name" :style="`color:${selectedRole?.affiliation.color}`"></h3>
+                                <h3>
+                                    <span :style="selectedRole?.getNameMagicString()?.style" :class="selectedRole?.getNameMagicString()?.class">
+                                        <span x-text="selectedRole?.getNameMagicString()?.text"></span>
+                                        <template x-for="magicStringPart in selectedRole?.getNameMagicString()?.parts">
+                                            <span x-text="magicStringPart?.text" :style="magicStringPart?.style" :class="magicStringPart?.class"></span>
+                                        </template>
+                                    </span>
+                                </h3>
                                 <p x-text="selectedRole?.descriptionTranslate??selectedRole?.description" style="color:var(--optional-emphasized-content)"></p>
                                 <p x-text="selectedRole?.abilityDescriptionTranslate??selectedRole?.abilityDescription" style="color:deepskyblue"></p>
                                 <p x-text="selectedRole?.otherDescriptionTranslate??selectedRole?.otherDescription"></p>
+                                
+                                <!-- todo: role modify -->
                             </div>
                         </div>
                         <div id="roleSettingButtonBar">

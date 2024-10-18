@@ -418,7 +418,7 @@ document.addEventListener('alpine:init', () => {
                 const roleFrontendDatas = frontendData.roles
                 const roleBackendDatas = data.filter(rd => roleFrontendDatas.find(rfd => rfd.name === rd.name) !== undefined)
 
-                this.roleSet = roleFrontendDatas.map(rfd => new Role(rfd, roleBackendDatas.find(rbd => rbd.name === rfd.name), this.tagSet))
+                this.roleSet = roleFrontendDatas.map(rfd => new Role(rfd, roleBackendDatas.find(rbd => rbd.name === rfd.name), this.tagSet, this.setting))
                 this.addRandomRoles()
             },
 
@@ -1082,6 +1082,12 @@ document.addEventListener('alpine:init', () => {
                         "Mafioso",
                         // "AllRandom",
                     ],
+
+                    roleModifyOptions: {
+                        doctor:{
+                            knowsIfTargetIsAttacked:true,
+                        }
+                    }
                 }
             }
         ],
@@ -1188,7 +1194,6 @@ document.addEventListener('alpine:init', () => {
         },
 
         getRoleSetByCategoryName(categoryName){
-            console.log(this.roleSet?.map(r => r.descriptionTranslate))
             return  this.roleSet?.filter(r => r.affiliationName === categoryName)
         },
         selectedRole:undefined,
@@ -1552,7 +1557,7 @@ const frontendData = {
             descriptionTranslate:"一个相信真理和正义的普通人",
             abilityDescriptionTranslate:"市民默认没有任何特殊能力",
             otherDescriptionTranslate:"市民在这个游戏中默认为最为普遍的角色",
-            abilityDetails:["你没有任何特殊能力。"],
+            abilityDetails:["市民没有任何特殊能力。"],
             featureDetails:["如果所有市民死亡，则城镇输掉这场游戏。"]
         },
         // {
@@ -1580,7 +1585,13 @@ const frontendData = {
             descriptionTranslate:"一个熟练于医治外伤的秘密外科医生。",
             abilityDescriptionTranslate:"这个角色有每晚救治一人，使其免受一次死亡的能力。",
             abilityDetails:["每晚救治一人，使其免受一次死亡。"],
-            featureDetails:["还没空写"]
+            featureDetails:[],
+            modifyDescriptionTranslate:{
+                knowsIfTargetIsAttacked:"知道目标是否被攻击"
+            },
+            modifyFeatureDescriptionTranslate:{
+                knowsIfTargetIsAttacked_true:"你会获知你的目标是否被攻击。"
+            }
         },
         {
             name:"Mafioso",
@@ -1656,10 +1667,11 @@ class Tag{
 }
 
 class Role{
-    constructor(roleFrontendData, roleBackendData, tagSet){
+    constructor(roleFrontendData, roleBackendData, tagSet, gameSetting){
         this.data = roleFrontendData
         this.data = {...this.data, ...roleBackendData}
         this.affiliation = tagSet.find(t => (t.isFaction && t.name === this.data.affiliationName))
+        this.gameSetting = gameSetting
 
         return new Proxy(this, {
             get(target, prop) {
@@ -1675,6 +1687,20 @@ class Role{
     getNameMagicString(){
         const name = this.data.nameTranslate ?? this.name
         return new MagicString({text:name, style:`color:${this.color};`})
+    }
+
+    getModifyOptions(){
+        const roleName = this.name.charAt(0).toLowerCase() + this.name.slice(1)
+        const modifyObject = this.gameSetting.roleModifyOptions[roleName]
+        console.log(modifyObject)
+
+        if(modifyObject !== undefined)
+            return Object.keys(modifyObject).map(keyName => {
+                const description = this.data.modifyDescriptionTranslate[keyName]
+                return {description, roleName, keyName}
+            })
+        else
+            return []
     }
 }
 

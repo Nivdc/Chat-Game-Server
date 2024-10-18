@@ -226,7 +226,12 @@
                                 <p x-text="selectedRole?.abilityDescriptionTranslate??selectedRole?.abilityDescription" style="color:deepskyblue"></p>
                                 <p x-text="selectedRole?.otherDescriptionTranslate??selectedRole?.otherDescription"></p>
                                 
-                                <!-- todo: role modify -->
+                                <template x-for="modifyOption in selectedRole?.getModifyOptions()">
+                                    <p>
+                                        <span x-text="modifyOption.description"></span>
+                                        <input type="checkbox" x-model="setting.roleModifyOptions[modifyOption.roleName][modifyOption.keyName]" />
+                                    </p>
+                                </template>
                             </div>
                         </div>
                         <div id="roleSettingButtonBar">

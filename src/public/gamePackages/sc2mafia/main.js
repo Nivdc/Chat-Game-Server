@@ -624,7 +624,8 @@ class Game{
 
                     case 'DoctorHealProtect':
                         if(tempDeathReason.length !== 0){
-                            // action.origin.sendEvent('DoctorHealProtectedTargetIsAttacked')
+                            if(this.setting.roleModifyOptions[doctor][knowsIfTargetIsAttacked])
+                                action.origin.sendEvent('YourTargetIsAttacked')
                         }
                         if(action.target.isAlive === false && p.deathReason === undefined){
                             action.target.sendEvent('YouAreHealed')

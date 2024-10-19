@@ -68,7 +68,7 @@ document.addEventListener('alpine:init', () => {
                 'YouGoToKill',
                 'YouUnderAttack',
                 'YouAreHealed',
-
+                'YourTargetIsAttacked',
                 'AuxiliaryOfficerCheckResult',
             ]
 
@@ -972,6 +972,16 @@ document.addEventListener('alpine:init', () => {
                     message.append(this.playerList[data.targetIndex].getNameMagicString())
                     message.addText("。")
                     this.addMessage(message)
+
+                    return new Promise((resolve) => {
+                        setTimeout(()=>{
+                            resolve()
+                        }, 2 * 1000)
+                    })
+                break}
+
+                case 'yourTargetIsAttacked':{
+                    this.addSystemHintText("你医治的对象今晚被攻击了", 'darkred')
 
                     return new Promise((resolve) => {
                         setTimeout(()=>{

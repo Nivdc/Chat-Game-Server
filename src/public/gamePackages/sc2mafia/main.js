@@ -581,7 +581,7 @@ class Game{
 
         // SoloPlayer
         for(const p of this.alivePlayerList){
-            for(const a of p.role.abilities){
+            for(const a of p.role.abilities ?? []){
                 const action = a.generateAction(p)
                 if(action !== undefined)
                     this.nightActionSequence.push(action)

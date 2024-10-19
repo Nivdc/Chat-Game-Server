@@ -450,6 +450,7 @@ document.addEventListener('alpine:init', () => {
 
             'SetLastWill':function(data){
                 let lastWillString = data
+                if(isEmpty(lastWillString)) return;
                 let lwsa = lastWillString.split('\n')
                 let lws1 = lwsa[0] ?? ""
                 let lws2 = lwsa[1] ?? ""
@@ -653,7 +654,7 @@ document.addEventListener('alpine:init', () => {
             },
         },
         commandHandler(commandString){
-            [command, ...args] = commandString.split(" ")
+            let [command, ...args] = commandString.split(" ")
 
             switch(command){
                 case 'repick':
@@ -850,7 +851,7 @@ document.addEventListener('alpine:init', () => {
                 break
                 case 'actionToDay':{
                     const classList = document.getElementById('gamePage').classList
-                    animationClassList = [...classList].filter(className => className.startsWith('animation'))
+                    let animationClassList = [...classList].filter(className => className.startsWith('animation'))
                     animationClassList.forEach(c => classList.remove(c))
                     classList.add('animation-actionToDay-6s')
                 break}
@@ -1234,11 +1235,11 @@ document.addEventListener('alpine:init', () => {
         getPossibleRoleData(){
             if(this.possibleRoleSet === undefined) return;
             let possibleRoleDataArray = this.possibleRoleSet.map(prd => {
-                let roleData = this.roleSet.find(r => r.name === prd.name)
-                roleData.expectation = prd.expectation
-                roleData.probability = prd.probability
+                let role = this.roleSet.find(r => r.name === prd.name)
+                role.expectation = prd.expectation
+                role.probability = prd.probability
 
-                return roleData
+                return role
             })
 
             return possibleRoleDataArray.sort((a,b)=>{
@@ -1587,7 +1588,7 @@ const frontendData = {
             abilityDetails:["每晚救治一人，使其免受一次死亡。"],
             featureDetails:[],
             modifyDescriptionTranslate:{
-                knowsIfTargetIsAttacked:"知道目标是否被攻击"
+                knowsIfTargetIsAttacked:"目标受到攻击时可获知"
             },
             modifyFeatureDescriptionTranslate:{
                 knowsIfTargetIsAttacked_true:"你会获知你的目标是否被攻击。"

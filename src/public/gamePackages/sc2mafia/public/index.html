@@ -354,13 +354,12 @@
                     <p style="color:LightSkyBlue">出现几率：<span x-text="`${(roleCardData?.probability * 100).toFixed(1)}%`" style="color: LimeGreen;"></span></p>
                     <p style="color:LightSkyBlue">预计出现数量：<span x-text="roleCardData?.expectation" style="color:yellow;"></span></p>
                 </div>
-
             </div>
 
             <div id="gamePageBody" style="display: flex;flex: auto;width: 100%;opacity: 0;">
                 <div id="gamePageBodyLeft"style="display:flex;flex-direction:column;flex:1;margin:1em;">
                     <div id ="graveyardAndRoleList" style="display: flex;flex: auto;margin-bottom: 1em;">
-                        <div id="graveyard"style="flex:initial;width: 10em;margin-right:1em;background-color: rgba(0, 0, 0, 0.1);">
+                        <div id="graveyard"style="flex:initial;width: 10em;margin-right:1em;background-color: rgba(0, 0, 0, 0.1);" @mouseenter="openGraveyardDetailCard($event)" @mouseleave="closeGraveyardDetailCard()">
                             <h3>墓地</h3>
                             <div class="scrollbar">
                                 <template x-for="player in playerList.filter(p => p.isAlive===false)">
@@ -371,6 +370,20 @@
                                         <span x-text="`${player.role?.getNameMagicString().text}`" :style="`${player.role?.getNameMagicString().style}`"></span>
                                         <span>)</span>
                                     </p>
+                                </template>
+                            </div>
+
+                            <div id="graveyardDetailCard" style="position:absolute;min-height:15em;background-color: rgba(0, 0, 0, 0.2);flex: initial;margin-bottom: 1em;display: flex;flex-direction: column;row-gap:0.2em;padding: 0.2em;z-index: 99;" class="border" x-show="graveyardDetailCardToggle">
+                                <template x-for="{magicString, deathTime} in getDeadPlayerDatas()">
+                                    <div>
+                                        <p :style="magicString?.style" :class="magicString?.class">
+                                            <span x-text="magicString?.text"></span>
+                                            <template x-for="magicStringPart in magicString?.parts">
+                                                <span x-text="magicStringPart.text" :style="magicStringPart.style" :class="magicStringPart.class"></span>
+                                            </template>
+                                        </p>
+                                        <p x-text="`[${deathTime.split('/')[1] === 'Day' ? '白天':'夜晚'} ${deathTime.split('/')[0]}]`"></p>
+                                    </div>
                                 </template>
                             </div>
                         </div>

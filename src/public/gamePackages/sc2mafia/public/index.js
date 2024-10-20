@@ -344,7 +344,6 @@ document.addEventListener('alpine:init', () => {
 
             'SetRole':function(data){
                 this.myRole = this.roleSet.find(r=>r.name === data.name)
-                this.myRole.abilityNames = data.abilityNames
             },
 
             'SetTeam':function(data){
@@ -898,37 +897,41 @@ document.addEventListener('alpine:init', () => {
                         let role        = this.roleSet.find(r => r.name === deadPlayerData.roleName)
                         let lastWill    = deadPlayerData.lastWill
                         let messageLeftByKiller = deadPlayerData.messageLeftByKiller
+                        player.deathReason = data.deathReason
 
                         if(this.status === 'animation/daily/deathDeclear'){
                             this.gamePageTipMessage = new MagicString()
                             this.gamePageTipMessage.append(player.getNameMagicString())
                             this.gamePageTipMessage.addText(' 在这个早晨被发现时已经死亡了。')
 
+                            player.deathTime = `${this.dayCount - 1}/Night`
                             // todo: killerHint
                         }
                         else if(this.status === 'animation/execution/deathDeclear'){
                             // 这个时候提示栏正在被“xxx，你还有什么遗言吗？”占用
                             if(this.gamePageTipMessage.class !== 'animation-fadeOut-2s')
                                 this.gamePageTipMessage.class = 'animation-fadeOut-2s'
+
+                            player.deathTime = `${this.dayCount}/Day`
                         }
 
+                        if(role !== undefined)
+                            setTimeout(() => {
+                                this.gamePageTipMessage = new MagicString()
+                                this.gamePageTipMessage.append(player.getNameMagicString())
+                                this.gamePageTipMessage.addText(' 的角色是 ')
+                                this.gamePageTipMessage.append(role.getNameMagicString())
+                                this.gamePageTipMessage.class = 'animation-fadeIn-1s'
 
-                        setTimeout(() => {
-                            this.gamePageTipMessage = new MagicString()
-                            this.gamePageTipMessage.append(player.getNameMagicString())
-                            this.gamePageTipMessage.addText(' 的角色是 ')
-                            this.gamePageTipMessage.append(role.getNameMagicString())
-                            this.gamePageTipMessage.class = 'animation-fadeIn-1s'
+                                let newMessage = cloneDeep(this.gamePageTipMessage)
+                                newMessage.class = ''
+                                newMessage.style = 'background-color:rgba(0, 0, 0, 0.2);'
+                                this.addMessage(newMessage)
 
-                            let newMessage = cloneDeep(this.gamePageTipMessage)
-                            newMessage.class = ''
-                            newMessage.style = 'background-color:rgba(0, 0, 0, 0.2);'
-                            this.addMessage(newMessage)
-
-                            player.isAlive  = false
-                            player.role     = role
-                            player.lastWill = lastWill
-                        }, 2000)
+                                player.isAlive  = false
+                                player.role     = role
+                                player.lastWill = lastWill
+                            }, 2000)
                         setTimeout(() => {
                             if(this.setting.enableLastWill){
                                 if(lastWill !== undefined){
@@ -1381,6 +1384,24 @@ document.addEventListener('alpine:init', () => {
         },
         closeRoleCard(){
             this.roleCardData = undefined
+        },
+
+        graveyardDetailCardToggle:false,
+        getDeadPlayerDatas(){
+            let deadPlayerList = this.playerList.filter(p => p.isAlive===false)
+            return deadPlayerList.map(p => p.getDeathDataMagicStringAndDeathTime())
+        },
+        openGraveyardDetailCard(event){
+            if(this.playerList.filter(p => p.isAlive === false).length > 0){
+                this.graveyardDetailCardToggle = true
+                const graveyardDetailCardElement = document.getElementById("graveyardDetailCard")
+                // roleCardElement本身会影响到鼠标移入移出的判定，所以要加上一个5px的偏差值
+                graveyardDetailCardElement.style.top  = event.clientY + 5 + "px"
+                graveyardDetailCardElement.style.left = event.clientX + 5 + "px"
+            }
+        },
+        closeGraveyardDetailCard(){
+            this.graveyardDetailCardToggle = false
         }
     }))
 
@@ -1460,6 +1481,36 @@ class Player{
     
     getNameMagicStringWithExtras({text:extext, style:exstyle}){
         return new MagicString({text:this.name+(extext??''), style:`color:${this.color};`+(exstyle??'')})
+    }
+
+    getDeathDataMagicStringAndDeathTime(){
+        if(this.isAlive === false){
+            let ms = new MagicString()
+            ms.addText(`${this.index + 1} - `)
+            ms.append(this.getNameMagicString())
+            ms.addText('(')
+            ms.append(this.role?.getNameMagicString() ?? {text:'??'})
+            ms.addText('): ')
+
+            let deathReasonDescriptions = []
+            while(this.deathReason?.length > 0 )
+            switch(this.deathReason.shift()){
+                case 'MafiaKillAttack':
+                    deathReasonDescriptions.push('死于黑手党的攻击')
+                break
+                case 'Execution':
+                    deathReasonDescriptions.push('死于处刑')
+                break
+            }
+            if(deathReasonDescriptions.length === 0){
+                deathReasonDescriptions.push('死于未知原因')
+            }
+
+            while(deathReasonDescriptions.length > 0 )
+                ms.addText(`${deathReasonDescriptions.shift()}${deathReasonDescriptions.length === 0 ? '':', '}`)
+
+            return {magicString:ms, deathTime:this.deathTime}
+        }
     }
 
 }

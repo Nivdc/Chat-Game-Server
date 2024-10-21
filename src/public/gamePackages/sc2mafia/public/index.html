@@ -372,22 +372,8 @@
                                     </p>
                                 </template>
                             </div>
-
-                            <div id="graveyardDetailCard" style="position:absolute;min-height:15em;background-color: rgba(0, 0, 0, 0.2);flex: initial;margin-bottom: 1em;display: flex;flex-direction: column;row-gap:0.2em;padding: 0.2em;z-index: 99;" class="border" x-show="graveyardDetailCardToggle">
-                                <template x-for="{magicString, deathTime} in getDeadPlayerDatas()">
-                                    <div>
-                                        <p :style="magicString?.style" :class="magicString?.class">
-                                            <span x-text="magicString?.text"></span>
-                                            <template x-for="magicStringPart in magicString?.parts">
-                                                <span x-text="magicStringPart.text" :style="magicStringPart.style" :class="magicStringPart.class"></span>
-                                            </template>
-                                        </p>
-                                        <p x-text="`[${deathTime.split('/')[1] === 'Day' ? '白天':'夜晚'} ${deathTime.split('/')[0]}]`"></p>
-                                    </div>
-                                </template>
-                            </div>
                         </div>
-                        <div style="display: flex;flex-direction: column;position: relative;flex: initial;width: 10em;background-color: rgba(0, 0, 0, 0.1);">
+                        <div style="display: flex;flex-direction: column;position: relative;flex: initial;width: 10em;background-color: rgba(0, 0, 0, 0.1);" @mouseenter="openGameSettingDetailCard($event)" @mouseleave="closeGameSettingDetailCard()">
                             <h3 style="margin-bottom: 0.2em;flex: initial;">角色列表</h3>
                             <div class="roleList scrollbar">
                                 <template x-for="{magicString} in getRoleListMagicStrings(setting.roleList)">
@@ -400,6 +386,30 @@
                                 </template>
                             </div>
                         </div>
+                    </div>
+                    <div id="graveyardDetailCard" style="position:absolute;min-height:15em;background-color: rgba(0, 0, 0, 0.2);flex: initial;margin-bottom: 1em;display: flex;flex-direction: column;row-gap:0.2em;padding: 0.2em;z-index: 99;" class="border" x-show="graveyardDetailCardToggle">
+                        <template x-for="{magicString, deathTime} in getDeadPlayerDatas()">
+                            <div>
+                                <p :style="magicString?.style" :class="magicString?.class">
+                                    <span x-text="magicString?.text"></span>
+                                    <template x-for="magicStringPart in magicString?.parts">
+                                        <span x-text="magicStringPart.text" :style="magicStringPart.style" :class="magicStringPart.class"></span>
+                                    </template>
+                                </p>
+                                <p x-text="`[${deathTime.split('/')[1] === 'Day' ? '白天':'夜晚'} ${deathTime.split('/')[0]}]`"></p>
+                            </div>
+                        </template>
+                    </div>
+                    <div id="gameSettingDetailCard" style="position:absolute;min-height:15em;background-color: rgba(0, 0, 0, 0.2);flex: initial;margin-bottom: 1em;display: flex;flex-direction: column;row-gap:0.2em;padding: 0.2em;z-index: 99;" class="border" x-show="gameSettingDetailCardToggle">
+                        <h3 style="margin-bottom: 0.2em;flex: initial;">游戏设置</h3>
+                        <template x-for="magicString in getGameSettingDetails()">
+                            <p :style="magicString?.style" :class="magicString?.class">
+                                <span x-text="magicString?.text"></span>
+                                <template x-for="magicStringPart in magicString?.parts">
+                                    <span x-text="magicStringPart.text" :style="magicStringPart.style" :class="magicStringPart.class"></span>
+                                </template>
+                            </p>
+                        </template>
                     </div>
                     <div id="gamePageButtonBar" class="buttonBar" style="display: flex;margin-bottom: 1em;column-gap: 0.5em;">
                         <button @click="lastWillEditorToggle = !lastWillEditorToggle">遗言</button>

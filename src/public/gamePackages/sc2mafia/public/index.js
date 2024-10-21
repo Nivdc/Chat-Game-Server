@@ -1067,7 +1067,10 @@ document.addEventListener('alpine:init', () => {
                 setting:{
                     dayVoteType: "Majority",
                     dayLength: 0.1,
-                    
+                                        
+                    enableDiscussion: false,
+                    discussionTime: 0.3,
+
                     enableTrial: true,
                     enableTrialDefense: true,
                     trialTime: 0.2,
@@ -1077,9 +1080,6 @@ document.addEventListener('alpine:init', () => {
                     
                     nightType: "Classic",
                     nightLength: 0.6,
-                    
-                    enableDiscussion: false,
-                    discussionTime: 0.3,
                     
                     revealPlayerRoleOnDeath: true,
                     protectCitizensMode:false,
@@ -1389,6 +1389,7 @@ document.addEventListener('alpine:init', () => {
         graveyardDetailCardToggle:false,
         getDeadPlayerDatas(){
             let deadPlayerList = this.playerList.filter(p => p.isAlive===false)
+            // fixme:没按死亡顺序排序
             return deadPlayerList.map(p => p.getDeathDataMagicStringAndDeathTime())
         },
         openGraveyardDetailCard(event){
@@ -1402,7 +1403,90 @@ document.addEventListener('alpine:init', () => {
         },
         closeGraveyardDetailCard(){
             this.graveyardDetailCardToggle = false
-        }
+        },
+
+        gameSettingDetailCardToggle:false,
+        getGameSettingDetails(){
+            let gsdmss = []
+
+            let dayTypeMS = new MagicString()
+            dayTypeMS.addText(`白天类型: `)
+            this.setting.dayVoteType === 'Majority' ? dayTypeMS.addText('实名过半数') :
+                this.setting.dayVoteType === 'Ballot' ? dayTypeMS.addText('匿名最高票') : dayTypeMS.addText('白天类型设置错误')
+            dayTypeMS.addText(`/`)
+            this.setting.enableTrial ? dayTypeMS.addText('审判') : dayTypeMS.addText('处刑')
+            gsdmss.push(dayTypeMS)
+
+            let dayLengthMS =  new MagicString()
+            dayLengthMS.addText(`白天时长: ${this.setting.dayLength}分钟`)
+            gsdmss.push(dayLengthMS)
+
+            let enableDiscussionMS = new MagicString({text:'投票前讨论阶段: '})
+            this.setting.enableDiscussion ? enableDiscussionMS.addText('开启', 'green') : enableDiscussionMS.addText('关闭', 'red')
+            gsdmss.push(enableDiscussionMS)
+
+            if(this.setting.enableDiscussion){
+                let discussionTimeMS =  new MagicString()
+                discussionTimeMS.addText(`讨论时长: ${this.setting.discussionTime}分钟`)
+                gsdmss.push(discussionTimeMS)
+            }
+
+            if(this.setting.enableTrial){
+                let pauseDayTimerDuringTrialMS = new MagicString({text:'审判时暂停白天: '})
+                this.setting.pauseDayTimerDuringTrial ? pauseDayTimerDuringTrialMS.addText('开启', 'green') : pauseDayTimerDuringTrialMS.addText('关闭', 'red')
+                gsdmss.push(pauseDayTimerDuringTrialMS)
+
+                let enableTrialDefenseMS = new MagicString({text:'审判辩护阶段: '})
+                this.setting.enableTrialDefense ? enableTrialDefenseMS.addText('开启', 'green') : enableTrialDefenseMS.addText('关闭', 'red')
+                gsdmss.push(enableTrialDefenseMS)
+
+                let trialTimeMS =  new MagicString()
+                trialTimeMS.addText(`审判时长: ${this.setting.trialTime}分钟`)
+                gsdmss.push(trialTimeMS)
+            }
+
+            let nightTypeMS = new MagicString()
+            nightTypeMS.addText(`夜晚类型: `)
+            this.setting.nightType === 'Classic' ? nightTypeMS.addText('经典') : nightTypeMS.addText('夜晚类型设置错误')
+            gsdmss.push(nightTypeMS)
+
+            let nightLengthMS =  new MagicString()
+            nightLengthMS.addText(`夜晚时长: ${this.setting.nightLength}分钟`)
+            gsdmss.push(nightLengthMS)
+
+
+            let revealPlayerRoleOnDeathMS = new MagicString({text:'死亡后揭示身份: '})
+            this.setting.revealPlayerRoleOnDeath ? revealPlayerRoleOnDeathMS.addText('开启', 'green') : revealPlayerRoleOnDeathMS.addText('关闭', 'red')
+            gsdmss.push(revealPlayerRoleOnDeathMS)
+            let enableLastWillMS = new MagicString({text:'遗嘱: '})
+            this.setting.enableLastWill ? enableLastWillMS.addText('开启', 'green') : enableLastWillMS.addText('关闭', 'red')
+            gsdmss.push(enableLastWillMS)
+            let enablePrivateMessageMS = new MagicString({text:'私密消息: '})
+            this.setting.enablePrivateMessage ? enablePrivateMessageMS.addText('开启', 'green') : enablePrivateMessageMS.addText('关闭', 'red')
+            gsdmss.push(enablePrivateMessageMS)
+            let enableKillerMessageMS = new MagicString({text:'杀手留言: '})
+            this.setting.enableKillerMessage ? enableKillerMessageMS.addText('开启', 'green') : enableKillerMessageMS.addText('关闭', 'red')
+            gsdmss.push(enableKillerMessageMS)
+            // let _MS = new MagicString({text:'死亡描述: '})
+            // this.setting._ ? _MS.addText('开启', 'green') : _MS.addText('关闭', 'red')
+            // gsdmss.push(_MS)
+            // let enableCustomNameMS = new MagicString({text:'自定义名称: '})
+            // this.setting.enableCustomName ? enableCustomNameMS.addText('开启', 'green') : enableCustomNameMS.addText('关闭', 'red')
+            // gsdmss.push(enableCustomNameMS)
+
+            // todo:随机角色选项
+
+            return gsdmss
+        },
+        openGameSettingDetailCard(event){
+            this.gameSettingDetailCardToggle = true
+            const cardElement = document.getElementById("gameSettingDetailCard")
+            cardElement.style.top  = event.clientY + 5 + "px"
+            cardElement.style.left = event.clientX + 5 + "px"
+        },
+        closeGameSettingDetailCard(){
+            this.gameSettingDetailCardToggle = false
+        },
     }))
 
     function cloneDeep(o){
@@ -1489,7 +1573,7 @@ class Player{
             ms.addText(`${this.index + 1} - `)
             ms.append(this.getNameMagicString())
             ms.addText('(')
-            ms.append(this.role?.getNameMagicString() ?? {text:'??'})
+            ms.append(this.role?.getNameMagicString() ?? {text:'???'})
             ms.addText('): ')
 
             let deathReasonDescriptions = []
@@ -1534,8 +1618,9 @@ class MagicString{
         this.style += `color:${color}`
     }
 
-    addText(text){
-        this.parts.push({text})
+    addText(text, colorString){
+        const style = colorString ? `color:${colorString}` : undefined
+        this.parts.push({text, style})
     }
 
     append(newPart){

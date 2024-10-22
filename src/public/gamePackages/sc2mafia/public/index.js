@@ -1389,8 +1389,21 @@ document.addEventListener('alpine:init', () => {
         graveyardDetailCardToggle:false,
         getDeadPlayerDatas(){
             let deadPlayerList = this.playerList.filter(p => p.isAlive===false)
-            // fixme:没按死亡顺序排序
-            return deadPlayerList.map(p => p.getDeathDataMagicStringAndDeathTime())
+            return deadPlayerList.map(p => p.getDeathDataMagicStringAndDeathTime()).sort((a, b)=>{
+                const a_deathDay = Number(a.deathTime.split('/')[0])
+                const b_deathDay = Number(b.deathTime.split('/')[0])
+
+                if(a_deathDay !== b_deathDay)
+                    return a_deathDay - b_deathDay
+                else{
+                    if(a.deathTime.split('/')[1] === b.deathTime.split('/')[1])
+                        return 0
+                    else if(a.deathTime.split('/')[1] === 'Day')
+                        return -1
+                    else if(b.deathTime.split('/')[1] === 'Day')
+                        return 1
+                }
+            })
         },
         openGraveyardDetailCard(event){
             if(this.playerList.filter(p => p.isAlive === false).length > 0){

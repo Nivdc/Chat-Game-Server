@@ -317,6 +317,25 @@ class Game{
             if(typeof(r) === 'string'){
                 return r
             }else{
+                // return weightedRandom(r.possibleRoleSet)
+                const roleNameLowerCase = r.name.charAt(0).toLowerCase() + r.name.slice(1)
+                const modifyObject = this.setting.roleModifyOptions[roleNameLowerCase]
+                if(modifyObject !== undefined){
+                    for(const keyName of Object.keys(modifyObject)){
+                        if(keyName.startsWith('excludeTag')){
+                            const excludeTagName = keyName.split('excludeTag')[1]
+                            r.possibleRoleSet = r.possibleRoleSet.filter(prd => {
+                                const roleMeta = this.roleMetaSet.find(r => r.name === prd.name)
+                                return roleMeta.tagStrings.includes(excludeTagName) === false
+                            })
+                        }
+                        else if(keyName.startsWith('excludeRole')){
+                            const excludeRoleName = keyName.split('excludeRole')[1]
+                            r.possibleRoleSet = r.possibleRoleSet.filter(prd => prd.name !== excludeRoleName)
+                        }
+                    }
+                }
+
                 return weightedRandom(r.possibleRoleSet)
             }
         })

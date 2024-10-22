@@ -1178,23 +1178,21 @@ document.addEventListener('alpine:init', () => {
             // 首先添加AllRandom
             const allTag = {name:'All', nameTranslate:'全体', color:'white', includeRoleNames:this.roleSet.map(r => r.name)}
             const randomTag = this.tagSet.find(t => t.name === 'Random')
-            this.roleSet.push(new RandomRole({factionTag:allTag, randomTag, roleSet:this.roleSet}))
+            this.roleSet.push(new RandomRole({factionTag:allTag, randomTag, game:this}))
 
             // 然后剩下的标签与Faction标签排列组合
             const factionTags = this.tagSet.filter(t => t.isFaction)
             const nonFactionTags = this.tagSet.filter(t => (t.isFaction !== true))
             for(const factionTag of factionTags){
-                this.roleSet.push(new RandomRole({factionTag, randomTag, roleSet:this.roleSet}))
+                this.roleSet.push(new RandomRole({factionTag, randomTag, game:this}))
                 for(const nonFactionTag of nonFactionTags){
                     if(nonFactionTag.name !== 'Random'){
                         // 先看一下nonFactionTag.includeRoleNames和factionTag.includeRoleNames有没有交集
-                        const roleNameIntersection = factionTag.includeRoleNames.filter(rName => nonFactionTag.includeRoleNames.includes(rName))
+                        const roleNameIntersection = getIntersection(factionTag.includeRoleNames, nonFactionTag.includeRoleNames)
                         if(roleNameIntersection.length > 0){
                             // 如果有交集，再看一下交集是否和factionTag.includeRoleNames完全一致
-                            const ftirn = factionTag.includeRoleNames.sort()
-                            const rni = roleNameIntersection.sort()
-                            if(ftirn.every((rName, index) => rName === rni[index]) === false){
-                                this.roleSet.push(new RandomRole({factionTag, nonFactionTag, randomTag, roleSet:this.roleSet}))
+                            if(arraysEqual(factionTag.includeRoleNames, roleNameIntersection) === false){
+                                this.roleSet.push(new RandomRole({factionTag, nonFactionTag, randomTag, game:this}))
                             }
                         }
                     }
@@ -1769,6 +1767,9 @@ const frontendData = {
         {
             name:"AllRandom",
             descriptionTranslate:"可能是游戏中的任意角色",
+            modifyDescriptionTranslate:{
+                excludeTagKilling:"不包含 致命角色"
+            },
         },
     ]
 
@@ -1852,7 +1853,6 @@ class Role{
     getModifyOptions(){
         const roleName = this.name.charAt(0).toLowerCase() + this.name.slice(1)
         const modifyObject = this.gameSetting.roleModifyOptions[roleName]
-        console.log(modifyObject)
 
         if(modifyObject !== undefined)
             return Object.keys(modifyObject).map(keyName => {
@@ -1865,13 +1865,13 @@ class Role{
 }
 
 class RandomRole{
-    constructor({factionTag, nonFactionTag, randomTag, roleSet}){
+    constructor({factionTag, nonFactionTag, randomTag, game}){
         this.factionTag = factionTag
         this.nonFactionTag = nonFactionTag ?? undefined
         this.randomTag = randomTag
         this.affiliationName = randomTag.name
         this.affiliation = randomTag
-        this.roleSet = roleSet
+        this.game = game
 
         const thisRandomRoleData = frontendData.randomRoles.find(r => r.name === this.name)
         for(const key in thisRandomRoleData){
@@ -1879,6 +1879,8 @@ class RandomRole{
                 this[key] = thisRandomRoleData[key]
             }
         }
+
+        this.generateModifyOptions()
     }
 
     get name(){
@@ -1904,7 +1906,7 @@ class RandomRole{
     }
 
     generateRandomObject(){
-        const includeRoles = this.includeRoleNames.map(rName => this.roleSet.find(r => r.name === rName)).filter(r => r !== undefined)
+        const includeRoles = this.includeRoleNames.map(rName => this.game.roleSet.find(r => r.name === rName)).filter(r => r !== undefined)
 
         return {
             name:this.name,
@@ -1913,4 +1915,74 @@ class RandomRole{
             })
         }
     }
+
+    generateModifyOptions(){
+        const roleNameLowerCase = this.name.charAt(0).toLowerCase() + this.name.slice(1)
+
+        if(this.modifyDescriptionTranslate === undefined){
+            this.modifyDescriptionTranslate = {}
+        }
+
+        if(this.name === 'AllRandom'){
+            let modifyObject = {
+                excludeTagKilling:false,
+            }
+            this.game.settingWatchIgnore = true
+            this.game.setting.roleModifyOptions[roleNameLowerCase] = modifyObject
+        }
+        else{
+            // 如果是随机阵营
+            if(this.nonFactionTag === undefined){
+                const nonFactionTags = this.game.tagSet.filter(t => (t.isFaction !== true && t.name !=='Random'))
+                let modifyObject = {}
+                
+                for(const nonFactionTag of nonFactionTags){
+                    // 这玩意我怎么写了两遍啊...应该可以接受吧...
+                    // 先看一下nonFactionTag.includeRoleNames和factionTag.includeRoleNames有没有交集
+                    const roleNameIntersection = getIntersection(this.factionTag.includeRoleNames, nonFactionTag.includeRoleNames)
+                    if(roleNameIntersection.length > 0){
+                        // 如果有交集，再看一下交集是否和factionTag.includeRoleNames完全一致
+                        if(arraysEqual(this.factionTag.includeRoleNames, roleNameIntersection) === false){
+                            modifyObject[`excludeTag${nonFactionTag.name}`] = false
+                            this.modifyDescriptionTranslate[`excludeTag${nonFactionTag.name}`] = `不包含 ${nonFactionTag.nameTranslate}角色`
+                        }
+                    }
+
+                    if(this.factionTag.name === 'Town' && nonFactionTag.name === 'Team'){
+                        modifyObject[`excludeTag${nonFactionTag.name}`] = true
+                    }
+                }
+                this.game.settingWatchIgnore = true
+                this.game.setting.roleModifyOptions[roleNameLowerCase] = modifyObject
+            }
+        }
+    }
+
+    getModifyOptions(){
+        const roleName = this.name.charAt(0).toLowerCase() + this.name.slice(1)
+        const modifyObject = this.game.setting.roleModifyOptions[roleName]
+
+        if(modifyObject !== undefined)
+            return Object.keys(modifyObject).map(keyName => {
+                const description = this.modifyDescriptionTranslate[keyName]
+                return {description, roleName, keyName}
+            })
+        else
+            return []
+    }
+}
+
+function getIntersection(arr1, arr2) {
+    const set2 = new Set(arr2)
+    return arr1.filter(item => set2.has(item))
+}
+
+function arraysEqual(arr1, arr2) {
+    if (arr1.length !== arr2.length)
+        return false
+
+    const sortedArr1 = arr1.slice().sort()
+    const sortedArr2 = arr2.slice().sort()
+
+    return sortedArr1.every((value, index) => value === sortedArr2[index])
 }

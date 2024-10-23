@@ -489,6 +489,9 @@ ul{
 .animation-doctorHealProtect-2s {
     animation: protect 2s forwards;
 }
+.animation-suicide-2s {
+    animation: underAttack_style_2 2s forwards;
+}
 
 @keyframes dayToNight {
   0% { background-color: var(--background-highlights); }
@@ -525,6 +528,11 @@ ul{
 @keyframes protect {
     0% { background-color: black }
     50% { background-color: green }
+    100% { background-color: black }
+}
+@keyframes underAttack_style_2 {
+    0% { background-color: black }
+    50% { background-color: red }
     100% { background-color: black }
 }
 

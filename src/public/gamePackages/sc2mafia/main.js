@@ -238,6 +238,23 @@ class Game{
                             }
                         }
                     break
+                    case 'Suicide':
+                        // fixme: 我发现这个地方有一个问题，玩家有可能可以通过反复的使用自杀指令来判断自己是不是被小丑亡语选中为自杀对象了
+                        // ...我们先不要想太多，等小丑角色做出来再说吧。
+                        // if((this.dayCount ?? 0) >= 3)
+                        const existingSuicideEffect = player.effects.find(e => e.name === 'Suicide')
+                        if(existingSuicideEffect === undefined){
+                            player.effects.push({name:'Suicide'})
+                            player.sendEvent('YouDecidedToCommitSuicide')
+                        }
+                        else{
+                            if(existingSuicideEffect.reason === undefined){
+                                player.effects = player.effects.filter(e => e.name !== 'Suicide')
+                            }
+                            player.sendEvent('YouGiveUpSuicide')
+                        }
+
+                    break
                 }
             }
         }
@@ -317,7 +334,6 @@ class Game{
             if(typeof(r) === 'string'){
                 return r
             }else{
-                // return weightedRandom(r.possibleRoleSet)
                 const roleNameLowerCase = r.name.charAt(0).toLowerCase() + r.name.slice(1)
                 const modifyObject = this.setting.roleModifyOptions[roleNameLowerCase]
                 if(modifyObject !== undefined){
@@ -562,10 +578,10 @@ class Game{
         this.setStatus("night/action")
 
         this.generatePlayerAction()
-
         this.nightActionSequence.sort(actionSequencing)
-
+        // this.playerEffectsProcess_beforAction()
         this.nightActionProcess()
+        this.playerEffectsProcess_afterAction()
 
         // 此处前端已经收到了所有事件通知，等待下面这个阶段出现就会播放动画队列
         // 而这里就有一个后端究竟要等多久的问题，理想情况下，它应该等待无限久，直到所有人的所有前端动画都播放完
@@ -673,6 +689,22 @@ class Game{
 
                 // case "SheriffCheck":
                 // break
+            }
+        }
+    }
+
+    playerEffectsProcess_afterAction(){
+        for(const p of this.alivePlayerList){
+            const effects = p.effects ?? []
+            for(const e of effects){
+                if(e.name === 'Suicide'){
+                    p.isAlive = false
+                    p.deathReason?.push('Suicide') ?? (p.deathReason = ['Suicide'])
+                    if(this.recentlyDeadPlayers.includes(p) === false)
+                        this.recentlyDeadPlayers.push(p)
+
+                    p.sendEvent('YouCommittedSuicide', e.reason ?? undefined)
+                }
             }
         }
     }
@@ -903,6 +935,9 @@ class Game{
 
         player.user = undefined
         // todo: AFK Kill
+        if(player.isAlive){
+            player.effects.push({name:'Suicide', reason:'AFK'})
+        }
 
         if(this.onlinePlayerList.length === 0){
             this.status = 'end'
@@ -986,6 +1021,7 @@ class Player{
     constructor(user){
         this.user = user
         this.playedRoleNameRecord = []
+        this.effects = []
     }
 
     get uuid(){

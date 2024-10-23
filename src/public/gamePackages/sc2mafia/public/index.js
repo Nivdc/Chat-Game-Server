@@ -70,6 +70,8 @@ document.addEventListener('alpine:init', () => {
                 'YouAreHealed',
                 'YourTargetIsAttacked',
                 'AuxiliaryOfficerCheckResult',
+
+                'YouCommittedSuicide',
             ]
 
             for(const eName of nightActionEvents){
@@ -641,16 +643,23 @@ document.addEventListener('alpine:init', () => {
                 this.addSystemHintText("哦不，你死了，但是你仍可以留下来观看本局游戏。", 'darkred')
             },
 
-            // night action events
-            'YouGoToKill':function(data){
-                this.actionAnimationNameSequence.push('youGoToKill')
+            // // night action events
+            // 'YouGoToKill':function(data){
+            //     this.actionAnimationNameSequence.push('youGoToKill')
+            // },
+            // 'MafiaKillAttack':function(data){
+            //     this.actionAnimationNameSequence.push('mafiaKillAttack')
+            // },
+            // 'DoctorHealProtect':function(data){
+            //     this.actionAnimationNameSequence.push('doctorHealProtect')
+            // },
+
+            'YouDecidedToCommitSuicide':function(data){
+                this.addSystemHintText('你决定在今晚自杀！', 'red')
             },
-            'MafiaKillAttack':function(data){
-                this.actionAnimationNameSequence.push('mafiaKillAttack')
-            },
-            'DoctorHealProtect':function(data){
-                this.actionAnimationNameSequence.push('doctorHealProtect')
-            },
+            'YouGiveUpSuicide':function(data){
+                this.addSystemHintText('你洗了把脸清醒了一下，决定还是不自杀了', 'green')
+            }
         },
         commandHandler(commandString){
             let [command, ...args] = commandString.split(" ")
@@ -775,6 +784,10 @@ document.addEventListener('alpine:init', () => {
                             break
                         }
                     }
+                break
+
+                case'suicide':
+                    sendEvent('Suicide')
                 break
 
 
@@ -1036,6 +1049,18 @@ document.addEventListener('alpine:init', () => {
                         setTimeout(()=>{
                             resolve()
                         }, 2 * 1000)
+                    })
+                break}
+
+                case 'youCommittedSuicide':{
+                    this.addSystemHintText("你自杀了", 'red')
+
+                    const gamePageElement = document.getElementById('gamePage')
+                    return new Promise((resolve) => {
+                        gamePageElement.classList.add('animation-suicide-2s')
+                        gamePageElement.addEventListener('animationend', () => {
+                            resolve()
+                        }, { once: true })
                     })
                 break}
             }
@@ -1485,25 +1510,36 @@ document.addEventListener('alpine:init', () => {
             // this.setting.enableCustomName ? enableCustomNameMS.addText('开启', 'green') : enableCustomNameMS.addText('关闭', 'red')
             // gsdmss.push(enableCustomNameMS)
 
-            let randomRoleModifyDescriptionTitle = new MagicString({text:'随机角色选项', style:'font-weight:bold;margin-top:0.2em'})
-            gsdmss.push(randomRoleModifyDescriptionTitle)
+            if(this.setting.roleList?.filter(r => (r.name ?? r).endsWith('Random')).length > 0){
+                let randomRoleModifyDescriptionTitle = new MagicString({text:'随机角色选项', style:'font-weight:bold;margin-top:0.2em'})
+                gsdmss.push(randomRoleModifyDescriptionTitle)
 
-            const roleModifyOptions = this.setting.roleModifyOptions
-            const modifyRandomRoleNames = Object.keys(roleModifyOptions).filter(keyName => keyName.endsWith('Random'))
-            for(const modifyRandomRoleName of modifyRandomRoleNames){
-                for(const modifyOptionKey of Object.keys(roleModifyOptions[modifyRandomRoleName])){
-                    if(roleModifyOptions[modifyRandomRoleName][modifyOptionKey]){
-                        const randomRoleObjectName = modifyRandomRoleName.charAt(0).toUpperCase() + modifyRandomRoleName.slice(1)
-                        const randomRoleObject = this.roleSet.find(r => r.name === randomRoleObjectName)
-                        let ms = new MagicString()
-                        ms.append(randomRoleObject.getNameMagicString())
-                        ms.addText(': ' + randomRoleObject.modifyDescriptionTranslate[modifyOptionKey])
-                        ms.addText(' -- ')
-                        ms.addText('开启', 'green')
-                        gsdmss.push(ms)
+                let randomRoleNoModification = true
 
-                        console.log(ms)
+                const roleModifyOptions = this.setting.roleModifyOptions
+                const modifyRandomRoleNames = Object.keys(roleModifyOptions).filter(keyName => keyName.endsWith('Random'))
+                for(const modifyRandomRoleName of modifyRandomRoleNames){
+                    const randomRoleName = modifyRandomRoleName.charAt(0).toUpperCase() + modifyRandomRoleName.slice(1)
+
+                    if(this.setting.roleList.find(r => r.name === randomRoleName)){
+                        for(const modifyOptionKey of Object.keys(roleModifyOptions[modifyRandomRoleName])){
+                            if(roleModifyOptions[modifyRandomRoleName][modifyOptionKey]){
+                                const randomRoleObject = this.roleSet.find(r => r.name === randomRoleName)
+                                let ms = new MagicString()
+                                ms.append(randomRoleObject.getNameMagicString())
+                                ms.addText(': ' + randomRoleObject.modifyDescriptionTranslate[modifyOptionKey])
+                                ms.addText(' -- ')
+                                ms.addText('开启', 'green')
+                                gsdmss.push(ms)
+
+                                randomRoleNoModification = false
+                            }
+                        }
                     }
+                }
+
+                if(randomRoleNoModification){
+                    gsdmss.push(new MagicString({text:'所有随机角色均无排除选项'}))
                 }
             }
 
@@ -1615,6 +1651,9 @@ class Player{
                 break
                 case 'Execution':
                     deathReasonDescriptions.push('死于处刑')
+                break
+                case 'Suicide':
+                    deathReasonDescriptions.push('死于自杀')
                 break
             }
             if(deathReasonDescriptions.length === 0){

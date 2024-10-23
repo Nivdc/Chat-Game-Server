@@ -1485,7 +1485,27 @@ document.addEventListener('alpine:init', () => {
             // this.setting.enableCustomName ? enableCustomNameMS.addText('开启', 'green') : enableCustomNameMS.addText('关闭', 'red')
             // gsdmss.push(enableCustomNameMS)
 
-            // todo:随机角色选项
+            let randomRoleModifyDescriptionTitle = new MagicString({text:'随机角色选项', style:'font-weight:bold;margin-top:0.2em'})
+            gsdmss.push(randomRoleModifyDescriptionTitle)
+
+            const roleModifyOptions = this.setting.roleModifyOptions
+            const modifyRandomRoleNames = Object.keys(roleModifyOptions).filter(keyName => keyName.endsWith('Random'))
+            for(const modifyRandomRoleName of modifyRandomRoleNames){
+                for(const modifyOptionKey of Object.keys(roleModifyOptions[modifyRandomRoleName])){
+                    if(roleModifyOptions[modifyRandomRoleName][modifyOptionKey]){
+                        const randomRoleObjectName = modifyRandomRoleName.charAt(0).toUpperCase() + modifyRandomRoleName.slice(1)
+                        const randomRoleObject = this.roleSet.find(r => r.name === randomRoleObjectName)
+                        let ms = new MagicString()
+                        ms.append(randomRoleObject.getNameMagicString())
+                        ms.addText(': ' + randomRoleObject.modifyDescriptionTranslate[modifyOptionKey])
+                        ms.addText(' -- ')
+                        ms.addText('开启', 'green')
+                        gsdmss.push(ms)
+
+                        console.log(ms)
+                    }
+                }
+            }
 
             return gsdmss
         },
@@ -1635,7 +1655,20 @@ class MagicString{
     }
 
     append(newPart){
-        this.parts.push(newPart)
+        if('getFlattenParts' in newPart)
+            this.parts = this.parts.concat(newPart.getFlattenParts())
+        else
+            this.parts.push(newPart)
+    }
+
+    getFlattenParts(){
+        let flattenPartArray = []
+        flattenPartArray.push(this)
+        for(const part of this.parts){
+            if('parts' in part)
+                flattenPartArray = flattenPartArray.concat(part.getFlattenParts())
+        }
+        return flattenPartArray
     }
 }
 
@@ -1901,7 +1934,7 @@ class RandomRole{
 
     getNameMagicString(){
         let ms = new MagicString({text:this.factionTag.nameTranslate, style:`color:${this.factionTag.color};`})
-        ms.append(new MagicString({text:(this.nonFactionTag?.nameTranslate ?? this.randomTag.nameTranslate), style:`color:${this.randomTag.color};`}))
+        ms.append(new MagicString({text:(this.nonFactionTag? this.nonFactionTag.nameTranslate : this.randomTag.nameTranslate), style:`color:${this.randomTag.color};`}))
         return ms
     }
 

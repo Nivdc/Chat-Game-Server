@@ -1079,10 +1079,10 @@ class Player{
 
     setRole(roleMeta){
         this.playedRoleNameRecord.push(roleMeta.name)
-        const player = this
         this.role = new Proxy({
-            player,
+            player:this,
             roleMeta,
+            affiliationName:roleMeta.defaultAffiliationName,
             useAblity(data){
                 this.roleMeta.useAblity(this.player, data)
             },

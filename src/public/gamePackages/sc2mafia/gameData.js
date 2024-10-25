@@ -1,22 +1,9 @@
 const originalGameData = {
+    factions: [
+        {name:'Town'},
+        {name:'Mafia'}
+    ],
     tags: [
-        {
-            name: "Town",
-            isFaction: true,
-            includeRoleNames: [
-                "Citizen",
-                "Sheriff",
-                "Doctor",
-                "AuxiliaryOfficer"
-            ]
-        },
-        {
-            name: "Mafia",
-            isFaction: true,
-            includeRoleNames: [
-                "Mafioso"
-            ]
-        },
         {
             name: "Killing",
             includeRoleNames: [
@@ -30,13 +17,16 @@ const originalGameData = {
     ],
     roles: [
         {
-            name: "Citizen"
+            name: "Citizen",
+            defaultAffiliationName:"Town",
         },
         {
-            name: "Sheriff"
+            name: "Sheriff",
+            defaultAffiliationName:"Town",
         },
         {
             name: "Doctor",
+            defaultAffiliationName:"Town",
             abilities:[
                 {
                     // require data:{targetIndex}
@@ -70,10 +60,12 @@ const originalGameData = {
             ]
         },
         {
-            name: "AuxiliaryOfficer"
+            name: "AuxiliaryOfficer",
+            defaultAffiliationName:"Town",
         },
         {
-            name: "Mafioso"
+            name: "Mafioso",
+            defaultAffiliationName:"Mafia",
         }
     ],
     votes: [
@@ -124,7 +116,9 @@ const originalGameData = {
     teams: [
         {
             name: "Mafia",
-            includeRoleTag: "Mafia",
+            includeRoleNames:["Mafioso"],
+
+            // includeRoleTag: "Mafia",
             abilities:[
                 {
                     name:"MafiaKillAttack",
@@ -262,7 +256,7 @@ export function gameDataInit(game){
     }
 }
 
-// 注意，这里设置的role涵盖了同一角色的所有代码，但是具体到角色行为需要的数据，则并不在这个类中
+// 注意，这里设置的Role涵盖了同一角色的所有代码，但是具体到角色行为需要的数据，则并不在这个类中
 // 举例来说，某一市民的防弹衣还剩下多少使用次数并不保存在此。
 // 我暂时还没找到很好的解决办法，就先放在玩家对象里面吧。
 // 所以，与其说这里写的是Role类，它反倒是更像某种RoleMeta
@@ -282,9 +276,10 @@ class RoleMeta{
 
         // set affiliationName
         // 设置角色的从属关系，不属于“城镇”、“黑手党”、“三合会”的角色会被设置为中立
-        this.affiliationName = this.tagStrings.find(ts => tagsData.find(t => t.name === ts).isFaction) ?? "Neutral"
-        if(this.affiliationName === "Neutral")
-            this.tagStrings.unshift("Neutral")
+        // this.affiliationName = this.tagStrings.find(ts => tagsData.find(t => t.name === ts).isFaction) ?? "Neutral"
+        // this.tagStrings = this.tagStrings.filter(ts => tagsData.find(t => t.name === ts).isFaction !== true)
+        // if(this.affiliationName === "Neutral")
+        //     this.tagStrings.unshift("Neutral")
 
         return new Proxy(this, {
             get(target, prop) {
@@ -322,7 +317,7 @@ class RoleMeta{
         return {
             name:this.name,
             tagStrings:this.tagStrings,
-            affiliationName:this.affiliationName,
+            defaultAffiliationName:this.defaultAffiliationName,
             abilityNames:this.abilities?.map(a => a.name)
         }
     }
@@ -488,7 +483,8 @@ class Team{
 
 // 下面这个输出和浏览器环境不兼容因此只能注释掉
 // if(require.main === module){
-//     console.log(gameDataInit({playerList:[]}).roleMetaSet.map(rm => rm.toJSON()))
+//     // console.log(gameDataInit({playerList:[]}).roleMetaSet.map(rm => rm.toJSON()))
+//     console.log(getDefaultAffiliationTable())
 // }
 
 function getRandomElement(arr){
@@ -499,4 +495,18 @@ function getRandomElement(arr){
 // todo
 export function abilityUseVerify(roleName, abilityName){
     
+}
+
+export function getDefaultAffiliationTable(){
+    let  defaultAffiliationTable = []
+    const roles = originalGameData.roles
+    const factionNameSet = new Set(roles.map(r => r.defaultAffiliationName))
+    for(const factionName of factionNameSet){
+        defaultAffiliationTable.push({
+            name:factionName,
+            includeRoleNames:roles.filter(r => r.defaultAffiliationName === factionName).map(r => r.name)
+        })
+    }
+
+    return defaultAffiliationTable
 }

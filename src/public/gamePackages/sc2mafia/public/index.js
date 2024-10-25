@@ -1,4 +1,4 @@
-// import { abilityUseVerify } from "../gameData.js"
+import { abilityUseVerify, getDefaultAffiliationTable } from "../gameData.js"
 
 let socket = undefined
 
@@ -413,7 +413,7 @@ document.addEventListener('alpine:init', () => {
                 const tagBackendDatas = data
 
                 this.tagSet = tagFrontendDatas.map(tfd => new Tag(tfd, tagBackendDatas.find(tbd => tbd.name === tfd.name)))
-                this.categoryList = this.tagSet.filter(t => (t.isFaction || t.name === 'Random'))
+                this.categoryList = frontendData.factions
             },
             'SetRoleSet':function(data){
                 const roleFrontendDatas = frontendData.roles
@@ -1034,12 +1034,12 @@ document.addEventListener('alpine:init', () => {
 
                 case 'auxiliaryOfficerCheckResult':{
                     let target = this.playerList[data.targetIndex]
-                    let affiliation = this.tagSet.find(t => t.name === data.targetAffiliation)
+                    let affiliation = frontendData.factions.find(f => f.name === data.targetAffiliation)
                     let message = new MagicString()
                     message.append(target.getNameMagicString())
                     if(affiliation.name === 'Mafia'){
                         message.addText(' 是 ')
-                        message.append(affiliation.getNameMagicString())
+                        message.addText(affiliation.nameTranslate, affiliation.color)
                     }else{
                         message.addText(' 看起来不可疑。')
                     }
@@ -1202,14 +1202,14 @@ document.addEventListener('alpine:init', () => {
         addRandomRoles(){
             // 首先添加AllRandom
             const allTag = {name:'All', nameTranslate:'全体', color:'white', includeRoleNames:this.roleSet.map(r => r.name)}
-            const randomTag = this.tagSet.find(t => t.name === 'Random')
-            this.roleSet.push(new RandomRole({factionTag:allTag, randomTag, game:this}))
+            const randomFaction = frontendData.factions.find(f => f.name === 'Random')
+            this.roleSet.push(new RandomRole({factionTag:allTag, randomFaction, game:this}))
 
             // 然后剩下的标签与Faction标签排列组合
-            const factionTags = this.tagSet.filter(t => t.isFaction)
+            const factionTags = getDefaultAffiliationTable().map(f => {return {...f, ...frontendData.factions.find(fd => fd.name === f.name)}})
             const nonFactionTags = this.tagSet.filter(t => (t.isFaction !== true))
             for(const factionTag of factionTags){
-                this.roleSet.push(new RandomRole({factionTag, randomTag, game:this}))
+                this.roleSet.push(new RandomRole({factionTag, randomFaction, game:this}))
                 for(const nonFactionTag of nonFactionTags){
                     if(nonFactionTag.name !== 'Random'){
                         // 先看一下nonFactionTag.includeRoleNames和factionTag.includeRoleNames有没有交集
@@ -1217,7 +1217,7 @@ document.addEventListener('alpine:init', () => {
                         if(roleNameIntersection.length > 0){
                             // 如果有交集，再看一下交集是否和factionTag.includeRoleNames完全一致
                             if(arraysEqual(factionTag.includeRoleNames, roleNameIntersection) === false){
-                                this.roleSet.push(new RandomRole({factionTag, nonFactionTag, randomTag, game:this}))
+                                this.roleSet.push(new RandomRole({factionTag, nonFactionTag, randomFaction, game:this}))
                             }
                         }
                     }
@@ -1231,7 +1231,7 @@ document.addEventListener('alpine:init', () => {
         },
 
         getRoleSetByCategoryName(categoryName){
-            return  this.roleSet?.filter(r => r.affiliationName === categoryName)
+            return  this.roleSet?.filter(r => (r.defaultAffiliationName ?? r.affiliationName) === categoryName)
         },
         selectedRole:undefined,
         selectRole(role){
@@ -1747,21 +1747,6 @@ const html5ColorHexMap = {
 const frontendData = {
     tags :[
         {
-            name:"Town",
-            nameTranslate:'城镇',
-            color:"lime",
-        },
-        {
-            name:"Mafia",
-            nameTranslate:'黑手党',
-            color:"red",
-        },
-        {
-            name:"Random",
-            nameTranslate:'随机',
-            color:"#00ccff",
-        },
-        {
             name: "Killing",
             nameTranslate:'致命',
         },
@@ -1773,11 +1758,20 @@ const frontendData = {
     factions:[
         {
             name:'Town',
+            nameTranslate:'城镇',
+            color:"lime",
             goalDescriptionTranslate:"处死所有罪犯和恶人。"
         },
         {
             name:'Mafia',
+            nameTranslate:'黑手党',
+            color:"red",
             goalDescriptionTranslate:"杀光城镇以及所有想要对抗你们的人。"
+        },
+        {
+            name:"Random",
+            nameTranslate:'随机',
+            color:"#00ccff",
         },
     ],
     roles:[
@@ -1881,11 +1875,6 @@ class Tag{
         this.data = tagFrontendData
         this.data = {...this.data, ...tagBackendData}
 
-        if(this.data.isFaction){
-            const fnfd = frontendData.factions.find(fnfd => fnfd.name === this.data.name)
-            this.data = {...this.data, ...fnfd}
-        }
-
         return new Proxy(this, {
             get(target, prop) {
                 return prop in target ? target[prop] : target.data[prop]
@@ -1903,8 +1892,12 @@ class Role{
     constructor(roleFrontendData, roleBackendData, tagSet, gameSetting){
         this.data = roleFrontendData
         this.data = {...this.data, ...roleBackendData}
-        this.affiliation = tagSet.find(t => (t.isFaction && t.name === this.data.affiliationName))
+        this.defaultAffiliation = frontendData.factions.find(f => f.name === this.data.defaultAffiliationName)
+        this.affiliation = this.defaultAffiliation
         this.gameSetting = gameSetting
+        this.tagStringsTranslate = this.data.tagStrings.map(tName =>{
+            return tagSet.find(t => t.name === tName).nameTranslate
+        })
 
         return new Proxy(this, {
             get(target, prop) {
@@ -1914,7 +1907,7 @@ class Role{
     }
 
     get color(){
-        return this.data.color ?? this.affiliation?.color
+        return this.data.color ?? this.defaultAffiliation?.color
     }
 
     getNameMagicString(){
@@ -1937,12 +1930,12 @@ class Role{
 }
 
 class RandomRole{
-    constructor({factionTag, nonFactionTag, randomTag, game}){
+    constructor({factionTag, nonFactionTag, randomFaction, game}){
         this.factionTag = factionTag
         this.nonFactionTag = nonFactionTag ?? undefined
-        this.randomTag = randomTag
-        this.affiliationName = randomTag.name
-        this.affiliation = randomTag
+        this.randomFaction = randomFaction
+        this.affiliationName = randomFaction.name
+        this.affiliation = randomFaction
         this.game = game
 
         const thisRandomRoleData = frontendData.randomRoles.find(r => r.name === this.name)
@@ -1956,11 +1949,11 @@ class RandomRole{
     }
 
     get name(){
-        return this.factionTag.name + (this.nonFactionTag?.name ?? '') + this.randomTag.name
+        return this.factionTag.name + (this.nonFactionTag?.name ?? '') + this.randomFaction.name
     }
 
     get nameTranslate(){
-        return this.factionTag.nameTranslate + (this.nonFactionTag?.nameTranslate ?? '') + this.randomTag.nameTranslate
+        return this.factionTag.nameTranslate + (this.nonFactionTag?.nameTranslate ?? '') + this.randomFaction.nameTranslate
     }
 
     get includeRoleNames(){
@@ -1973,7 +1966,7 @@ class RandomRole{
 
     getNameMagicString(){
         let ms = new MagicString({text:this.factionTag.nameTranslate, style:`color:${this.factionTag.color};`})
-        ms.append(new MagicString({text:(this.nonFactionTag? this.nonFactionTag.nameTranslate : this.randomTag.nameTranslate), style:`color:${this.randomTag.color};`}))
+        ms.append(new MagicString({text:(this.nonFactionTag? this.nonFactionTag.nameTranslate : this.randomFaction.nameTranslate), style:`color:${this.randomFaction.color};`}))
         return ms
     }
 

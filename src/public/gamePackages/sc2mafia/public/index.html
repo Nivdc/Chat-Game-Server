@@ -323,7 +323,14 @@
 
             <div id="roleCard" style="position:absolute;min-height:15em;background-color: rgba(0, 0, 0, 0.7);flex: initial;margin-bottom: 1em;display: flex;flex-direction: column;row-gap:0.2em;padding: 0.2em;z-index: 99;" class="border" x-show="roleCardData !== undefined">
                 <h3 x-text="roleCardData?.nameTranslate??roleCardData?.name" :style="`color:${roleCardData?.affiliation.color}`"></h3>
-                <p style="color:plum">阵营：<span :style="`color: ${roleCardData?.affiliation.color};`" x-text="roleCardData?.affiliation.nameTranslate??roleCardData?.affiliation.name"></span></p>
+                <p style="color:plum">
+                    阵营：<span :style="`color: ${roleCardData?.affiliation.color};`" x-text="roleCardData?.affiliation.nameTranslate??roleCardData?.affiliation.name"></span>
+                    (
+                        <template x-for="(tagString, index) of roleCardData?.tagStringsTranslate">
+                            <span x-text="`${index === 0? '':'、'}${tagString}`"></span>
+                        </template>
+                    )
+                </p>
                 <p style="color:LightSkyBlue">能力：</p>
                 <ul style="color: var(--emphasized-content);">
                     <template x-for="abilityDetail in roleCardData?.abilityDetails">
@@ -453,8 +460,14 @@
                         <div style="flex:2;display: flex;flex-direction: column;margin: 1em;max-width: 30em;">
                             <div style="min-height:15em;background-color: rgba(0, 0, 0, 0.1);flex: initial;margin-bottom: 1em;display: flex;flex-direction: column;row-gap:0.2em;">
                                 <h3 x-text="myRole?.nameTranslate??myRole?.name" :style="`color:${myRole?.affiliation.color}`"></h3>
-                                <p style="color:plum">阵营：<span :style="`color: ${myRole?.affiliation.color};`" x-text="myRole?.affiliation.nameTranslate??myRole?.affiliation.name"></span></p>
-                                <p style="color:LightSkyBlue">能力：</p>
+                                <p style="color:plum">
+                                    阵营：<span :style="`color: ${myRole?.affiliation.color};`" x-text="myRole?.affiliation.nameTranslate??myRole?.affiliation.name"></span>
+                                    (
+                                        <template x-for="(tagString, index) of myRole?.tagStringsTranslate">
+                                            <span x-text="`${index === 0? '':'、'}${tagString}`"></span>
+                                        </template>
+                                    )
+                                </p>                                <p style="color:LightSkyBlue">能力：</p>
                                 <ul style="color: var(--emphasized-content);">
                                     <template x-for="abilityDetail in myRole?.abilityDetails">
                                         <li x-text ="abilityDetail"></li>

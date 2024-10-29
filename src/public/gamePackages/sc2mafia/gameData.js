@@ -72,11 +72,12 @@ const originalGameData = {
         {
             name: "LynchVote",
             verify: (game, voterIndex, voteData, previousVoteData)=>{
-                if(Number.isInteger(voteData)){
-                    const targetIndex = voteData
+                const targetIndex = voteData
+                const previousTargetIndex = previousVoteData
+                if(Number.isInteger(targetIndex)){
                     let voterIsAlive = game.playerList[voterIndex].isAlive
                     let targetIsAlive = game.playerList[targetIndex]?.isAlive
-                    let targetIsNotPreviousTarget = targetIndex !== previousVoteData
+                    let targetIsNotPreviousTarget = (targetIndex !== previousTargetIndex)
                     // 为什么玩家不能给自己投票？我觉得他可以啊
                     // let targetIsNotVoter = (voterIndex !== targetIndex)
                     let gameStatusIncludesLynchVote = game.status.split('/').includes('lynchVote')
@@ -479,9 +480,16 @@ class Team{
 
         return actionSequence
     }
+
+    toJSON(){
+        return {
+            name:this.name,
+            abilityNames:this.abilities?.map(a => a.name)
+        }
+    }
 }
 
-// 下面这个输出和浏览器环境不兼容因此只能注释掉
+// 下面这个输出是用来调试的，和浏览器环境不兼容因此只能注释掉
 // if(require.main === module){
 //     // console.log(gameDataInit({playerList:[]}).roleMetaSet.map(rm => rm.toJSON()))
 //     console.log(getDefaultAffiliationTable())
@@ -495,6 +503,11 @@ function getRandomElement(arr){
 // todo
 export function abilityUseVerify(roleName, abilityName){
     
+}
+
+export function publicVoteVerify(game, voteTypeName, {voterIndex, targetIndex, previousTargetIndex}){
+    const vote = originalGameData.votes.find(v => v.name === voteTypeName)
+    return vote.verify(game, voterIndex, targetIndex, previousTargetIndex)
 }
 
 export function getDefaultAffiliationTable(){

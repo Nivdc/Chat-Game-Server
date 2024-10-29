@@ -96,7 +96,7 @@ class Game{
         let player = this.playerList.find(player => {return player.uuid === ws.data.uuid})
 
         if (player !== undefined){
-            console.log("recive <-", event)
+            console.log(`recive pidx: ${player.index}  <-`, event)
             switch(event.type){
                 case "FrontendReady":
                     this.sendInitData(player)
@@ -188,6 +188,7 @@ class Game{
             // 而一旦我们深究这个思路，就会发现在本项目中存在一个与该思路不符的设计: class GameStage
             // game对象（也就是这个特别大的对象）可以继续持有各项游戏数据（也理应如此），
             // 但是游戏阶段的控制理应转交给GameDirector决定才对，
+            // 或者换句话说，game应该仅持有游戏数据，而所有的驱动逻辑都该转移到GameDirector中
             // 我们有理由认为此处有可能存在一个更好的设计。
 
             // ...然而这意味着目前项目中的很多代码都要重写，顺便还要承认我自己之前写了很多废代码...
@@ -443,6 +444,7 @@ class Game{
                                 game.execution(lynchTarget)
                             }
 
+                            // 如果投票有了结果就可以将记录清零了
                             vote.resetRecord()
                             game.sendEventToAll(`SetLynchVoteCount`, Array(game.playerList.length).fill(0))
                         }
@@ -473,7 +475,11 @@ class Game{
                 const result = trialVote.getResult()
                 trialVote.resetRecord()
                 return  {trialTargetIsGuilty:result, voteRecord:record}
-            }
+            },
+
+            // resetAllPublicVote(){
+            //     game.voteSet.forEach(v => v.resetRecord())
+            // }
         }
     }
 
@@ -542,6 +548,11 @@ class Game{
         if(this.dayCount !== 1 || this.setting.startAt !== "day/No-Lynch"){
             this.sendEventToAll(`SetLynchVoteCount`, Array(this.playerList.length).fill(0))
             await this.newGameStage("day/discussion/lynchVote", this.setting.dayLength)
+
+            // 此处无论审判（处刑）投票是否有结果，都将记录清零
+            const lynchVote = this.voteSet.find(v => v.name === 'LynchVote')
+            lynchVote.resetRecord()
+            this.sendEventToAll(`SetLynchVoteCount`, Array(this.playerList.length).fill(0))
         }
 
 
@@ -729,7 +740,7 @@ class Game{
                     targetGroup = this.onlinePlayerList
                 }else if(this.status.startsWith("night") && this.status.split('/').includes("discussion")){
                     if(sender.role.affiliationName === "Mafia")
-                        targetGroup = this.queryAlivePlayersByRoleTag(sender.role.affiliationName)
+                        targetGroup = this.queryAlivePlayersByRoleFaction(sender.role.affiliationName)
                     else if(sender.role.name === "AuxiliaryOfficer")
                         targetGroup = this.queryAlivePlayersByRoleName("AuxiliaryOfficer")
                 }
@@ -885,20 +896,20 @@ class Game{
     }
 
     async victoryCheck(){
-        let town_ap_l = this.queryAlivePlayersByRoleTag("Town").length
-        let mafia_ap_l = this.queryAlivePlayersByRoleTag("Mafia").length
+        let town_ap_l = this.queryAlivePlayersByRoleFaction("Town").length
+        let mafia_ap_l = this.queryAlivePlayersByRoleFaction("Mafia").length
         
         if(town_ap_l === 0){
             this.winningFaction = "Mafia"
-            this.winners = this.queryAlivePlayersByRoleTag("Mafia")
+            this.winners = this.queryAlivePlayersByRoleFaction("Mafia")
         }else if(mafia_ap_l === 0){
             this.winningFaction = "Town"
-            this.winners = this.queryAlivePlayersByRoleTag("Town")
+            this.winners = this.queryAlivePlayersByRoleFaction("Town")
         }else if(this.setting.protectCitizensMode === true){
             let citizens_ap_l = this.queryAlivePlayersByRoleName("Citizen").length
             if(citizens_ap_l === 0){
                 this.winningFaction = "Mafia"
-                this.winners = this.queryAlivePlayersByRoleTag("Mafia")
+                this.winners = this.queryAlivePlayersByRoleFaction("Mafia")
             }
         }
         
@@ -915,9 +926,9 @@ class Game{
         }
     }
 
-    queryAlivePlayersByRoleTag(tagString){
+    queryAlivePlayersByRoleFaction(factionName){
         return this.alivePlayerList.filter((p)=>{
-            return p.role.tagStrings.includes(tagString)
+            return p.role.affiliationName === factionName
         })
     }
 
@@ -934,7 +945,6 @@ class Game{
             this.repickHost(this.getNewRandomHost())
 
         player.user = undefined
-        // todo: AFK Kill
         if(player.isAlive){
             player.effects.push({name:'Suicide', reason:'AFK'})
         }

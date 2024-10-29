@@ -1,4 +1,4 @@
-import { abilityUseVerify, getDefaultAffiliationTable } from "../gameData.js"
+import { abilityUseVerify, getDefaultAffiliationTable, publicVoteVerify } from "../gameData.js"
 
 let socket = undefined
 
@@ -220,6 +220,7 @@ document.addEventListener('alpine:init', () => {
                     this.createTimer('讨论', this.setting.discussionTime)
                 }
                 else if(this.status === 'day/discussion/lynchVote'){
+                    this.myLynchVoteTargetIndex = undefined
                     if(this.setting.enableDiscussion === false){
                         this.clearMssagesList()
                         this.playAnimation('showDayCount')
@@ -356,7 +357,7 @@ document.addEventListener('alpine:init', () => {
                     p.role = this.roleSet.find(r => r.name === playerRoleData.name)
                 })
                 this.myTeam.playerList = teamPlayers
-                // 这里有一个this指针的绑定问题，下面这个函数的this绑定到了全局的game，暂时就先这样吧
+                // 这里有一个this指针的绑定问题，下面这个函数的this绑定到了全局的game，暂时就先这样吧，它能用
                 this.myTeam.getMagicStrings = function(){
                     return this.myTeam.playerList.map(p => {
                         let ms = new MagicString()
@@ -370,12 +371,12 @@ document.addEventListener('alpine:init', () => {
             },
 
             'SetWinner':function(data){
-                let winningFaction = this.tagSet.find(t => t.name === data.winningFactionName)
+                let winningFaction = frontendData.factions.find(f => f.name === data.winningFactionName)
                 let winners = data.winners.map(dw => this.playerList[dw.index])
 
                 this.gamePageTipMessage = new MagicString()
                 this.gamePageTipMessage.addText("我们得到的结果是 ... ")
-                this.gamePageTipMessage.append(winningFaction.getNameMagicString())
+                this.gamePageTipMessage.addText(winningFaction.nameTranslate, winningFaction.color)
                 this.gamePageTipMessage.addText(" 胜利！")
                 this.gamePageTipMessage.class = 'animation-fadeIn-1s'
             },
@@ -439,6 +440,10 @@ document.addEventListener('alpine:init', () => {
                 message.append(target.getNameMagicString())
                 message.style = `background-color:${hexToRgba(target.color, 0.2)};text-shadow: 1px 1px 0px #000000;`
                 this.addMessage(message)
+
+                if(voter.index === this.myIndex){
+                    this.myLynchVoteTargetIndex = target.index
+                }
             },
             'LynchVoteCancel':function(data){
                 let voter = this.playerList[data.voterIndex]
@@ -447,6 +452,10 @@ document.addEventListener('alpine:init', () => {
                 message.addText(' 取消了他的投票')
                 message.style = `background-color: rgba(0, 0, 0, 0.5);`
                 this.addMessage(message)
+
+                if(voter.index === this.myIndex){
+                    this.myLynchVoteTargetIndex = undefined
+                }
             },
 
             'SetLastWill':function(data){
@@ -725,25 +734,29 @@ document.addEventListener('alpine:init', () => {
                     }
                 break
 
-                // fixme:player Can vote to self...And deadPlayer
                 case 'lv':
-                case 'lynchVote':
+                case 'lynchVote':{
                     if(this.status.split('/').includes('lynchVote')){
-                        let targetIndex = Number(args.shift())-1
-                        if(Number.isNaN(targetIndex) === false)
-                            sendEvent('LynchVote', targetIndex)
+                        const targetIndex = Number(args.shift())-1
+                        if(publicVoteVerify(this ,'LynchVote', {voterIndex:this.myIndex, targetIndex})){
+                            if(Number.isNaN(targetIndex) === false)
+                                sendEvent('LynchVote', targetIndex)
+                            else
+                                sendEvent('LynchVoteCancel')
+                        }
                         else
-                            sendEvent('LynchVoteCancel')
+                            this.addSystemHintText("投票参数验证失败")
                     }
                     else
                         this.addSystemHintText("当前阶段不允许进行审判投票")
-                break
+                break}
                 case 'lynchVoteCancel':
                     sendEvent('LynchVoteCancel')
                 break
 
                 case 'tg':
                 case 'target':
+                case 'teamVote':
                     // todo: 缺少一些投票失败的提示
                     const targetIndex = Number(args.shift())-1
                     if(Number.isNaN(targetIndex) === false){
@@ -751,6 +764,9 @@ document.addEventListener('alpine:init', () => {
                     }else{
                         sendEvent('TeamVoteCancel')
                     }
+                break
+                case 'teamVoteCancel':
+                    sendEvent('TeamVoteCancel')
                 break
 
                 case 'tv':
@@ -1101,7 +1117,7 @@ document.addEventListener('alpine:init', () => {
                     trialTime: 0.2,
                     pauseDayTimerDuringTrial: false,
                     
-                    startAt: "night",
+                    startAt: "day",
                     
                     nightType: "Classic",
                     nightLength: 0.6,
@@ -1554,6 +1570,42 @@ document.addEventListener('alpine:init', () => {
         closeGameSettingDetailCard(){
             this.gameSettingDetailCardToggle = false
         },
+
+        showLynchVoteButton(targetIndex){
+            if(this.status?.split('/').includes('lynchVote')){
+                return publicVoteVerify(this ,'LynchVote', {voterIndex:this.myIndex, targetIndex, previousTargetIndex:this.myLynchVoteTargetIndex})
+            }
+            return false
+        },
+
+        myLynchVoteTargetIndex : undefined,
+        getPlayerListButtons(player){
+            let buttons = []
+            const game = this
+            const playerIndex = player.index
+            const lynchVoteButton = {
+                text:'投票',
+                style:'padding: 0.1em 1em;text-shadow: 0 0 2px red;color: white;font-weight:bold;',
+                class:'border',
+                click(){game.commandHandler(`lynchVote ${(playerIndex+1)}`)}
+            }
+            const lynchVoteCancelButton = {
+                text:'取消',
+                style:'padding: 0.1em 1em;text-shadow: 0 0 2px white;color: LightGrey;font-weight:bold;',
+                class:'border',
+                click(){game.commandHandler(`lynchVoteCancel`)}
+            }
+
+            if(this.status?.split('/').includes('lynchVote')){
+                if(publicVoteVerify(this ,'LynchVote', {voterIndex:this.myIndex, targetIndex:playerIndex, previousTargetIndex:this.myLynchVoteTargetIndex}))
+                    buttons.push(lynchVoteButton)
+                else if(playerIndex === this.myLynchVoteTargetIndex)
+                    buttons.push(lynchVoteCancelButton)
+            }
+
+            return buttons
+        }
+
     }))
 
     function cloneDeep(o){

@@ -489,7 +489,14 @@
                                     <p class="flex" style="column-gap: 0.2em;">
                                         <span x-text="`${player.index+1}. `" :style="player.isAlive? '': 'text-decoration-line: line-through;'"></span>
                                         <span x-text="player.name" :style="player.isAlive? `color:${player.color};flex:auto;` : `text-decoration-line: line-through;flex:auto;`"></span>
-                                        <button @click="clickTempButton(player)" style="border:none;">临时按钮</button>
+                                        <template x-for="button in getPlayerListButtons(player)">
+                                            <button x-text="button.text" @click="button.click()" :style="button.style" :class="button.class"></button>
+                                        </template>
+                                        <!-- <button x-show="showLynchVoteButton(player.index)" @click="commandHandler(`lynchVote ${(player.index+1)}`)" style= class="border">投票</button>
+                                        <button x-show="showLynchVoteButton(player.index)" @click="commandHandler(`lynchVote ${(player.index+1)}`)" style="padding: 0.1em 1em;text-shadow: 0 0 2px red;color: white;font-weight:bold;" class="border">投票</button> -->
+
+
+                                        <!-- <button @click="clickTempButton(player)" style="border:none;">临时按钮</button> -->
                                         <span x-text="lynchVoteCount?.at(player.index)" x-show="status.split('/').includes('lynchVote')"></span>
                                     </p>
                                 </template>

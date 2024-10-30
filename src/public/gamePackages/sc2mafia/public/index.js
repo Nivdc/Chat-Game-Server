@@ -1,4 +1,4 @@
-import { abilityUseVerify, getDefaultAffiliationTable, publicVoteVerify } from "../gameData.js"
+import { abilityUseVerify, getDefaultAffiliationTable, publicVoteVerify, teamVoteVerify} from "../gameData.js"
 
 let socket = undefined
 
@@ -310,6 +310,7 @@ document.addEventListener('alpine:init', () => {
                 }
                 else if(this.status === 'animation/nightToAction'){
                     this.playAnimation('nightToAction')
+                    this.myAbilityTargetIndex = undefined
                 }
                 else if(this.status === 'animation/actions'){
                     this.playActionAnimations()
@@ -350,13 +351,12 @@ document.addEventListener('alpine:init', () => {
             },
 
             'SetTeam':function(data){
-                this.myTeam = {}
-                let teamPlayers = data.map(pd => this.playerList.find(p => p.index === pd.index))
-                teamPlayers.forEach(p => {
-                    let playerRoleData = data.find(pd => pd.index === p.index).role
-                    p.role = this.roleSet.find(r => r.name === playerRoleData.name)
+                this.myTeam = data
+                this.myTeam.playerList = data.memberPlayerData.map(mpd => this.playerList.find(p => p.index === mpd.index))
+                this.myTeam.playerList.forEach(p => {
+                    const playerRoleName = data.memberPlayerData.find(mpd => mpd.index === p.index).role.name
+                    p.role = this.roleSet.find(r => r.name === playerRoleName)
                 })
-                this.myTeam.playerList = teamPlayers
                 // 这里有一个this指针的绑定问题，下面这个函数的this绑定到了全局的game，暂时就先这样吧，它能用
                 this.myTeam.getMagicStrings = function(){
                     return this.myTeam.playerList.map(p => {
@@ -368,6 +368,10 @@ document.addEventListener('alpine:init', () => {
                         return ms
                     })
                 }
+
+                const townColor = frontendData.factions.find(f => f.name === 'Town').color
+                const mafiaColor = frontendData.factions.find(f => f.name === 'Mafia').color
+                this.myTeam.color = this.myTeam.name === 'Mafia'? mafiaColor:townColor
             },
 
             'SetWinner':function(data){
@@ -482,11 +486,11 @@ document.addEventListener('alpine:init', () => {
                 let killerMessageString = data
 
                 if(killerMessageString != undefined){
-                    this.addSystemHintText('你写下了你的杀手信息: ')
+                    this.addSystemHintText('你写下了你的留言信息: ')
                     this.addSystemHintText(killerMessageString)
                 }
                 else{
-                    this.addSystemHintText('你清除了你的杀手信息。')
+                    this.addSystemHintText('你清除了你的留言信息。')
                 }
             },
 
@@ -502,6 +506,10 @@ document.addEventListener('alpine:init', () => {
                 message.append(target.getNameMagicString())
                 message.style = `background-color:${hexToRgba(target.color, 0.5)};text-shadow: 1px 1px 0px #000000;`
                 this.addMessage(message)
+
+                if(voter.index === this.myIndex){
+                    this.myTeamAbilityVoteTargetIndex = target.index
+                }
             },
             'MafiaKillVoteCancel':function(data){
                 let voter = this.playerList[data.voterIndex]
@@ -510,26 +518,32 @@ document.addEventListener('alpine:init', () => {
                 message.addText(' 取消了他的投票')
                 message.style = `background-color: rgba(0, 0, 0, 0.5);`
                 this.addMessage(message)
+
+                if(voter.index === this.myIndex){
+                    this.myTeamAbilityVoteTargetIndex = undefined
+                }
             },
             'MafiaKillTargets':function(data){
-                let message = new  MagicString()
-                let targets = data.map(pidx => this.playerList[pidx])
-                if(targets.length === 1){
-                    message.addText('你们决定杀死 ')
-                    message.append(targets[0].getNameMagicString())
-                    message.style = `background-color:${hexToRgba(targets[0].color, 0.5)};text-shadow: 1px 1px 0px #000000;`
-                }
-                else if(targets.length > 1){
-                    message.addText('你们决定在[ ')
-                    for(const [i, t] of targets.entries()){
-                        message.append(t.getNameMagicString())
-                        if(i < (targets.length-1))
-                            message.addText('、')
+                if(data){
+                    let message = new  MagicString()
+                    let targets = data.map(pidx => this.playerList[pidx])
+                    if(targets.length === 1){
+                        message.addText('你们决定杀死 ')
+                        message.append(targets[0].getNameMagicString())
+                        message.style = `background-color:${hexToRgba(targets[0].color, 0.5)};text-shadow: 1px 1px 0px #000000;`
                     }
-                    message.addText(' ] 中随机杀死一人。')
-                    message.style = `background-color: rgba(0, 0, 0, 0.5);`
+                    else if(targets.length > 1){
+                        message.addText('你们决定在[ ')
+                        for(const [i, t] of targets.entries()){
+                            message.append(t.getNameMagicString())
+                            if(i < (targets.length-1))
+                                message.addText('、')
+                        }
+                        message.addText(' ] 中随机杀死一人。')
+                        message.style = `background-color: rgba(0, 0, 0, 0.5);`
+                    }
+                    this.addMessage(message)
                 }
-                this.addMessage(message)
             },
 
             'AuxiliaryOfficerCheckVote':function(data){
@@ -544,6 +558,10 @@ document.addEventListener('alpine:init', () => {
                 message.append(target.getNameMagicString())
                 message.style = `background-color:${hexToRgba(target.color, 0.5)};text-shadow: 1px 1px 0px #000000;`
                 this.addMessage(message)
+
+                if(voter.index === this.myIndex){
+                    this.myTeamAbilityVoteTargetIndex = target.index
+                }
             },
             'AuxiliaryOfficerCheckVoteCancel':function(data){
                 let voter = this.playerList[data.voterIndex]
@@ -552,26 +570,32 @@ document.addEventListener('alpine:init', () => {
                 message.addText(' 取消了他的投票')
                 message.style = `background-color: rgba(0, 0, 0, 0.5);`
                 this.addMessage(message)
+
+                if(voter.index === this.myIndex){
+                    this.myTeamAbilityVoteTargetIndex = undefined
+                }
             },
             'AuxiliaryOfficerCheckTargets':function(data){
-                let message = new  MagicString()
-                let targets = data.map(pidx => this.playerList[pidx])
-                if(targets.length === 1){
-                    message.addText('你们决定搜查 ')
-                    message.append(targets[0].getNameMagicString())
-                    message.style = `background-color:${hexToRgba(targets[0].color, 0.5)};text-shadow: 1px 1px 0px #000000;`
-                }
-                else if(targets.length > 1){
-                    message.addText('你们决定在[ ')
-                    for(const [i, t] of targets.entries()){
-                        message.append(t.getNameMagicString())
-                        if(i < (targets.length-1))
-                            message.addText('、')
+                if(data){
+                    let message = new  MagicString()
+                    let targets = data.map(pidx => this.playerList[pidx])
+                    if(targets.length === 1){
+                        message.addText('你们决定搜查 ')
+                        message.append(targets[0].getNameMagicString())
+                        message.style = `background-color:${hexToRgba(targets[0].color, 0.5)};text-shadow: 1px 1px 0px #000000;`
                     }
-                    message.addText(' ] 中随机搜查一人。')
-                    message.style = `background-color: rgba(0, 0, 0, 0.5);`
+                    else if(targets.length > 1){
+                        message.addText('你们决定在[ ')
+                        for(const [i, t] of targets.entries()){
+                            message.append(t.getNameMagicString())
+                            if(i < (targets.length-1))
+                                message.addText('、')
+                        }
+                        message.addText(' ] 中随机搜查一人。')
+                        message.style = `background-color: rgba(0, 0, 0, 0.5);`
+                    }
+                    this.addMessage(message)
                 }
-                this.addMessage(message)
             },
 
 
@@ -652,22 +676,32 @@ document.addEventListener('alpine:init', () => {
                 this.addSystemHintText("哦不，你死了，但是你仍可以留下来观看本局游戏。", 'darkred')
             },
 
-            // // night action events
-            // 'YouGoToKill':function(data){
-            //     this.actionAnimationNameSequence.push('youGoToKill')
-            // },
-            // 'MafiaKillAttack':function(data){
-            //     this.actionAnimationNameSequence.push('mafiaKillAttack')
-            // },
-            // 'DoctorHealProtect':function(data){
-            //     this.actionAnimationNameSequence.push('doctorHealProtect')
-            // },
-
             'YouDecidedToCommitSuicide':function(data){
                 this.addSystemHintText('你决定在今晚自杀！', 'red')
             },
             'YouGiveUpSuicide':function(data){
                 this.addSystemHintText('你洗了把脸清醒了一下，决定还是不自杀了', 'green')
+            },
+
+            'UseAblitySuccess':function(data){
+                const abilityName = data.name
+                switch(abilityName){
+                    case 'DoctorHealProtect':
+                        this.addSystemHintText(`你决定在今晚治疗 ${this.playerList[data.targetIndex].getNameMagicString()}`, 'limegreen')
+                    break
+                }
+
+                this.myAbilityTargetIndex = data.targetIndex
+            },
+            'UseAblityCancelSuccess':function(data){
+                const abilityName = data.name
+                switch(abilityName){
+                    case 'DoctorHealProtect':
+                        this.addSystemHintText(`你放弃治疗 ${this.playerList[this.myAbilityTargetIndex].getNameMagicString()}`, 'yellow')
+                    break
+                }
+
+                this.myAbilityTargetIndex = undefined
             }
         },
         commandHandler(commandString){
@@ -791,12 +825,22 @@ document.addEventListener('alpine:init', () => {
                 case 'use':
                 case 'useAbility':
                     const usedAbilityName = args.shift()
-                    if(this.myRole.abilityNames.includes(usedAbilityName)){
+                    if(this.myRole.abilityNames?.includes(usedAbilityName)){
                         switch(usedAbilityName){
                             case 'DoctorHealProtect':
                                 let targetIndex = Number(args.shift())-1
                                 if(Number.isNaN(targetIndex) === false)
                                     sendEvent('UseAbility', {name:usedAbilityName, targetIndex})
+                            break
+                        }
+                    }
+                break
+                case 'useAbilityCancel':
+                    const cancelAbilityName = args.shift()
+                    if(this.myRole.abilityNames?.includes(cancelAbilityName)){
+                        switch(cancelAbilityName){
+                            case 'DoctorHealProtect':
+                                sendEvent('UseAbilityCancel', {name:cancelAbilityName})
                             break
                         }
                     }
@@ -809,6 +853,7 @@ document.addEventListener('alpine:init', () => {
 
                 default:
                     this.addSystemHintText("未知指令，请重试。")
+                    console.log(commandString)
                 break
             }
         },
@@ -1112,12 +1157,12 @@ document.addEventListener('alpine:init', () => {
                     enableDiscussion: false,
                     discussionTime: 0.3,
 
-                    enableTrial: true,
+                    enableTrial: false,
                     enableTrialDefense: true,
                     trialTime: 0.2,
                     pauseDayTimerDuringTrial: false,
                     
-                    startAt: "day",
+                    startAt: "night",
                     
                     nightType: "Classic",
                     nightLength: 0.6,
@@ -1571,36 +1616,77 @@ document.addEventListener('alpine:init', () => {
             this.gameSettingDetailCardToggle = false
         },
 
-        showLynchVoteButton(targetIndex){
-            if(this.status?.split('/').includes('lynchVote')){
-                return publicVoteVerify(this ,'LynchVote', {voterIndex:this.myIndex, targetIndex, previousTargetIndex:this.myLynchVoteTargetIndex})
-            }
-            return false
-        },
-
         myLynchVoteTargetIndex : undefined,
+        myTeamAbilityVoteTargetIndex:undefined,
+        myAbilityTargetIndex: undefined,
         getPlayerListButtons(player){
             let buttons = []
             const game = this
-            const playerIndex = player.index
+            const targetIndex = player.index
+            const voteTarget = targetIndex + 1
             const lynchVoteButton = {
                 text:'投票',
-                style:'padding: 0.1em 1em;text-shadow: 0 0 2px red;color: white;font-weight:bold;',
+                style:'padding: 0.1em 1.5em;text-shadow: 0 0 2px red;color: white;font-weight:bold;',
                 class:'border',
-                click(){game.commandHandler(`lynchVote ${(playerIndex+1)}`)}
+                click(){game.commandHandler(`lynchVote ${voteTarget}`)}
             }
             const lynchVoteCancelButton = {
                 text:'取消',
-                style:'padding: 0.1em 1em;text-shadow: 0 0 2px white;color: LightGrey;font-weight:bold;',
+                style:'padding: 0.1em 1.5em;text-shadow: 0 0 2px white;color: LightGrey;font-weight:bold;',
                 class:'border',
                 click(){game.commandHandler(`lynchVoteCancel`)}
             }
 
+            const teamVoteButton = {
+                style:`padding: 0.1em 1.5em;background-color:${this.myTeam?.color};`,
+                click(){game.commandHandler(`teamVote ${voteTarget}`)}
+            }
+            const teamVoteCancelButton = {
+                style:'padding: 0.1em 1.5em;background-color: LightGrey;',
+                click(){game.commandHandler(`teamVoteCancel`)}
+            }
+
+            const useAbilityName = this.myRole?.abilityNames?.at(0)
+            const abilityTarget = targetIndex + 1
+            const useAbilityButton = {
+                style:`padding: 0.1em 1.5em;background-color:${this.myRole?.color};`,
+                click(){game.commandHandler(`useAbility ${useAbilityName} ${abilityTarget}`)}
+            }
+            const useAbilityCancelButton = {
+                style:'padding: 0.1em 1.5em;background-color: LightGrey;',
+                click(){game.commandHandler(`useAbilityCancel ${useAbilityName}`)}
+            }
+
             if(this.status?.split('/').includes('lynchVote')){
-                if(publicVoteVerify(this ,'LynchVote', {voterIndex:this.myIndex, targetIndex:playerIndex, previousTargetIndex:this.myLynchVoteTargetIndex}))
+                if(publicVoteVerify(this ,'LynchVote', {voterIndex:this.myIndex, targetIndex, previousTargetIndex:this.myLynchVoteTargetIndex}))
                     buttons.push(lynchVoteButton)
-                else if(playerIndex === this.myLynchVoteTargetIndex)
+                else if(targetIndex === this.myLynchVoteTargetIndex)
                     buttons.push(lynchVoteCancelButton)
+            }
+
+            // 团队投票和技能随时都可以使用，只是这些个按钮只会在夜间显示罢了
+            if(this.status === 'night/discussion'){
+                // 只有角色没技能且团队有技能的时候，会显示团队投票按钮
+                // 如果角色有技能，请使用'-target'投票
+                // 以后再改进吧...
+                const myRoleHasAbility = (this.myRole.abilityNames !== undefined && this.myRole.abilityNames?.length > 0)
+                if(myRoleHasAbility === false && this.myTeam?.abilityNames?.length > 0){
+                    const teamAbilityName = this.myTeam.abilityNames[0]
+                    if(teamVoteVerify(this, this.myTeam, teamAbilityName, {voterIndex:this.myIndex, targetIndex, previousTargetIndex:this.myTeamAbilityVoteTargetIndex}))
+                        buttons.push(teamVoteButton)
+                    else if(targetIndex === this.myTeamAbilityVoteTargetIndex)
+                        buttons.push(teamVoteCancelButton)
+                }
+                else if(this.myRole.abilityNames?.length > 0){
+                    const roleAbilityName = this.myRole.abilityNames[0]
+                    const user = this.playerList[this.myIndex]
+                    const target = this.playerList[targetIndex]
+
+                    if(targetIndex === this.myAbilityTargetIndex)
+                        buttons.push(useAbilityCancelButton)
+                    else if(abilityUseVerify(this, this.myRole.name, roleAbilityName, user, target))
+                        buttons.push(useAbilityButton)
+                }
             }
 
             return buttons

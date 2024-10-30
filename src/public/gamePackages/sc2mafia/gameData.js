@@ -36,13 +36,17 @@ const originalGameData = {
                     },
                     use(game, user, data){
                         const target = game.playerList[data.targetIndex]
-                        if(this.verify(user, target)){
+                        if(this.verify(game, user, target)){
                             user.role[`${this.name}Target`] = target
                             return true
                         }
                         return false
                     },
-                    verify(user, target){
+                    cancel(game, user, data){
+                        user.role[`${this.name}Target`] = undefined
+                        return true
+                    },
+                    verify(game, user, target){
                         const userIsAlive = user.isAlive
                         const userIsNotTarget = (user !== target)
                         const targetIsNotDead_Yet = target.isAlive
@@ -135,6 +139,7 @@ const originalGameData = {
                             // let gameStatusIsNighdataiscussion = (this.status === 'night/discussion')
                             // 为什么要限制黑手党给自己人投票呢？我觉得他可以啊
                             // let targetIsNotMafia = (this.queryAlivePlayersByRoleTag('Mafia').map(p => p.index).includes(targetIndex) === false)
+                            console.log(voterIsAlive , voterIsTeamMember , targetIsAlive , targetIsNotPreviousTarget)
                             return voterIsAlive && voterIsTeamMember && targetIsAlive && targetIsNotPreviousTarget
                         },
                         getResultIndex(game, count){
@@ -305,6 +310,22 @@ class RoleMeta{
         }
     }
 
+    useAblityCancel(user, data){
+        if(this.abilities.length === 1){
+            const success = this.abilities[0].cancel(this.game, user, data)
+            if(success){
+                user.sendEvent('UseAblityCancelSuccess', data)
+            }
+        }
+        else if('name' in data){
+            const ability = this.abilities.find(a => a.name === data.name)
+            const success = ability.cancel(this.game, user, data)
+            if(success){
+                user.sendEvent('UseAblityCancelSuccess', data)
+            }
+        }
+    }
+
     setRoleData(player){
         if(this.abilities !== undefined){
             for(const a of this.abilities){
@@ -395,9 +416,9 @@ class Vote{
     verify(game, voterIndex, voteData, previousTargetIndex){
         return this.data.verify(game, voterIndex, voteData, previousTargetIndex)
     }
-    cancelVerify(game, record, voterIndex){
-        return this.data.cancelVerify(game, record, voterIndex)
-    }
+    // cancelVerify(game, record, voterIndex){
+    //     return this.data.cancelVerify(game, record, voterIndex)
+    // }
 }
 
 class Team{
@@ -484,7 +505,8 @@ class Team{
     toJSON(){
         return {
             name:this.name,
-            abilityNames:this.abilities?.map(a => a.name)
+            abilityNames:this.abilities?.map(a => a.name),
+            memberPlayerData:this.playerList.map(p => p.toJSON_includeRole())
         }
     }
 }
@@ -501,8 +523,17 @@ function getRandomElement(arr){
 }
 
 // todo
-export function abilityUseVerify(roleName, abilityName){
-    
+export function abilityUseVerify(game, roleName, abilityName, user, target){
+    const role = originalGameData.roles.find(r => r.name === roleName)
+    const ability = role.abilities?.find(a => a.name === abilityName)
+    return ability?.verify(game, user, target)
+}
+
+export function teamVoteVerify(game, team, teamAbilityName, {voterIndex, targetIndex, previousTargetIndex}){
+    const _team = originalGameData.teams.find(t => t.name === team.name)
+    const vote = _team.abilities.find(a => a.name === teamAbilityName).voteData
+    vote.team = team
+    return vote.verify(game, voterIndex, targetIndex, previousTargetIndex)
 }
 
 export function publicVoteVerify(game, voteTypeName, {voterIndex, targetIndex, previousTargetIndex}){

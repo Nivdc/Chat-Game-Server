@@ -215,6 +215,9 @@ class Game{
                     case "UseAbility":
                         player.role.useAblity(event.data)
                     break
+                    case "UseAbilityCancel":
+                        player.role.useAblityCancel(event.data)
+                    break
 
                     case 'SetLastWill':
                         if(this.setting.enableLastWill){
@@ -310,7 +313,7 @@ class Game{
             }
 
             for(const t of this.teamSet){
-                t.sendEvent("SetTeam", t.playerList.map(p=>p.toJSON_includeRole()))
+                t.sendEvent("SetTeam", t)
             }
 
             this.teamSet = this.teamSet.filter(t => t.playerList.length > 0)
@@ -670,7 +673,7 @@ class Game{
 
                     case 'DoctorHealProtect':
                         if(tempDeathReason.length !== 0){
-                            if(this.setting.roleModifyOptions[doctor][knowsIfTargetIsAttacked])
+                            if(this.setting.roleModifyOptions['doctor']['knowsIfTargetIsAttacked'])
                                 action.origin.sendEvent('YourTargetIsAttacked')
                         }
                         if(action.target.isAlive === false && p.deathReason === undefined){
@@ -1096,6 +1099,9 @@ class Player{
             useAblity(data){
                 this.roleMeta.useAblity(this.player, data)
             },
+            useAblityCancel(data){
+                this.roleMeta.useAblityCancel(this.player, data)
+            }
         }, {
             get(target, prop) {
                 return prop in target ? target[prop] : target.roleMeta[prop]
@@ -1105,11 +1111,9 @@ class Player{
     }
 
     toJSON_includeRole(){
-        return {
-            name: this.name,
-            index:this.index,
-            role:this.role
-        }
+        const json = this.toJSON()
+        json.role = this.role
+        return json
     }
 
     toJSON(){

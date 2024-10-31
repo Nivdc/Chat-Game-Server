@@ -745,12 +745,14 @@ class Game{
                 if(this.status.startsWith("day") && this.status.split('/').includes("discussion")){
                     targetGroup = this.onlinePlayerList
                 }else if(this.status.startsWith("night") && this.status.split('/').includes("discussion")){
-                    if(sender.role.affiliationName === "Mafia")
+                    if(sender.role.affiliationName === "Mafia"){
                         targetGroup = this.queryAlivePlayersByRoleFaction(sender.role.affiliationName)
+                    }
                     else if(sender.role.name === "AuxiliaryOfficer")
                         targetGroup = this.queryAlivePlayersByRoleName("AuxiliaryOfficer")
                 }
             }else{
+                var senderIsDead = true
                 targetGroup = this.deadPlayerList
             }
         }
@@ -762,7 +764,7 @@ class Game{
         }
 
         if(targetGroup !== undefined)
-            this.sendEventToGroup(targetGroup, "ChatMessage", {senderIndex:sender.index, message:data})
+            this.sendEventToGroup(targetGroup, "ChatMessage", {senderIndex:sender.index, message:data, senderIsDead})
     }
 
     // 首先检查是否有一半的玩家投票重选主机，如果有，随机选择一个主机

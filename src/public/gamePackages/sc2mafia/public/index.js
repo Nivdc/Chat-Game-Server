@@ -129,12 +129,13 @@ document.addEventListener('alpine:init', () => {
 
             'ChatMessage':function(data){
                 const sender  = this.playerList[data.senderIndex]
+                const senderIsDead = data.senderIsDead
 
                 let message = new MagicString()
                 message.append(sender.getNameMagicStringWithExtras({text:': ', style:`font-weight:bold;`}))
                 message.addText(data.message)
 
-                if(sender.isAlive === false)
+                if(senderIsDead)
                     message.style = `background-color:${hexToRgba(html5ColorHexMap['darkred'], 0.7)};`
                 if(sender === this.executionTarget || sender === this.trialTarget)
                     message.style = `background-color:${hexToRgba(html5ColorHexMap['dodgerblue'], 0.3)};`

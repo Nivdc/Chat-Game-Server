@@ -12,6 +12,7 @@ document.addEventListener('alpine:init', () => {
             this.setting = cloneDeep(this.presets[0].setting)
             this.eventHandlerInit()
             this.socketInit()
+            this.readyPlayerIndexList = []
             this.tagSet = undefined
             this.categoryList = undefined
             this.roleSet = undefined
@@ -186,6 +187,20 @@ document.addEventListener('alpine:init', () => {
                 this.startButtonToggle = true
             },
 
+            'SetReadyPlayerIndexList':function(data){
+                const newReadyPlayerIndexList = data
+                const newPlayerIndexList = getComplement(newReadyPlayerIndexList, this.readyPlayerIndexList)
+                for(const pIndex of newPlayerIndexList){
+                    let message = new MagicString({style:'background-color:rgba(0, 0, 0, 0.2);color:yellow;text-shadow: 1px 1px 0px #000000;'})
+                    let player  = this.playerList[pIndex]
+                    player.isReady = true
+                    message.append(player.getNameMagicString_Bold())
+                    message.append({text:` 加入了游戏 (${this.playerList.filter(p => p.isReady === true).length} / ${this.playerList.length})`})
+                    this.addMessage(message)
+                }
+
+                this.readyPlayerIndexList = newReadyPlayerIndexList
+            },
             'PlayerQuit':function(data){
                 let message = new MagicString({style:'background-color:darkred;text-shadow: 1px 1px 0px #000000;'})
                 let player  = this.playerList[data.index]
@@ -1189,6 +1204,46 @@ document.addEventListener('alpine:init', () => {
                         }
                     }
                 }
+            },
+            {
+                name:"黑手必胜测试板",
+                description:"用来测试游戏的预设，默认情况下，除非医生猜中刀，否则黑手已经赢了",
+                setting:{
+                    dayVoteType: "Majority",
+                    dayLength: 0.7,
+
+                    enableDiscussion: true,
+                    discussionTime: 0.3,
+
+                    enableTrial: false,
+                    enableTrialDefense: true,
+                    trialTime: 0.2,
+                    pauseDayTimerDuringTrial: false,
+                    
+                    startAt: "day/No-Lynch",
+                    
+                    nightType: "Classic",
+                    nightLength: 0.6,
+                    
+                    revealPlayerRoleOnDeath: true,
+                    protectCitizensMode:false,
+                    enableCustomName: true,
+                    enableKillerMessage: true,
+                    enableLastWill: true,
+                    enablePrivateMessage: true,
+                    
+                    roleList: [
+                        "Citizen", "Citizen", "Citizen",
+                        "Doctor",
+                        "Mafioso", "Mafioso", "Mafioso"
+                    ],
+
+                    roleModifyOptions: {
+                        doctor:{
+                            knowsIfTargetIsAttacked:true,
+                        }
+                    }
+                }
             }
         ],
         selectPreset(preset){
@@ -1349,9 +1404,13 @@ document.addEventListener('alpine:init', () => {
         startButtonToggle:true,
         start(){
             if(this.startButtonToggle === true){
-                this.settingWatchIgnore = true
-                this.setting.roleList = this.preprocessRandomRole(this.setting.roleList)
-                sendEvent("HostSetupGame", this.setting)
+                if(this.setting.roleList.length === this.playerList.length){
+                    this.settingWatchIgnore = true
+                    this.setting.roleList = this.preprocessRandomRole(this.setting.roleList)
+                    sendEvent("HostSetupGame", this.setting)
+                }else{
+                    this.addSystemHintText(`玩家人数与角色数量不匹配, 玩家人数: ${this.playerList.length} ${this.playerList.length > this.setting.roleList.length ? '>':'<'} 角色数量: ${this.setting.roleList.length}`, 'yellow')
+                }
             }else{
                 sendEvent("HostCancelSetup")
             }
@@ -2178,6 +2237,11 @@ class RandomRole{
 function getIntersection(arr1, arr2) {
     const set2 = new Set(arr2)
     return arr1.filter(item => set2.has(item))
+}
+
+function getComplement(arr1, arr2) {
+    const set2 = new Set(arr2);
+    return arr1.filter(item => !set2.has(item));
 }
 
 function arraysEqual(arr1, arr2) {

@@ -267,7 +267,7 @@ ul{
     Font-weight:700;
     width: 10em;
 }
-#presetBar span:hover{
+#presetBar p:hover{
     padding: 0.1em;
     cursor:pointer;
     color: var(--optional-emphasized-content);

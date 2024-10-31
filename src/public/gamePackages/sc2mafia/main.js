@@ -99,7 +99,7 @@ class Game{
             console.log(`recive pidx: ${player.index}  <-`, event)
             switch(event.type){
                 case "FrontendReady":
-                    this.sendInitData(player)
+                    this.sendInitData(player)    
                 break
 
                 case "HostSetupGame":
@@ -284,6 +284,9 @@ class Game{
         p.sendEvent("SetTagSet", this.tagSet)
         p.sendEvent("SetRoleSet", this.roleMetaSet)
         p.sendEvent("InitCompleted")
+
+        p.isReady = true
+        this.sendEventToAll("SetReadyPlayerIndexList", this.playerList.filter(p => p.isReady).map(p => p.index))
     }
 
     async setup(setting){

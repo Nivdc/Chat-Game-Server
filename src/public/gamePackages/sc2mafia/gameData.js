@@ -139,7 +139,6 @@ const originalGameData = {
                             // let gameStatusIsNighdataiscussion = (this.status === 'night/discussion')
                             // 为什么要限制黑手党给自己人投票呢？我觉得他可以啊
                             // let targetIsNotMafia = (this.queryAlivePlayersByRoleTag('Mafia').map(p => p.index).includes(targetIndex) === false)
-                            console.log(voterIsAlive , voterIsTeamMember , targetIsAlive , targetIsNotPreviousTarget)
                             return voterIsAlive && voterIsTeamMember && targetIsAlive && targetIsNotPreviousTarget
                         },
                         getResultIndex(game, count){

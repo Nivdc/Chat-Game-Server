@@ -321,7 +321,7 @@ document.addEventListener('alpine:init', () => {
                     document.getElementById('music').play()
                     this.executionTarget = undefined
                     this.clearMssagesList()
-                    this.createTimer('夜晚', this.setting.nightLength)
+                    this.createTimer('夜晚', this.setting.nightLength, ()=>{this.timer = undefined})
                 }
                 else if(this.status === 'animation/nightToAction'){
                     this.playAnimation('nightToAction')
@@ -1530,9 +1530,9 @@ document.addEventListener('alpine:init', () => {
         },
 
         graveyardDetailCardToggle:false,
-        getDeadPlayerDatas(){
+        getDeadPlayerDatas({includeDeathReason}){
             let deadPlayerList = this.playerList.filter(p => p.isAlive===false)
-            return deadPlayerList.map(p => p.getDeathDataMagicStringAndDeathTime()).sort((a, b)=>{
+            return deadPlayerList.map(p => p.getDeathDataMagicStringAndDeathTime({includeDeathReason})).sort((a, b)=>{
                 const a_deathDay = Number(a.deathTime.split('/')[0])
                 const b_deathDay = Number(b.deathTime.split('/')[0])
 
@@ -1831,34 +1831,37 @@ class Player{
         return new MagicString({text:this.name+(extext??''), style:`color:${this.color};`+(exstyle??'')})
     }
 
-    getDeathDataMagicStringAndDeathTime(){
+    getDeathDataMagicStringAndDeathTime({includeDeathReason}){
         if(this.isAlive === false){
             let ms = new MagicString()
             ms.addText(`${this.index + 1} - `)
             ms.append(this.getNameMagicString())
             ms.addText('(')
             ms.append(this.role?.getNameMagicString() ?? {text:'???'})
-            ms.addText('): ')
+            ms.addText(')')
 
-            let deathReasonDescriptions = []
-            while(this.deathReason?.length > 0 )
-            switch(this.deathReason.shift()){
-                case 'MafiaKillAttack':
-                    deathReasonDescriptions.push('死于黑手党的攻击')
-                break
-                case 'Execution':
-                    deathReasonDescriptions.push('死于处刑')
-                break
-                case 'Suicide':
-                    deathReasonDescriptions.push('死于自杀')
-                break
-            }
-            if(deathReasonDescriptions.length === 0){
-                deathReasonDescriptions.push('死于未知原因')
-            }
+            if(includeDeathReason === true){
+                ms.addText(': ')
+                let deathReasonDescriptions = []
+                while(this.deathReason?.length > 0 )
+                switch(this.deathReason.shift()){
+                    case 'MafiaKillAttack':
+                        deathReasonDescriptions.push('死于黑手党的攻击')
+                    break
+                    case 'Execution':
+                        deathReasonDescriptions.push('死于处刑')
+                    break
+                    case 'Suicide':
+                        deathReasonDescriptions.push('死于自杀')
+                    break
+                }
+                if(deathReasonDescriptions.length === 0){
+                    deathReasonDescriptions.push('死于未知原因')
+                }
 
-            while(deathReasonDescriptions.length > 0 )
-                ms.addText(`${deathReasonDescriptions.shift()}${deathReasonDescriptions.length === 0 ? '':', '}`)
+                while(deathReasonDescriptions.length > 0 )
+                    ms.addText(`${deathReasonDescriptions.shift()}${deathReasonDescriptions.length === 0 ? '':', '}`)
+            }
 
             return {magicString:ms, deathTime:this.deathTime}
         }

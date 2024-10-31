@@ -371,14 +371,15 @@
                         <div id="graveyard"style="flex:initial;width: 10em;margin-right:1em;background-color: rgba(0, 0, 0, 0.1);" @mouseenter="openGraveyardDetailCard($event)" @mouseleave="closeGraveyardDetailCard()">
                             <h3>墓地</h3>
                             <div class="scrollbar">
-                                <template x-for="player in playerList.filter(p => p.isAlive===false)">
-                                    <p class="flex" style="column-gap: 0.2em;">
-                                        <span x-text="`${player.index+1} - `"></span>
-                                        <span x-text="player.name" :style="`color:${player.color};`"></span>
-                                        <span>(</span>
-                                        <span x-text="`${player.role?.getNameMagicString().text}`" :style="`${player.role?.getNameMagicString().style}`"></span>
-                                        <span>)</span>
-                                    </p>
+                                <template x-for="{magicString, deathTime} in getDeadPlayerDatas({includeDeathReason:false})">
+                                    <div>
+                                        <p :style="magicString?.style" :class="magicString?.class">
+                                            <span x-text="magicString?.text"></span>
+                                            <template x-for="magicStringPart in magicString?.parts">
+                                                <span x-text="magicStringPart.text" :style="magicStringPart.style" :class="magicStringPart.class"></span>
+                                            </template>
+                                        </p>
+                                    </div>
                                 </template>
                             </div>
                         </div>
@@ -397,7 +398,7 @@
                         </div>
                     </div>
                     <div id="graveyardDetailCard" style="position:absolute;min-height:15em;background-color: rgba(0, 0, 0, 0.2);flex: initial;margin-bottom: 1em;display: flex;flex-direction: column;row-gap:0.2em;padding: 0.2em;z-index: 99;" class="border" x-show="graveyardDetailCardToggle">
-                        <template x-for="{magicString, deathTime} in getDeadPlayerDatas()">
+                        <template x-for="{magicString, deathTime} in getDeadPlayerDatas({includeDeathReason:true})">
                             <div>
                                 <p :style="magicString?.style" :class="magicString?.class">
                                     <span x-text="magicString?.text"></span>

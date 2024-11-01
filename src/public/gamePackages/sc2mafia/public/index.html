@@ -58,8 +58,11 @@
                         <h4>白天设置</h4>
                         <div>
                             <span>白天投票类型</span>
-                            <select x-model="setting.dayVoteType" disabled>
-                                <template x-for="voteType in [{name:'实名过半数', value:'Majority'}, {name:'匿名最高票', value:'Ballot'}]" :key="voteType.name">
+                            <select x-model="setting.dayVoteType">
+                                <!-- <template x-for="voteType in [{name:'实名过半数', value:'Majority'}, {name:'匿名最高票', value:'Ballot'}]" :key="voteType.name">
+                                    <option x-text="voteType.name" :value="voteType.value" :selected="voteType.value === setting.dayVoteType"></option>
+                                </template> -->
+                                <template x-for="voteType in [{name:'实名过半数', value:'Majority'}]" :key="voteType.name">
                                     <option x-text="voteType.name" :value="voteType.value" :selected="voteType.value === setting.dayVoteType"></option>
                                 </template>
                             </select>
@@ -112,7 +115,7 @@
                         <h4>夜晚设置</h4>
                         <div>
                             <span>夜晚信息类型</span>
-                            <select x-model="setting.nightType" disabled>
+                            <select x-model="setting.nightType">
                                 <template x-for="nighType in [{name:'经典', value:'Classic'}]" :key="nighType.name">
                                     <option x-text="nighType.name" :value="nighType.value" :selected="nighType.value === setting.nightType"></option>
                                 </template>

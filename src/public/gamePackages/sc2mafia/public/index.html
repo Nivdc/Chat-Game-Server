@@ -354,7 +354,8 @@
                     <template x-for="modifyOption in roleCardData?.getModifyOptions()">
                         <p>
                             <span x-text="modifyOption.description"></span>
-                            <input style="margin-left: 2em;" type="checkbox" x-model="setting.roleModifyOptions[modifyOption.roleName][modifyOption.keyName]" disabled/>
+                            <span style="margin:0em 0.5em">--</span>
+                            <span :style="`color:${setting.roleModifyOptions[modifyOption.roleName][modifyOption.keyName]? 'LimeGreen':'red'}`;" x-text="setting.roleModifyOptions[modifyOption.roleName][modifyOption.keyName]? '开启':'关闭' "></span>
                         </p>
                     </template>
                 </div>

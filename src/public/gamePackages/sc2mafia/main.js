@@ -949,10 +949,11 @@ class Game{
     userQuit(user){
         let player = this.playerList.find(p => p.user === user)
         this.sendEventToGroup(this.onlinePlayerList, "PlayerQuit", player)
+        player.user = undefined
+
         if(user === this.host.user)
             this.repickHost(this.getNewRandomHost())
 
-        player.user = undefined
         if(player.isAlive){
             player.effects.push({name:'Suicide', reason:'AFK'})
         }
@@ -1124,7 +1125,7 @@ class Player{
     toJSON(){
         return {
             name: this.name,
-            userName: this.user.name,
+            userName: this.user?.name,
             index:this.index,
             hasCustomName:this.hasCustomName,
         }

@@ -220,6 +220,7 @@ document.addEventListener('alpine:init', () => {
                     this.timer?.clear()
                     this.timer = undefined
                     this.playAnimation('begin')
+                    this.generateRoleDetails()
                 }
                 // else if(this.status === 'animation/nightToDay'){
                 //     this.playAnimation('nightToDay')
@@ -869,7 +870,6 @@ document.addEventListener('alpine:init', () => {
 
                 default:
                     this.addSystemHintText("未知指令，请重试。")
-                    console.log(commandString)
                 break
             }
         },
@@ -1750,6 +1750,33 @@ document.addEventListener('alpine:init', () => {
             }
 
             return buttons
+        },
+
+        generateRoleDetails(){
+            for(const r of this.roleSet.filter(r => r.name.endsWith('Random') === false)){
+                if(r.name === 'Citizen'){
+                    if(this.setting.protectCitizensMode){
+                        r.featureDetails.push("如果所有市民死亡，则城镇输掉这场游戏。")
+                    }
+                }
+
+                const roleNameLowerCase = r.name.charAt(0).toLowerCase() + r.name.slice(1)
+                const modifyObject = this.setting.roleModifyOptions[roleNameLowerCase]
+                if(modifyObject !== undefined){
+                    for(const keyName of Object.keys(modifyObject)){
+                        if(this.setting.roleModifyOptions[roleNameLowerCase][keyName]){
+                            console.log(this.setting.roleModifyOptions[roleNameLowerCase][keyName])
+                            const modifyFeatureDescriptionTranslate = r.modifyFeatureDescriptionTranslate[`${keyName}_true`]
+                            r.featureDetails.push(modifyFeatureDescriptionTranslate)
+                        }
+                    }
+                }
+
+                if(r.abilityDetails.length === 0)
+                    r.abilityDetails.push(`${r.nameTranslate??r.name}没有任何特殊能力。`)
+                if(r.featureDetails.length === 0)
+                    r.featureDetails.push(`${r.nameTranslate??r.name}没有任何特性。`)
+            }
         }
 
     }))
@@ -1982,8 +2009,8 @@ const frontendData = {
             descriptionTranslate:"一个相信真理和正义的普通人",
             abilityDescriptionTranslate:"市民默认没有任何特殊能力",
             otherDescriptionTranslate:"市民在这个游戏中默认为最为普遍的角色",
-            abilityDetails:["市民没有任何特殊能力。"],
-            featureDetails:["如果所有市民死亡，则城镇输掉这场游戏。"]
+            abilityDetails:[],
+            featureDetails:[]
         },
         // {
         //     name:"Sheriff",

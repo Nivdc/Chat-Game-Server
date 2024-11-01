@@ -90,6 +90,10 @@ class Game{
         return this.status.split('/').includes("trial") || this.status.split('/').includes("execution")
     }
 
+    get notStartedYet(){
+        return this.status === "init" || this.status === "setup"
+    }
+
     game_ws_message_router(ws, message){
         const event = JSON.parse(message)
         let player = this.playerList.find(player => {return player.uuid === ws.data.uuid})
@@ -728,7 +732,7 @@ class Game{
     sendChatMessage(sender, data){
         let targetGroup = undefined
 
-        if(this.status === "init" || this.status === "setup" || this.status === "end")
+        if(this.notStartedYet || this.status === "end")
             targetGroup = this.onlinePlayerList
         else{
             if(sender.isAlive === true){
@@ -949,8 +953,10 @@ class Game{
             player.effects.push({name:'Suicide', reason:'AFK'})
         }
 
-        this.playerList = this.onlinePlayerList
-        this.sendEventToAll('SetPlayerList', this.playerList)
+        if(this.notStartedYet){
+            this.playerList = this.onlinePlayerList
+            this.sendEventToAll('SetPlayerList', this.playerList)
+        }
 
         if(this.onlinePlayerList.length === 0){
             this.status = 'end'

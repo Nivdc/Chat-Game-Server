@@ -102,12 +102,23 @@ document.addEventListener('alpine:init', () => {
             },
 
             "SetHost":function (data){
+                const hostIndex = data.index
                 this.host = this.playerList[data.index]
                 let message = new MagicString()
                 message.append(this.host.getNameMagicString_Bold())
                 message.append({text:'  是新的主机', class:'text-warning'})
                 if(this.isRunning === false && this.status !== 'begin')
                     this.addMessage(message)
+
+                if(hostIndex === this.myIndex){
+                    enableElements('settingPageTopBar')
+                    enableElements('presetForm')
+                    enableElements('settingPageInnerBodyRightBar')
+                }else{
+                    disableElements('settingPageTopBar')
+                    disableElements('presetForm')
+                    disableElements('settingPageInnerBodyRightBar')
+                }
             },
 
             'SetPossibleRoleSet'(data){
@@ -1404,16 +1415,21 @@ document.addEventListener('alpine:init', () => {
         startInfo:"",
         startButtonToggle:true,
         start(){
-            if(this.startButtonToggle === true){
-                if(this.setting.roleList.length === this.playerList.length){
-                    this.settingWatchIgnore = true
-                    this.setting.roleList = this.preprocessRandomRole(this.setting.roleList)
-                    sendEvent("HostSetupGame", this.setting)
+            if(this.myIndex === this.host.index){
+                if(this.startButtonToggle === true){
+                    if(this.setting.roleList.length === this.playerList.length){
+                        this.settingWatchIgnore = true
+                        this.setting.roleList = this.preprocessRandomRole(this.setting.roleList)
+                        sendEvent("HostSetupGame", this.setting)
+                    }else{
+                        this.addSystemHintText(`玩家人数与角色数量不匹配, 玩家人数: ${this.playerList.length} ${this.playerList.length > this.setting.roleList.length ? '>':'<'} 角色数量: ${this.setting.roleList.length}`, 'yellow')
+                    }
                 }else{
-                    this.addSystemHintText(`玩家人数与角色数量不匹配, 玩家人数: ${this.playerList.length} ${this.playerList.length > this.setting.roleList.length ? '>':'<'} 角色数量: ${this.setting.roleList.length}`, 'yellow')
+                    sendEvent("HostCancelSetup")
                 }
-            }else{
-                sendEvent("HostCancelSetup")
+            }
+            else{
+                this.addSystemHintText(`抱歉，您不是主机，无法开始游戏`, 'yellow')
             }
         },
 
@@ -2283,4 +2299,20 @@ function arraysEqual(arr1, arr2) {
     const sortedArr2 = arr2.slice().sort()
 
     return sortedArr1.every((value, index) => value === sortedArr2[index])
+}
+
+function disableElements(containerId) {
+    const container = document.getElementById(containerId)
+    const formElements = container.querySelectorAll('input, select, textarea, button')
+
+    formElements.forEach(element => {element.disabled = true})
+    container.disabled = true
+}
+
+function enableElements(containerId){
+    const container = document.getElementById(containerId)
+    const formElements = container.querySelectorAll('input, select, textarea, button')
+
+    formElements.forEach(element => {element.disabled = false})
+    container.disabled = false
 }

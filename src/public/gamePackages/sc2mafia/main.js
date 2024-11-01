@@ -129,9 +129,6 @@ class Game{
 
                 case "RepickHost":
                     if(['init', 'setup'].includes(this.status)){
-                        if(event.data == undefined || isValidIndex((Number(event.data)), this.playerList.length) === false)
-                            return
-
                         this.sendEventToAll(event.type, {player, targetIndex:(Number(event.data))})
                         if(player !== this.host){
                             if(event.data){
@@ -278,6 +275,7 @@ class Game{
     sendInitData(p){
         // todo: 以下数据也许可以整合到一起发送以提高压缩率。
         p.sendEvent("SetPlayerList", this.playerList)
+        p.sendEvent("SetPlayerSelfIndex", p.index)
         p.sendEvent("SetHost", this.host)
         p.sendEvent("SetStatus", this.status)
         p.sendEvent("SetDayCount", this.dayCount ?? 1)

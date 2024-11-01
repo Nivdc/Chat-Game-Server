@@ -113,6 +113,7 @@ button:focus{
 button[disabled]{
     color: color-mix(in srgb, black, var(--primary-content) 70%);
     background-color: color-mix(in srgb, black, var(--background) 70%);
+    border: none;
 }
 button[disabled]:active{
     transform: none;

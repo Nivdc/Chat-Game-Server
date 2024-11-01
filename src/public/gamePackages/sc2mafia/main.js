@@ -13,8 +13,7 @@ export function start(room){
 
 class Game{
     constructor(room){
-        this.playerList = room.user_list.map(user => new Player(user))
-        this.playerList.forEach(p => p.setPlayerList(this.playerList))
+        this.playerList = room.user_list.map(user => new Player(user, this))
         this.host = this.playerList.find(p => p.user === room.host)
         this.room = room
         this.status = "init"
@@ -37,7 +36,7 @@ class Game{
                     this.timer = new Timer(resolve, durationMin, true)
                     this.controller.signal.addEventListener('abort', () => {
                         this.timer.clear()
-                        reject(`GameStage:${this.name} aborted`);
+                        reject
                     })
                 })
                 this.game.setStatus(this.name)
@@ -288,49 +287,42 @@ class Game{
     }
 
     async setup(setting){
-        try{
-            await this.newGameStage("setup", 0.025)
-            this.setting = {...defaultSetting, ...setting}
-            await this.newGameStage("begin", 0.05)
-            let {realRoleNameList, possibleRoleSet} = this.processRandomRole(this.setting.roleList)
-            this.sendEventToAll("SetPossibleRoleSet", possibleRoleSet)
-            // todo:检查玩家人数是否与角色列表匹配
-            // todo:为没有自定义名字的玩家随机分配名字
-            shuffleArray(realRoleNameList)
-            shuffleArray(this.playerList)
-            this.sendEventToAll("SetPlayerList", this.playerList)
-            for(let [index, p] of this.playerList.entries()){
-                p.setRole(this.roleMetaSet.find( r => r.name === realRoleNameList[index] ))
-                p.isAlive = true
+        await this.newGameStage("setup", 0.025)
+        this.setting = {...defaultSetting, ...setting}
+        await this.newGameStage("begin", 0.05)
+        let {realRoleNameList, possibleRoleSet} = this.processRandomRole(this.setting.roleList)
+        this.sendEventToAll("SetPossibleRoleSet", possibleRoleSet)
+        // todo:检查玩家人数是否与角色列表匹配
+        // todo:为没有自定义名字的玩家随机分配名字
+        shuffleArray(realRoleNameList)
+        shuffleArray(this.playerList)
+        this.sendEventToAll("SetPlayerList", this.playerList)
+        for(let [index, p] of this.playerList.entries()){
+            p.setRole(this.roleMetaSet.find( r => r.name === realRoleNameList[index] ))
+            p.isAlive = true
 
-                p.sendEvent("SetPlayerSelfIndex", p.index)
-                p.sendEvent("SetRole", p.role)
-                for(let t of this.teamSet){
-                    if(t.includeRoleNames.includes(p.role.name)){
-                        t.playerList.push(p)
-                        p.team = t
-                    }
+            p.sendEvent("SetPlayerSelfIndex", p.index)
+            p.sendEvent("SetRole", p.role)
+            for(let t of this.teamSet){
+                if(t.includeRoleNames.includes(p.role.name)){
+                    t.playerList.push(p)
+                    p.team = t
                 }
             }
-
-            for(const t of this.teamSet){
-                t.sendEvent("SetTeam", t)
-            }
-
-            this.teamSet = this.teamSet.filter(t => t.playerList.length > 0)
-
-            this.gameDirectorInit()
-
-            this.dayCount = 1
-
-            await this.newGameStage("animation/begin", 0.1)
-            this.begin()
-        }catch(e){
-            if(e === "GameStage:setup aborted")
-                return
-            else
-                throw e
         }
+
+        for(const t of this.teamSet){
+            t.sendEvent("SetTeam", t)
+        }
+
+        this.teamSet = this.teamSet.filter(t => t.playerList.length > 0)
+
+        this.gameDirectorInit()
+
+        this.dayCount = 1
+
+        await this.newGameStage("animation/begin", 0.1)
+        this.begin()
     }
 
     // 死去的概率论在攻击我，还是得靠GPT，G老师救场
@@ -947,14 +939,18 @@ class Game{
     userQuit(user){
         let player = this.playerList.find(p => p.user === user)
         this.sendEventToGroup(this.onlinePlayerList, "PlayerQuit", player)
-        player.user = undefined
 
         if(user === this.host.user)
             this.repickHost(this.getNewRandomHost())
 
+        player.user = undefined
+
         if(player.isAlive){
             player.effects.push({name:'Suicide', reason:'AFK'})
         }
+
+        this.playerList = this.onlinePlayerList
+        this.sendEventToAll('SetPlayerList', this.playerList)
 
         if(this.onlinePlayerList.length === 0){
             this.status = 'end'
@@ -1035,10 +1031,11 @@ function calculateProbability(roleName, possibleRoles) {
 }
 
 class Player{
-    constructor(user){
+    constructor(user, game){
         this.user = user
         this.playedRoleNameRecord = []
         this.effects = []
+        this.game = game
     }
 
     get uuid(){
@@ -1059,15 +1056,11 @@ class Player{
     }
 
     get index(){
-        return this.playerList.indexOf(this)
+        return this.game.playerList.indexOf(this)
     }
 
     get isOnline(){
-        return this.user === undefined ? false : true
-    }
-
-    setPlayerList(playerList){
-        this.playerList = playerList
+        return this.user !== undefined
     }
 
     sendEvent(eventType, data){

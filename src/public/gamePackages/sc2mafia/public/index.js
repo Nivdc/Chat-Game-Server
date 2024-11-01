@@ -205,10 +205,12 @@ document.addEventListener('alpine:init', () => {
                 for(const pIndex of newPlayerIndexList){
                     let message = new MagicString({style:'background-color:rgba(0, 0, 0, 0.2);color:yellow;text-shadow: 1px 1px 0px #000000;'})
                     let player  = this.playerList[pIndex]
-                    player.isReady = true
-                    message.append(player.getNameMagicString_Bold())
-                    message.append({text:` 加入了游戏 (${this.playerList.filter(p => p.isReady === true).length} / ${this.playerList.length})`})
-                    this.addMessage(message)
+                    if(player !== undefined){
+                        player.isReady = true
+                        message.append(player.getNameMagicString_Bold())
+                        message.append({text:` 加入了游戏 (${this.playerList.filter(p => p.isReady === true).length} / ${this.playerList.length})`})
+                        this.addMessage(message)
+                    }
                 }
 
                 this.readyPlayerIndexList = newReadyPlayerIndexList
@@ -1781,7 +1783,6 @@ document.addEventListener('alpine:init', () => {
                 if(modifyObject !== undefined){
                     for(const keyName of Object.keys(modifyObject)){
                         if(this.setting.roleModifyOptions[roleNameLowerCase][keyName]){
-                            console.log(this.setting.roleModifyOptions[roleNameLowerCase][keyName])
                             const modifyFeatureDescriptionTranslate = r.modifyFeatureDescriptionTranslate[`${keyName}_true`]
                             r.featureDetails.push(modifyFeatureDescriptionTranslate)
                         }

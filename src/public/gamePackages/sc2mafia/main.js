@@ -605,8 +605,8 @@ class Game{
 
         function actionSequencing(a,b){
             const priorityOfActions = {
-                "MafiaKillAttack":9,
-                "DoctorHealProtect":19,
+                "Attack":9,
+                "Heal":19,
 
                 // "SheriffCheck":20,
                 "AuxiliaryOfficerCheck":21,
@@ -622,13 +622,13 @@ class Game{
     // 如果我们不引入一个生成过程，就得要对夜晚的行动队列进行反复修改
     generatePlayerAction(){
         for(const t of this.teamSet){
-            this.nightActionSequence.push(...t.generateAction())
+            this.nightActionSequence.push(...t.generateNightAction())
         }
 
         // SoloPlayer
         for(const p of this.alivePlayerList){
             for(const a of p.role.abilities ?? []){
-                const action = a.generateAction(p)
+                const action = a.generateNightAction(p)
                 if(action !== undefined)
                     this.nightActionSequence.push(action)
             }
@@ -642,25 +642,27 @@ class Game{
             return
         }
 
-        // Attack and Protection Processing
-        let attackSequence  = filterAndRemove(this.nightActionSequence, a => a.type.endsWith('Attack'))
-        let protectSequence = filterAndRemove(this.nightActionSequence, a => a.type.endsWith('Protect'))
+        // Attack and Protect Processing
+        let attackSequence  = filterAndRemove(this.nightActionSequence, a => a.type === 'Attack')
+        let protectSequence = filterAndRemove(this.nightActionSequence, a => a.type === 'Protect')
 
         for(const p of this.alivePlayerList){
             let asf  = attackSequence .filter(a => a.target === p)
             let psf  = protectSequence.filter(a => a.target === p)
             let anps = interleaveArrays(asf, psf)
             let tempDeathReason = []
+            console.log('anps:', anps.map(a => a.name))
 
             while(anps.length > 0){
                 let action = anps.shift()
                 // fixme: 这里有个小问题要解决，如果杀手已经死了，还是会发送这个消息。
                 // action.origin.sendEvent("YouGoToKill", {targetIndex: action.target.index})
                 switch(action.type){
-                    case 'MafiaKillAttack':
-                        action.target.sendEvent('YouUnderAttack', {source:'Mafia'})
+                    case 'Attack':
+                        const attackSource = action.isTeamAction ? action.origin.team.name : action.origin.role.name
+                        action.target.sendEvent('YouUnderAttack', {source:attackSource})
                         action.target.isAlive = false
-                        tempDeathReason.push('MafiaKillAttack')
+                        tempDeathReason.push(`${attackSource}Attack`)
 
                         if('killerMessage' in action.origin)
                             action.target.messageLeftByKiller = action.origin.killerMessage
@@ -668,12 +670,13 @@ class Game{
                             action.target.messageLeftByKiller = undefined
                     break
 
-                    case 'DoctorHealProtect':
+                    case 'Protect':
                         if(tempDeathReason.length !== 0){
-                            if(this.setting.roleModifyOptions['doctor']['knowsIfTargetIsAttacked'])
+                            const roleNameLowerCase = action.origin.role.name.charAt(0).toLowerCase() + action.origin.role.name.slice(1)
+                            if(this.setting.roleModifyOptions[roleNameLowerCase]['knowsIfTargetIsAttacked'])
                                 action.origin.sendEvent('YourTargetIsAttacked')
                         }
-                        if(action.target.isAlive === false && p.deathReason === undefined){
+                        if(action.name === 'Heal' && action.target.isAlive === false && p.deathReason === undefined){
                             action.target.sendEvent('YouAreHealed')
                             action.target.isAlive = true
                         }
@@ -866,7 +869,7 @@ class Game{
         this.sendEventToAll("SetExecutionTarget", this.executionTarget)
         await this.newGameStage("day/execution/lastWord", executionLenghtMin/2)
         player.isAlive = false
-        player.deathReason = "Execution"
+        player.deathReason = ["Execution"]
 
         this.recentlyDeadPlayers = []
         this.recentlyDeadPlayers.push(player)

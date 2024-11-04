@@ -15,6 +15,40 @@ const originalGameData = {
             includeRoleNames: [] // auto generate
         }
     ],
+
+    // ability其实很简单，它就是驱动逻辑
+    // 玩家使用了某项技能之后，它就会改变游戏数据，就这么简单
+    // 根据改变时机的不同，ability有两种效果，立刻改变游戏数据，或是延迟到夜晚再改变游戏数据。
+    // 团队使用的ability和个人是一样的，区别在于团队通过机制和投票选出执行人和目标，且会在生成action的时候附带一些team数据。
+
+    // 在编写generateNightAction的时候我们要注意，虽然action这个命名隐含着强烈的动作意味
+    // 但在这个游戏中，action是，且只是一种数据，一种abilityRecord，
+    // 它的作用是帮助gameDirector判断夜间发生了什么，并最终结算结果
+
+    // 如果说gameDirector是线下游戏的主持人，那么这个action就是玩家在夜间递给主持人的小纸条
+    // 上面写明了自己想要在今晚干什么
+
+    // 两种特殊的ability类型Attack和Protect将会有特殊的处理行为。
+    commonAbilities:{
+        targetedAbilities:[
+            {
+                name:"Attack",
+                type:"Attack",
+            },
+            {
+                name:"Heal",
+                type:"Protect",
+                verify(game, userIndex, targetIndex, previousTargetIndex){
+                    const userIsAlive = game.playerList[userIndex].isAlive
+                    const userIsNotTarget = (userIndex !== targetIndex)
+                    const targetIsNotPreviousTarget = targetIndex !== previousTargetIndex
+                    const targetIsNotDead_yet = game.playerList[targetIndex].isAlive
+                    return userIsAlive && userIsNotTarget && targetIsNotPreviousTarget && targetIsNotDead_yet
+                },
+            }
+        ]
+    },
+    // 
     roles: [
         {
             name: "Citizen",
@@ -27,41 +61,7 @@ const originalGameData = {
         {
             name: "Doctor",
             defaultAffiliationName:"Town",
-            abilities:[
-                {
-                    // require data:{targetIndex}
-                    name: 'DoctorHealProtect',
-                    setRoleData(game, player){
-                        player.role[`${this.name}Target`] = undefined
-                    },
-                    use(game, user, data){
-                        const target = game.playerList[data.targetIndex]
-                        if(this.verify(game, user, target)){
-                            user.role[`${this.name}Target`] = target
-                            return true
-                        }
-                        return false
-                    },
-                    cancel(game, user, data){
-                        user.role[`${this.name}Target`] = undefined
-                        return true
-                    },
-                    verify(game, user, target){
-                        const userIsAlive = user.isAlive
-                        const userIsNotTarget = (user !== target)
-                        const targetIsNotDead_Yet = target.isAlive
-                        return userIsAlive && userIsNotTarget && targetIsNotDead_Yet
-                    },
-                    generateAction(user){
-                        if(user.role[`${this.name}Target`] !== undefined){
-                            const abilityTarget = user.role[`${this.name}Target`]
-                            user.role[`${this.name}Target`] = undefined
-                            return {type:this.name, origin:user, target:abilityTarget}
-                        }
-                        return undefined
-                    }
-                }
-            ]
+            commonAbilityNames:['Heal'],
         },
         {
             name: "AuxiliaryOfficer",
@@ -128,18 +128,18 @@ const originalGameData = {
                 {
                     name:"MafiaKillAttack",
                     targetNoticeEventType:"MafiaKillTargets",
+                    basedOnCommonAbilityName:"Attack",
                     voteData:{
                         name:"MafiaKillVote",
                         verify(game, voterIndex, targetIndex, previousTargetIndex){
                             let voterIsAlive = game.playerList[voterIndex].isAlive
                             let targetIsAlive = game.playerList[targetIndex].isAlive
-                            let voterIsTeamMember = this.team.playerList.map(p => p.index).includes(voterIndex)
                             let targetIsNotPreviousTarget = targetIndex !== previousTargetIndex
                             // 为什么要限制黑手党在晚上投票呢？白天也可以投啊
                             // let gameStatusIsNighdataiscussion = (this.status === 'night/discussion')
                             // 为什么要限制黑手党给自己人投票呢？我觉得他可以啊
                             // let targetIsNotMafia = (this.queryAlivePlayersByRoleTag('Mafia').map(p => p.index).includes(targetIndex) === false)
-                            return voterIsAlive && voterIsTeamMember && targetIsAlive && targetIsNotPreviousTarget
+                            return voterIsAlive && targetIsAlive && targetIsNotPreviousTarget
                         },
                         getResultIndex(game, count){
                             const voteMax = count.reduce((a, b) => Math.max(a, b), -Infinity);
@@ -151,14 +151,14 @@ const originalGameData = {
                             return undefined
                         }
                     },
-                    generateAction(){
+                    generateNightAction(){
                         const targetIndexArray = this.vote.getResultIndex()
                         if(targetIndexArray !== undefined && targetIndexArray.length !== 0){
                             const realKiller = getRandomElement(this.team.alivePlayerList)
                             const realTargetIndex = getRandomElement(targetIndexArray)
                             const realTarget = this.game.playerList[realTargetIndex]
                             this.team.sendEvent('TeamActionNotice', {originIndex:realKiller.index, targetIndex:realTarget.index})
-                            return {type:this.name, origin:realKiller, target:realTarget}
+                            return this.basedOnCommonAbility.generateTeamNightAction(realKiller, realTarget)
                         }else{
                             return undefined
                         }
@@ -213,10 +213,11 @@ const originalGameData = {
 }
 
 export function gameDataInit(game){
-    let tagSet  = tagSetInit() 
-    let roleMetaSet = roleMetaSetInit(game)
-    let voteSet = voteSetInit(game)
-    let teamSet = teamSetInit(game, roleMetaSet)
+    const tagSet            = tagSetInit() 
+    const commonAbilitySet  = commonAbilitySetInit(game)
+    const roleMetaSet       = roleMetaSetInit(game, commonAbilitySet)
+    const voteSet           = voteSetInit(game)
+    const teamSet           = teamSetInit(game, roleMetaSet, commonAbilitySet)
 
     return {tagSet, roleMetaSet, voteSet, teamSet}
 
@@ -240,13 +241,25 @@ export function gameDataInit(game){
         return tagSet
     }
 
-    function roleMetaSetInit(game){
+    function commonAbilitySetInit(game){
+        const commonAbilitySet = {
+            targetedAbilities:[]
+        }
+
+        for(const tAbData of originalGameData.commonAbilities.targetedAbilities){
+            commonAbilitySet.targetedAbilities.push(new TargetedAbility(tAbData))
+        }
+
+        return commonAbilitySet
+    }
+
+    function roleMetaSetInit(game, commonAbilitySet){
         let roleMetaSet = []
         let rolesData = originalGameData.roles
         let tagsData = originalGameData.tags
 
         for(let roleData of rolesData){
-            roleMetaSet.push(new RoleMeta(game, roleData, tagsData))
+            roleMetaSet.push(new RoleMeta(game, roleData, tagsData, commonAbilitySet))
         }
 
         return roleMetaSet
@@ -256,8 +269,63 @@ export function gameDataInit(game){
         return originalGameData.votes.map(v => new Vote(game, v))
     }
 
-    function teamSetInit(game, roleMetaSet){
-        return originalGameData.teams.map(t => new Team(game, t, roleMetaSet))
+    function teamSetInit(game, roleMetaSet, commonAbilitySet){
+        return originalGameData.teams.map(t => new Team(game, t, roleMetaSet, commonAbilitySet))
+    }
+}
+
+// 指向性技能类
+// 注意在这个类中代理对象会优先调用data里面的同名数据
+// 也就是说，除非data里面的存在相应的函数，否则的话，
+// TargetedAbility将会遵循类中定义的默认行为
+class TargetedAbility{
+    constructor(data){
+        this.data = data
+
+        return new Proxy(this, {
+            get(target, prop) {
+                return prop in target.data ? target.data[prop] : target[prop]
+            }
+        })
+    }
+
+    init(){}
+
+    verify(game, userIndex, targetIndex, previousTargetIndex){
+        const userIsAlive = game.playerList[userIndex].isAlive
+        const targetIsAlive = game.playerList[targetIndex].isAlive
+        const targetIsNotPreviousTarget = targetIndex !== previousTargetIndex
+        return userIsAlive && targetIsAlive && targetIsNotPreviousTarget
+    }
+
+    use(game, user, data){
+        const target = game.playerList[data.targetIndex]
+        if(this.verify(game, user.index, target.index)){
+            user.role[`${this.name}Target`] = target
+            return true
+        }
+        return false
+    }
+
+    cancel(game, user){
+        user.role[`${this.name}Target`] = undefined
+        return true
+    }
+
+    generateNightAction(user){
+        if(user.role[`${this.name}Target`] !== undefined){
+            const abilityTarget = user.role[`${this.name}Target`]
+            user.role[`${this.name}Target`] = undefined
+            return {name:this.name, type:this.type, origin:user, target:abilityTarget}
+        }
+        return undefined
+    }
+
+    generateTeamNightAction(executor, target){
+        if(executor && target){
+            return {name:this.name, type:this.type, origin:executor, target}
+        }
+        return undefined
     }
 }
 
@@ -274,17 +342,20 @@ export function gameDataInit(game){
 
 // 就这么干吧，Player类里面多出来一个roleData实在太奇怪了，应该也没啥坏处
 class RoleMeta{
-    constructor(game, roleData, tagsData){
+    constructor(game, roleData, tagsData, commonAbilitySet){
         this.data = roleData
         this.game = game
         this.tagStrings = tagsData.map(t => t.includeRoleNames.includes(roleData.name)? t.name:undefined).filter(t => t !== undefined)
 
-        // set affiliationName
-        // 设置角色的从属关系，不属于“城镇”、“黑手党”、“三合会”的角色会被设置为中立
-        // this.affiliationName = this.tagStrings.find(ts => tagsData.find(t => t.name === ts).isFaction) ?? "Neutral"
-        // this.tagStrings = this.tagStrings.filter(ts => tagsData.find(t => t.name === ts).isFaction !== true)
-        // if(this.affiliationName === "Neutral")
-        //     this.tagStrings.unshift("Neutral")
+        if('commonAbilityNames' in roleData){
+            this.abilities = []
+            for(const cAbName of roleData.commonAbilityNames){
+                this.abilities.push(commonAbilitySet.targetedAbilities.find(cAb => cAb.name === cAbName))
+            }
+
+            if('abilities' in this.data)
+                this.abilities = this.abilities.concat(this.data.abilities)
+        }
 
         return new Proxy(this, {
             get(target, prop) {
@@ -328,8 +399,8 @@ class RoleMeta{
     setRoleData(player){
         if(this.abilities !== undefined){
             for(const a of this.abilities){
-                if('setRoleData' in a)
-                    a.setRoleData(this.game, player)
+                if('init' in a)
+                    a.init(this.game, player)
             }
         }
     }
@@ -421,7 +492,7 @@ class Vote{
 }
 
 class Team{
-    constructor(game, data, roleMetaSet){
+    constructor(game, data, roleMetaSet, commonAbilitySet){
         this.name = data.name
         this.game = game
         this.data = data
@@ -440,11 +511,14 @@ class Team{
             this.includeRoleNames.push(...data.includeRoleNames)
         }
 
-        for(let a of data.abilities){
+        for(const a of data.abilities){
             a.team = this
             a.game = game
             a.voteData.team = this
             a.vote = new Vote(game, a.voteData)
+            
+            if('basedOnCommonAbilityName' in a)
+                a.basedOnCommonAbility = commonAbilitySet.targetedAbilities.find(cAb => cAb.name === a.basedOnCommonAbilityName)
         }
     }
 
@@ -488,12 +562,14 @@ class Team{
         }
     }
 
-    generateAction(){
+    generateNightAction(){
         let actionSequence = []
         for(const ability of this.abilities){
-            const action = ability.generateAction()
-            if(action !== undefined)
+            const action = ability.generateNightAction()
+            if(action !== undefined){
+                action.isTeamAction = true
                 actionSequence.push(action)
+            }
 
             ability.vote.resetRecord()
         }
@@ -512,8 +588,8 @@ class Team{
 
 // 下面这个输出是用来调试的，和浏览器环境不兼容因此只能注释掉
 // if(require.main === module){
-//     // console.log(gameDataInit({playerList:[]}).roleMetaSet.map(rm => rm.toJSON()))
-//     console.log(getDefaultAffiliationTable())
+//     console.log(gameDataInit({playerList:[]}))
+//     // console.log(getDefaultAffiliationTable())
 // }
 
 function getRandomElement(arr){
@@ -521,17 +597,16 @@ function getRandomElement(arr){
     return arr[randomIndex]
 }
 
-// todo
-export function abilityUseVerify(game, roleName, abilityName, user, target){
-    const role = originalGameData.roles.find(r => r.name === roleName)
+export function abilityUseVerify(game, roleName, abilityName, userIndex, targetIndex, previousTargetIndex){
+    const roleMetaSet = gameDataInit(game).roleMetaSet
+    const role = roleMetaSet.find(r => r.name === roleName)
     const ability = role.abilities?.find(a => a.name === abilityName)
-    return ability?.verify(game, user, target)
+    return ability?.verify(game, userIndex, targetIndex, previousTargetIndex)
 }
 
-export function teamVoteVerify(game, team, teamAbilityName, {voterIndex, targetIndex, previousTargetIndex}){
-    const _team = originalGameData.teams.find(t => t.name === team.name)
+export function teamVoteVerify(game, teamName, teamAbilityName, {voterIndex, targetIndex, previousTargetIndex}){
+    const _team = originalGameData.teams.find(t => t.name === teamName)
     const vote = _team.abilities.find(a => a.name === teamAbilityName).voteData
-    vote.team = team
     return vote.verify(game, voterIndex, targetIndex, previousTargetIndex)
 }
 

@@ -716,7 +716,7 @@ document.addEventListener('alpine:init', () => {
             'UseAblitySuccess':function(data){
                 const abilityName = data.name
                 switch(abilityName){
-                    case 'DoctorHealProtect':
+                    case 'Heal':
                         this.addSystemHintText(`你决定在今晚治疗 ${this.playerList[data.targetIndex].getNameMagicString()}`, 'limegreen')
                     break
                 }
@@ -726,7 +726,7 @@ document.addEventListener('alpine:init', () => {
             'UseAblityCancelSuccess':function(data){
                 const abilityName = data.name
                 switch(abilityName){
-                    case 'DoctorHealProtect':
+                    case 'Heal':
                         this.addSystemHintText(`你放弃治疗 ${this.playerList[this.myAbilityTargetIndex].getNameMagicString()}`, 'yellow')
                     break
                 }
@@ -854,25 +854,18 @@ document.addEventListener('alpine:init', () => {
 
                 case 'use':
                 case 'useAbility':
+                    console.log(commandString)
                     const usedAbilityName = args.shift()
                     if(this.myRole.abilityNames?.includes(usedAbilityName)){
-                        switch(usedAbilityName){
-                            case 'DoctorHealProtect':
-                                let targetIndex = Number(args.shift())-1
-                                if(Number.isNaN(targetIndex) === false)
-                                    sendEvent('UseAbility', {name:usedAbilityName, targetIndex})
-                            break
-                        }
+                        const targetIndex = Number(args.shift())-1
+                        if(Number.isNaN(targetIndex) === false)
+                            sendEvent('UseAbility', {name:usedAbilityName, targetIndex})
                     }
                 break
                 case 'useAbilityCancel':
                     const cancelAbilityName = args.shift()
                     if(this.myRole.abilityNames?.includes(cancelAbilityName)){
-                        switch(cancelAbilityName){
-                            case 'DoctorHealProtect':
-                                sendEvent('UseAbilityCancel', {name:cancelAbilityName})
-                            break
-                        }
+                        sendEvent('UseAbilityCancel', {name:cancelAbilityName})
                     }
                 break
 
@@ -1750,19 +1743,18 @@ document.addEventListener('alpine:init', () => {
                 const myRoleHasAbility = (this.myRole.abilityNames !== undefined && this.myRole.abilityNames?.length > 0)
                 if(myRoleHasAbility === false && this.myTeam?.abilityNames?.length > 0){
                     const teamAbilityName = this.myTeam.abilityNames[0]
-                    if(teamVoteVerify(this, this.myTeam, teamAbilityName, {voterIndex:this.myIndex, targetIndex, previousTargetIndex:this.myTeamAbilityVoteTargetIndex}))
+                    if(teamVoteVerify(this, this.myTeam.name, teamAbilityName, {voterIndex:this.myIndex, targetIndex, previousTargetIndex:this.myTeamAbilityVoteTargetIndex}))
                         buttons.push(teamVoteButton)
                     else if(targetIndex === this.myTeamAbilityVoteTargetIndex)
                         buttons.push(teamVoteCancelButton)
                 }
                 else if(this.myRole.abilityNames?.length > 0){
                     const roleAbilityName = this.myRole.abilityNames[0]
-                    const user = this.playerList[this.myIndex]
-                    const target = this.playerList[targetIndex]
+                    const userIndex = this.myIndex
 
                     if(targetIndex === this.myAbilityTargetIndex)
                         buttons.push(useAbilityCancelButton)
-                    else if(abilityUseVerify(this, this.myRole.name, roleAbilityName, user, target))
+                    else if(abilityUseVerify(this, this.myRole.name, roleAbilityName, userIndex, targetIndex, this.myAbilityTargetIndex))
                         buttons.push(useAbilityButton)
                 }
             }
@@ -1890,7 +1882,7 @@ class Player{
                 let deathReasonDescriptions = []
                 while(this.deathReason?.length > 0 )
                 switch(this.deathReason.shift()){
-                    case 'MafiaKillAttack':
+                    case 'MafiaAttack':
                         deathReasonDescriptions.push('死于黑手党的攻击')
                     break
                     case 'Execution':

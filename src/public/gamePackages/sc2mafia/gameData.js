@@ -1,7 +1,10 @@
-const originalGameData = {
+export const originalGameData = {
     factions: [
         {name:'Town'},
-        {name:'Mafia'}
+        {
+            name:'Mafia',
+            allMembersAreOnDefaultTeam:'AttackTeam',
+        }
     ],
     tags: [
         {
@@ -29,11 +32,33 @@ const originalGameData = {
     // 上面写明了自己想要在今晚干什么
 
     // 两种特殊的ability类型Attack和Protect将会有特殊的处理行为。
-    commonAbilities:{
+    abilities:{
         targetedAbilities:[
             {
                 name:"Attack",
                 type:"Attack",
+                teamVoteData:{
+                    name:`AttackVote`,
+                    verify(game, voterIndex, targetIndex, previousTargetIndex){
+                        let voterIsAlive = game.playerList[voterIndex].isAlive
+                        let targetIsAlive = game.playerList[targetIndex].isAlive
+                        let targetIsNotPreviousTarget = targetIndex !== previousTargetIndex
+                        // 为什么要限制黑手党在晚上投票呢？白天也可以投啊
+                        // let gameStatusIsNighdataiscussion = (this.status === 'night/discussion')
+                        // 为什么要限制黑手党给自己人投票呢？我觉得他可以啊
+                        // let targetIsNotMafia = (this.queryAlivePlayersByRoleTag('Mafia').map(p => p.index).includes(targetIndex) === false)
+                        return voterIsAlive && targetIsAlive && targetIsNotPreviousTarget
+                    },
+                    getResultIndexArray(game, count){
+                        const voteMax = count.reduce((a, b) => Math.max(a, b), -Infinity);
+
+                        if(voteMax > 0){
+                            let voteMaxIndexArray = count.map((vc, idx) => {return  vc === voteMax ? idx:undefined}).filter(vidx => vidx !== undefined)
+                            return voteMaxIndexArray
+                        }
+                        return undefined
+                    },
+                },
             },
             {
                 name:"Heal",
@@ -44,6 +69,35 @@ const originalGameData = {
                     const targetIsNotPreviousTarget = targetIndex !== previousTargetIndex
                     const targetIsNotDead_yet = game.playerList[targetIndex].isAlive
                     return userIsAlive && userIsNotTarget && targetIsNotPreviousTarget && targetIsNotDead_yet
+                },
+            },
+            {
+                name:"Detect",
+                verify(game, userIndex, targetIndex, previousTargetIndex){
+                    const userIsAlive = game.playerList[userIndex].isAlive
+                    const userIsNotTarget = (userIndex !== targetIndex)
+                    const targetIsNotPreviousTarget = targetIndex !== previousTargetIndex
+                    const targetIsAlive = game.playerList[targetIndex].isAlive
+                    return userIsAlive && userIsNotTarget && targetIsNotPreviousTarget && targetIsAlive
+                },
+                teamVoteData:{
+                    name:`DetectVote`,
+                    verify(game, voterIndex, targetIndex, previousTargetIndex){
+                        let voterIsAlive = game.playerList[voterIndex].isAlive
+                        let targetIsAlive = game.playerList[targetIndex].isAlive
+                        let targetIsNotPreviousTarget = targetIndex !== previousTargetIndex
+                        let targetIsNotAuxiliaryOfficer = (this.team.playerList.map(p => p.index).includes(targetIndex) === false)
+                        return voterIsAlive && targetIsAlive && targetIsNotPreviousTarget && targetIsNotAuxiliaryOfficer
+                    },
+                    getResultIndexArray(game, count){
+                        const voteMax = count.reduce((a, b) => Math.max(a, b), -Infinity);
+
+                        if(voteMax > 0){
+                            let voteMaxIndexArray = count.map((vc, idx) => {return  vc === voteMax ? idx:undefined}).filter(vidx => vidx !== undefined)
+                            return voteMaxIndexArray
+                        }
+                        return undefined
+                    },
                 },
             }
         ]
@@ -57,15 +111,17 @@ const originalGameData = {
         {
             name: "Sheriff",
             defaultAffiliationName:"Town",
+            abilityNames:['Detect'],
         },
         {
             name: "Doctor",
             defaultAffiliationName:"Town",
-            commonAbilityNames:['Heal'],
+            abilityNames:['Heal'],
         },
         {
             name: "AuxiliaryOfficer",
             defaultAffiliationName:"Town",
+            defaultTeamName:"DetectTeam",
         },
         {
             name: "Mafioso",
@@ -120,158 +176,79 @@ const originalGameData = {
     ],
     teams: [
         {
-            name: "Mafia",
-            includeRoleNames:["Mafioso"],
-
-            // includeRoleTag: "Mafia",
-            abilities:[
-                {
-                    name:"MafiaKillAttack",
-                    targetNoticeEventType:"MafiaKillTargets",
-                    basedOnCommonAbilityName:"Attack",
-                    voteData:{
-                        name:"MafiaKillVote",
-                        verify(game, voterIndex, targetIndex, previousTargetIndex){
-                            let voterIsAlive = game.playerList[voterIndex].isAlive
-                            let targetIsAlive = game.playerList[targetIndex].isAlive
-                            let targetIsNotPreviousTarget = targetIndex !== previousTargetIndex
-                            // 为什么要限制黑手党在晚上投票呢？白天也可以投啊
-                            // let gameStatusIsNighdataiscussion = (this.status === 'night/discussion')
-                            // 为什么要限制黑手党给自己人投票呢？我觉得他可以啊
-                            // let targetIsNotMafia = (this.queryAlivePlayersByRoleTag('Mafia').map(p => p.index).includes(targetIndex) === false)
-                            return voterIsAlive && targetIsAlive && targetIsNotPreviousTarget
-                        },
-                        getResultIndex(game, count){
-                            const voteMax = count.reduce((a, b) => Math.max(a, b), -Infinity);
-
-                            if(voteMax > 0){
-                                let voteMaxIndexArray = count.map((vc, idx) => {return  vc === voteMax ? idx:undefined}).filter(vidx => vidx !== undefined)
-                                return voteMaxIndexArray
-                            }
-                            return undefined
-                        }
-                    },
-                    generateNightAction(){
-                        const targetIndexArray = this.vote.getResultIndex()
-                        if(targetIndexArray !== undefined && targetIndexArray.length !== 0){
-                            const realKiller = getRandomElement(this.team.alivePlayerList)
-                            const realTargetIndex = getRandomElement(targetIndexArray)
-                            const realTarget = this.game.playerList[realTargetIndex]
-                            this.team.sendEvent('TeamActionNotice', {originIndex:realKiller.index, targetIndex:realTarget.index})
-                            return this.basedOnCommonAbility.generateTeamNightAction(realKiller, realTarget)
-                        }else{
-                            return undefined
-                        }
-                    }
-                }
-            ],
+            name: "AttackTeam",
+            abilityNames:['Attack'],
+            // abilities:[
+            //     {
+                    
+            //         generateNightAction(){
+            //             const targetIndexArray = this.vote.getResultIndex()
+            //             if(targetIndexArray !== undefined && targetIndexArray.length !== 0){
+            //                 const realKiller = getRandomElement(this.team.alivePlayerList)
+            //                 const realTargetIndex = getRandomElement(targetIndexArray)
+            //                 const realTarget = this.game.playerList[realTargetIndex]
+            //                 this.team.sendEvent('TeamActionNotice', {originIndex:realKiller.index, targetIndex:realTarget.index})
+            //                 return this.basedOnAbility.generateTeamNightAction(realKiller, realTarget)
+            //             }else{
+            //                 return undefined
+            //             }
+            //         }
+            //     }
+            // ],
         }, 
 
         {
-            name:"AuxiliaryOfficers",
-            includeRoleNames:["AuxiliaryOfficer"],
-            abilities:[
-                {
-                    name:"AuxiliaryOfficerCheck",
-                    targetNoticeEventType:"AuxiliaryOfficerCheckTargets",
-                    voteData:{
-                        name:"AuxiliaryOfficerCheckVote",
-                        verify(game, voterIndex, targetIndex, previousTargetIndex){
-                            let voterIsAlive = game.playerList[voterIndex].isAlive
-                            let targetIsAlive = game.playerList[targetIndex].isAlive
-                            let voterIsTeamMember = this.team.playerList.map(p => p.index).includes(voterIndex)
-                            let targetIsNotPreviousTarget = targetIndex !== previousTargetIndex
-                            let targetIsNotAuxiliaryOfficer = (this.team.playerList.map(p => p.index).includes(targetIndex) === false)
-                            return voterIsAlive && voterIsTeamMember && targetIsAlive && targetIsNotPreviousTarget && targetIsNotAuxiliaryOfficer
-                        },
-                        getResultIndex(game, count){
-                            const voteMax = count.reduce((a, b) => Math.max(a, b), -Infinity);
-
-                            if(voteMax > 0){
-                                let voteMaxIndexArray = count.map((vc, idx) => {return  vc === voteMax ? idx:undefined}).filter(vidx => vidx !== undefined)
-                                return voteMaxIndexArray
-                            }
-                            return undefined
-                        }
-                    },
-                    generateAction(){
-                        const targetIndexArray = this.vote.getResultIndex()
-                        if(targetIndexArray !== undefined && targetIndexArray.length !== 0){
-                            const realOrigin = getRandomElement(this.team.alivePlayerList)
-                            const realTargetIndex = getRandomElement(targetIndexArray)
-                            const realTarget = this.game.playerList[realTargetIndex]
-                            this.team.sendEvent('TeamActionNotice', {originIndex:realOrigin.index, targetIndex:realTarget.index})
-                            return {type:this.name, origin:realOrigin, target:realTarget}
-                        }else{
-                            return undefined
-                        }
-                    }
-                }
-            ],
+            name:"DetectTeam",
+            abilityNames:['Detect'],
+            // abilities:[
+            //     {
+            //         name:"AuxiliaryOfficerCheck",
+            //         targetNoticeEventType:"AuxiliaryOfficerCheckTargets",
+            //         voteData:{
+            //             name:"AuxiliaryOfficerCheckVote",
+            //         },
+            //         generateAction(){
+            //             const targetIndexArray = this.vote.getResultIndex()
+            //             if(targetIndexArray !== undefined && targetIndexArray.length !== 0){
+            //                 const realOrigin = getRandomElement(this.team.alivePlayerList)
+            //                 const realTargetIndex = getRandomElement(targetIndexArray)
+            //                 const realTarget = this.game.playerList[realTargetIndex]
+            //                 this.team.sendEvent('TeamActionNotice', {originIndex:realOrigin.index, targetIndex:realTarget.index})
+            //                 return {type:this.name, origin:realOrigin, target:realTarget}
+            //             }else{
+            //                 return undefined
+            //             }
+            //         }
+            //     }
+            // ],
         }
     ]
 }
 
-export function gameDataInit(game){
-    const tagSet            = tagSetInit() 
-    const commonAbilitySet  = commonAbilitySetInit(game)
-    const roleMetaSet       = roleMetaSetInit(game, commonAbilitySet)
-    const voteSet           = voteSetInit(game)
-    const teamSet           = teamSetInit(game, roleMetaSet, commonAbilitySet)
+export const tagSet = tagSetInit()
+function tagSetInit(){
+    const tagSet = originalGameData.tags
+    const teamTag = tagSet.find(t => t.name === 'Team')
 
-    return {tagSet, roleMetaSet, voteSet, teamSet}
-
-    function tagSetInit(){
-        let tagSet = originalGameData.tags
-        let teamTag = tagSet.find(t => t.name === 'Team')
-
-        if(teamTag.includeRoleNames.length === 0){        
-            for(const teamData of originalGameData.teams){
-                if('includeRoleNames' in teamData){
-                    teamTag.includeRoleNames.push(...teamData.includeRoleNames)
-                }
-
-                if('includeRoleTag' in teamData){
-                    const irn = tagSet.find(t => t.name === teamData.includeRoleTag).includeRoleNames
-                    teamTag.includeRoleNames.push(...irn)
-                }
+    if(teamTag.includeRoleNames.length === 0){        
+        const defaultAffiliationTable = getDefaultAffiliationTable()
+        for(const f of originalGameData.factions){
+            if('allMembersAreOnDefaultTeam' in f){
+                const factionMemberRoleNames = defaultAffiliationTable.find(fTag => fTag.name === f.name).includeRoleNames
+                teamTag.includeRoleNames = teamTag.includeRoleNames.concat(factionMemberRoleNames)
             }
         }
 
-        return tagSet
-    }
-
-    function commonAbilitySetInit(game){
-        const commonAbilitySet = {
-            targetedAbilities:[]
+        for(const r of originalGameData.roles){
+            if('defaultTeamName' in r){
+                if(teamTag.includeRoleNames.includes(r.name) === false){
+                    teamTag.includeRoleNames.push(r.name)
+                }
+            }
         }
-
-        for(const tAbData of originalGameData.commonAbilities.targetedAbilities){
-            commonAbilitySet.targetedAbilities.push(new TargetedAbility(tAbData))
-        }
-
-        return commonAbilitySet
     }
 
-    function roleMetaSetInit(game, commonAbilitySet){
-        let roleMetaSet = []
-        let rolesData = originalGameData.roles
-        let tagsData = originalGameData.tags
-
-        for(let roleData of rolesData){
-            roleMetaSet.push(new RoleMeta(game, roleData, tagsData, commonAbilitySet))
-        }
-
-        return roleMetaSet
-    }
-
-    function voteSetInit(game){
-        return originalGameData.votes.map(v => new Vote(game, v))
-    }
-
-    function teamSetInit(game, roleMetaSet, commonAbilitySet){
-        return originalGameData.teams.map(t => new Team(game, t, roleMetaSet, commonAbilitySet))
-    }
+    return tagSet
 }
 
 // 指向性技能类
@@ -292,10 +269,18 @@ class TargetedAbility{
     init(){}
 
     verify(game, userIndex, targetIndex, previousTargetIndex){
+        return this.userVerify(game, userIndex) && this.targetVerify(game, targetIndex, previousTargetIndex)
+    }
+
+    userVerify(game, userIndex){
         const userIsAlive = game.playerList[userIndex].isAlive
+        return userIsAlive
+    }
+
+    targetVerify(game, targetIndex, previousTargetIndex){
         const targetIsAlive = game.playerList[targetIndex].isAlive
         const targetIsNotPreviousTarget = targetIndex !== previousTargetIndex
-        return userIsAlive && targetIsAlive && targetIsNotPreviousTarget
+        return targetIsAlive && targetIsNotPreviousTarget
     }
 
     use(game, user, data){
@@ -321,6 +306,10 @@ class TargetedAbility{
         return undefined
     }
 
+    createAbilityTeamVote(game){
+        return new Vote(game, this.teamVoteData)
+    }
+
     generateTeamNightAction(executor, target){
         if(executor && target){
             return {name:this.name, type:this.type, origin:executor, target}
@@ -329,87 +318,81 @@ class TargetedAbility{
     }
 }
 
-// 注意，这里设置的Role涵盖了同一角色的所有代码，但是具体到角色行为需要的数据，则并不在这个类中
-// 举例来说，某一市民的防弹衣还剩下多少使用次数并不保存在此。
-// 我暂时还没找到很好的解决办法，就先放在玩家对象里面吧。
-// 所以，与其说这里写的是Role类，它反倒是更像某种RoleMeta
-// 仔细思考一下就会发现，这么做是正确的，
-// 因为同一个角色只会遵循同一个逻辑，没有理由将这些逻辑复制给每个玩家（虽然这么做可以带来使用上的方便
-// 也许有某种方法可以兼顾方便和正确，但是我还没找到它
+const abilitySet = abilitySetInit()
+function abilitySetInit(){
+    const abilitySet = {
+        targetedAbilities:[]
+    }
 
-// ...确实有种方法可以兼顾方便和正确，只需要将下面这个类称之为RoleMeta，
-// 然后再在Player类与RoleMeta类之间补充一个包含数据的中间层即可...
+    for(const tAbData of originalGameData.abilities.targetedAbilities){
+        abilitySet.targetedAbilities.push(new TargetedAbility(tAbData))
+    }
 
-// 就这么干吧，Player类里面多出来一个roleData实在太奇怪了，应该也没啥坏处
-class RoleMeta{
-    constructor(game, roleData, tagsData, commonAbilitySet){
-        this.data = roleData
+    return abilitySet
+}
+
+// 仁慈的父，我已坠入，看不见罪的国度，请原谅我的自负~
+export class Role{
+    constructor(game, player, roleData){
         this.game = game
-        this.tagStrings = tagsData.map(t => t.includeRoleNames.includes(roleData.name)? t.name:undefined).filter(t => t !== undefined)
+        this.player = player
+        this.name   = roleData.name
 
-        if('commonAbilityNames' in roleData){
+        const defaultRoleData = originalGameData.roles.find(r => r.name === roleData.name)
+        this.affiliationName = roleData.affiliationName ?? defaultRoleData.defaultAffiliationName
+
+        const factionMemberDefaultTeamName = originalGameData.factions.find(f => f.name === this.affiliationName).allMembersAreOnDefaultTeam
+        this.teamName = roleData.teamName ?? defaultRoleData.defaultTeamName ?? factionMemberDefaultTeamName
+
+        const abilityNames = defaultRoleData.abilityNames
+        if(abilityNames !== undefined){
             this.abilities = []
-            for(const cAbName of roleData.commonAbilityNames){
-                this.abilities.push(commonAbilitySet.targetedAbilities.find(cAb => cAb.name === cAbName))
+            for(const aName of abilityNames){
+                this.abilities.push(abilitySet.targetedAbilities.find(a => a.name === aName))
             }
-
-            if('abilities' in this.data)
-                this.abilities = this.abilities.concat(this.data.abilities)
         }
-
-        return new Proxy(this, {
-            get(target, prop) {
-                return prop in target ? target[prop] : target.data[prop]
-            }
-        })
     }
 
-    useAblity(user, data){
+    useAblity(data){
         if(this.abilities.length === 1){
-            const success = this.abilities[0].use(this.game, user, data)
-            if(success){
-                user.sendEvent('UseAblitySuccess', data)
-            }
+            var ability = this.abilities[0]
         }
         else if('name' in data){
-            const ability = this.abilities.find(a => a.name === data.name)
-            const success = ability.use(this.game, user, data)
-            if(success){
-                user.sendEvent('UseAblitySuccess', data)
-            }
+            var ability = this.abilities.find(a => a.name === data.name)
+        }
+
+        const success = ability?.use(this.game, this.player, data)
+        if(success){
+            this.player.sendEvent('UseAblitySuccess', data)
         }
     }
 
-    useAblityCancel(user, data){
+    useAblityCancel(data){
         if(this.abilities.length === 1){
-            const success = this.abilities[0].cancel(this.game, user, data)
-            if(success){
-                user.sendEvent('UseAblityCancelSuccess', data)
-            }
+            var ability = this.abilities[0]
         }
         else if('name' in data){
-            const ability = this.abilities.find(a => a.name === data.name)
-            const success = ability.cancel(this.game, user, data)
-            if(success){
-                user.sendEvent('UseAblityCancelSuccess', data)
-            }
+            var ability = this.abilities.find(a => a.name === data.name)
+        }
+
+        const success = ability?.cancel(this.game, this.player, data)
+        if(success){
+            this.player.sendEvent('UseAblityCancelSuccess', data)
         }
     }
 
-    setRoleData(player){
-        if(this.abilities !== undefined){
-            for(const a of this.abilities){
-                if('init' in a)
-                    a.init(this.game, player)
-            }
+    generateNightActions(){
+        const actions = []
+        for(const a of this.abilities){
+            actions.push(a.generateNightAction())
         }
+
+        return actions.filter(a => a !== undefined)
     }
 
     toJSON(){
         return {
             name:this.name,
-            tagStrings:this.tagStrings,
-            defaultAffiliationName:this.defaultAffiliationName,
             abilityNames:this.abilities?.map(a => a.name)
         }
     }
@@ -418,11 +401,14 @@ class RoleMeta{
 // 在这个类中，
 // record记录了谁投票给谁，record[1]读取出来的就是2号玩家投票的对象
 // 而count记录的是得票情况，count[1]读取出来的就是2号玩家得了几票
-class Vote{
+export class Vote{
     constructor(game, data){
         this.game = game
         this.data = data
-        this.record = new Array(game.playerList.length).fill(undefined);
+        this.record = new Array(game.playerList.length).fill(undefined)
+
+        if(Object.keys(data).find(k => k.startsWith('getResult')) === undefined)
+            console.error(data.name, ' Unable to get results')
     }
 
     get name(){
@@ -472,11 +458,18 @@ class Vote{
             return this.data.getResultIndex(this.game, this.getCount())
         else if('getResultBoolean' in this.data)
             return this.data.getResultBoolean(this.game, this.record)
+        else if('getResultIndexArray' in this.data)
+            return this.data.getResultIndexArray(this.game, this.getCount())
     }
 
     getResultIndex(){
         if('getResultIndex' in this.data)
             return this.data.getResultIndex(this.game, this.getCount())
+    }
+
+    getResultIndexArray(){
+        if('getResultIndexArray' in this.data)
+            return this.data.getResultIndexArray(this.game, this.getCount())
     }
 
     resetRecord(){
@@ -491,87 +484,92 @@ class Vote{
     // }
 }
 
-class Team{
-    constructor(game, data, roleMetaSet, commonAbilitySet){
-        this.name = data.name
+export class Team{
+    constructor(game, affiliationName, teamName){
         this.game = game
-        this.data = data
+        this.name = teamName
+        this.affiliationName = affiliationName
 
         this.playerList = []
 
-        this.includeRoleNames = []
-        for(const r of roleMetaSet){
-            if('includeRoleTag' in data){
-                if(r.tagStrings.includes(data.includeRoleTag)){
-                    this.includeRoleNames.push(r.name)
-                }
-            }
-        }
-        if('includeRoleNames' in data){
-            this.includeRoleNames.push(...data.includeRoleNames)
-        }
+        const data = originalGameData.teams.find(t => t.name === this.name)
+        if(data === undefined)
+            console.error('Unknow TeamName:', this.name)
 
-        for(const a of data.abilities){
-            a.team = this
-            a.game = game
-            a.voteData.team = this
-            a.vote = new Vote(game, a.voteData)
-            
-            if('basedOnCommonAbilityName' in a)
-                a.basedOnCommonAbility = commonAbilitySet.targetedAbilities.find(cAb => cAb.name === a.basedOnCommonAbilityName)
+        if('abilityNames' in data){
+            this.abilities = []
+            this.abilityVotes = []
+            for(const aName of data.abilityNames){
+                const ability = abilitySet.targetedAbilities.find(a => a.name === aName)
+                this.abilities.push(ability)
+                this.abilityVotes.push(ability.createAbilityTeamVote(game))
+            }
         }
     }
 
-    sendEvent(eventType, data){
-        return this.game.sendEventToGroup(this.playerList, eventType, data)
+    sendEventToAliveMember(eventType, data){
+        return this.game.sendEventToGroup(this.alivePlayerList, eventType, data)
     }
 
     get alivePlayerList(){
         return this.playerList.filter(p => p.isAlive)
     }
 
-    get abilities(){
-        return this.data.abilities
-    }
-
-    playerVote(voter, targetIndex){
+    playerVote(voter, voteData){
         if(this.abilities.length === 1){
             const ability = this.abilities[0]
-            const vote = ability.vote
+            const vote = this.abilityVotes[0]
             const voterIndex = voter.index
-            const {success, previousTargetIndex, voteCount} = vote.playerVote(voter.index, targetIndex)
+            const targetIndex = voteData
+            const oldAbilityTargets = vote.getResultIndexArray()
+            const {success, previousTargetIndex, voteCount} = vote.playerVote(voterIndex, voteData)
             if(success){
-                this.sendEvent(vote.type, {voterIndex, targetIndex, previousTargetIndex})
-                if('targetNoticeEventType' in ability)
-                    this.sendEvent(ability.targetNoticeEventType, ability.vote.getResultIndex())
+                this.sendEventToAliveMember('TeamVote', {teamAbilityName:ability.name, voterIndex, targetIndex, previousTargetIndex})
+
+                const newAbilityTargets = vote.getResultIndexArray()
+                if(arraysEqual(oldAbilityTargets, newAbilityTargets) === false){
+                    this.sendEventToAliveMember('TeamAbilityTargetsNotice', {teamAbilityName:ability.name, targets:newAbilityTargets})
+                }
             }
         }
     }
-
-    playerVoteCancel(voter){
+    playerVoteCancel(voter, voteData){
         if(this.abilities.length === 1){
             const ability = this.abilities[0]
-            const vote = ability.vote
+            const vote = this.abilityVotes[0]
             const voterIndex = voter.index
+            const oldAbilityTargets = vote.getResultIndexArray()
             const {success, previousTargetIndex, voteCount} = vote.playerVoteCancel(voterIndex)
             if(success){
-                this.sendEvent(vote.type+'Cancel', {voterIndex, previousTargetIndex})
-                if('targetNoticeEventType' in ability)
-                    this.sendEvent(ability.targetNoticeEventType, ability.vote.getResultIndex())
+                this.sendEventToAliveMember('TeamVoteCancel', {teamAbilityName:ability.name, voterIndex, previousTargetIndex})
+                
+                const newAbilityTargets = vote.getResultIndexArray()
+                if(arraysEqual(oldAbilityTargets, newAbilityTargets) === false){
+                    this.sendEventToAliveMember('TeamAbilityTargetsNotice', {teamAbilityName:ability.name, targets:newAbilityTargets})
+                }
             }
         }
     }
 
-    generateNightAction(){
+    generateNightActions(){
         let actionSequence = []
-        for(const ability of this.abilities){
-            const action = ability.generateNightAction()
-            if(action !== undefined){
-                action.isTeamAction = true
-                actionSequence.push(action)
+        for(const [index, ability] of this.abilities.entries()){
+            const abilityExecutor = getRandomElement(this.alivePlayerList)
+
+            const abilityVote = this.abilityVotes[index]
+            if(abilityVote.getResultIndexArray() !== undefined){
+                const abilityTargetIndex = getRandomElement(abilityVote.getResultIndexArray())
+                const abilityTarget = this.game.playerList[abilityTargetIndex]
+
+                const action = ability.generateTeamNightAction(abilityExecutor, abilityTarget)
+                if(action !== undefined){
+                    action.isTeamAction = true
+                    actionSequence.push(action)
+                    this.sendEventToAliveMember('TeamNightActionNotice', {name:action.name, originIndex:action.origin.index, targetIndex:action.target.index})
+                }
             }
 
-            ability.vote.resetRecord()
+            abilityVote.resetRecord()
         }
 
         return actionSequence
@@ -580,6 +578,7 @@ class Team{
     toJSON(){
         return {
             name:this.name,
+            affiliationName:this.affiliationName,
             abilityNames:this.abilities?.map(a => a.name),
             memberPlayerData:this.playerList.map(p => p.toJSON_includeRole())
         }
@@ -588,8 +587,9 @@ class Team{
 
 // 下面这个输出是用来调试的，和浏览器环境不兼容因此只能注释掉
 // if(require.main === module){
-//     console.log(gameDataInit({playerList:[]}))
+//     // console.log(gameDataInit({playerList:[]}))
 //     // console.log(getDefaultAffiliationTable())
+//     console.log(getAllRoleData())
 // }
 
 function getRandomElement(arr){
@@ -597,17 +597,48 @@ function getRandomElement(arr){
     return arr[randomIndex]
 }
 
-export function abilityUseVerify(game, roleName, abilityName, userIndex, targetIndex, previousTargetIndex){
-    const roleMetaSet = gameDataInit(game).roleMetaSet
-    const role = roleMetaSet.find(r => r.name === roleName)
-    const ability = role.abilities?.find(a => a.name === abilityName)
+function arraysEqual(arr1, arr2) {
+    if (arr1?.length !== arr2?.length)
+        return false
+    else if(arr1 === arr2)
+        return true
+
+    const sortedArr1 = arr1.slice().sort()
+    const sortedArr2 = arr2.slice().sort()
+
+    return sortedArr1.every((value, index) => value === sortedArr2[index])
+}
+
+export function getRoleTags(roleName){
+    const role = originalGameData.roles.find(r => r.name === roleName)
+
+    if(role.tags === undefined){
+        var tags = tagSet.map(t => t.includeRoleNames.includes(role.name)? t.name:undefined).filter(t => t !== undefined)
+        tags = tags.length > 0 ? tags : undefined
+
+        if(tags !== undefined)
+            role.tags = tags
+    }
+
+    return role.tags
+}
+
+export function getAllRoleData(){
+    const roles = originalGameData.roles
+    return roles.map(r => {
+        getRoleTags(r.name)
+        return r
+    })
+}
+
+export function abilityUseVerify(game, abilityName, userIndex, targetIndex, previousTargetIndex){
+    const ability = abilitySet.targetedAbilities.find(a => a.name === abilityName)
     return ability?.verify(game, userIndex, targetIndex, previousTargetIndex)
 }
 
 export function teamVoteVerify(game, teamName, teamAbilityName, {voterIndex, targetIndex, previousTargetIndex}){
-    const _team = originalGameData.teams.find(t => t.name === teamName)
-    const vote = _team.abilities.find(a => a.name === teamAbilityName).voteData
-    return vote.verify(game, voterIndex, targetIndex, previousTargetIndex)
+    const voteVerify = originalGameData.abilities.targetedAbilities.find(a => a.name === teamAbilityName).teamVoteData.verify
+    return voteVerify(game, voterIndex, targetIndex, previousTargetIndex)
 }
 
 export function publicVoteVerify(game, voteTypeName, {voterIndex, targetIndex, previousTargetIndex}){

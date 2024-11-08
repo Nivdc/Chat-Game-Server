@@ -26,7 +26,7 @@
 1. Faction
     - PlayerGroup，由多个玩家组成的集合
     - 一个胜利目标
-2. Team (TeamMate ?)
+2. Team
     - PlayerGroup
     - 可以从属于某个Faction
     - 可以有ability
@@ -34,7 +34,7 @@
 3. Player
     - 可以从属于某个Faction
     - 可以从属于某个Team
-4. RoleMate
+4. Role
     - 可以有一个默认从属的defaultFaction，如果没有这个defaultFaction，则必须要有自己的胜利目标（中立角色）
     - 可以有ability
     - 可以有自己的胜利目标

@@ -1,4 +1,4 @@
-import { gameDataInit } from "./gameData"
+import { originalGameData, Vote, Team, Role, getRoleTags, tagSet, getAllRoleData } from "./gameData"
 
 const gameDataPath = import.meta.dir + '/public/gameData/'
 let defaultSetting = await readJsonFile(gameDataPath+"defaultSetting.json")
@@ -18,11 +18,7 @@ class Game{
         this.room = room
         this.status = "init"
 
-        const {tagSet, roleMetaSet, voteSet, teamSet} = gameDataInit(this)
-        this.tagSet = tagSet
-        this.roleMetaSet = roleMetaSet
-        this.voteSet = voteSet
-        this.teamSet = teamSet
+        this.voteSet = originalGameData.votes.map(v => new Vote(this, v))
 
         this.sendEventToAll('BackendReady')
 
@@ -206,10 +202,10 @@ class Game{
                         this.gameDirector.playerVoteCancel(voteType, player)
                     break
                     case "TeamVote":
-                        player.team.playerVote(player, event.data)
+                        player.team.playerVote(event.data)
                     break
                     case "TeamVoteCancel":
-                        player.team.playerVoteCancel(player, event.data)
+                        player.team.playerVoteCancel(event.data)
                     break
 
                     case "UseAbility":
@@ -282,14 +278,19 @@ class Game{
         p.sendEvent("SetHost", this.host)
         p.sendEvent("SetStatus", this.status)
         p.sendEvent("SetDayCount", this.dayCount ?? 1)
-        p.sendEvent("SetTagSet", this.tagSet)
-        p.sendEvent("SetRoleSet", this.roleMetaSet)
+        p.sendEvent("SetTagSet", tagSet)
+        p.sendEvent("SetRoleSet", getAllRoleData())
         p.sendEvent("InitCompleted")
 
         p.isReady = true
         this.sendEventToAll("SetReadyPlayerIndexList", this.playerList.filter(p => p.isReady).map(p => p.index))
     }
 
+    // 如果这个游戏继续发展下去，一个role应该附带三个信息{name, fation, team}
+    // 也就是名称、阵营、团队，尽管团队数据储存在角色数据中，但它实际上和玩家的角色无关
+    // 也就是说玩家处于哪个团队，与它的角色无关，是可以配置的
+    // 但是有些角色会有默认的团队，如果没有特别配置，那这个角色的玩家就会处于默认的团队
+    // 这是未来的计划，目前还没实现
     async setup(setting){
         await this.newGameStage("setup", 0.025)
         this.setting = {...defaultSetting, ...setting}
@@ -302,26 +303,17 @@ class Game{
         shuffleArray(this.playerList)
         this.sendEventToAll("SetPlayerList", this.playerList)
         for(let [index, p] of this.playerList.entries()){
-            p.setRole(this.roleMetaSet.find( r => r.name === realRoleNameList[index] ))
+            const playerRoleName = realRoleNameList[index]
+            const playerRole = {name:playerRoleName}
+            p.setRole(new Role(this, p, playerRole))
             p.isAlive = true
 
             p.sendEvent("SetPlayerSelfIndex", p.index)
             p.sendEvent("SetRole", p.role)
-            for(let t of this.teamSet){
-                if(t.includeRoleNames.includes(p.role.name)){
-                    t.playerList.push(p)
-                    p.team = t
-                }
-            }
         }
-
-        for(const t of this.teamSet){
-            t.sendEvent("SetTeam", t)
-        }
-
-        this.teamSet = this.teamSet.filter(t => t.playerList.length > 0)
 
         this.gameDirectorInit()
+        this.gameDirector.teamSetInit()
 
         this.dayCount = 1
 
@@ -342,8 +334,8 @@ class Game{
                         if(keyName.startsWith('excludeTag')){
                             const excludeTagName = keyName.split('excludeTag')[1]
                             r.possibleRoleSet = r.possibleRoleSet.filter(prd => {
-                                const roleMeta = this.roleMetaSet.find(r => r.name === prd.name)
-                                return roleMeta.tagStrings.includes(excludeTagName) === false
+                                const roleTags = getRoleTags(prd.name)
+                                return roleTags.includes(excludeTagName) === false
                             })
                         }
                         else if(keyName.startsWith('excludeRole')){
@@ -476,10 +468,31 @@ class Game{
                 trialVote.resetRecord()
                 return  {trialTargetIsGuilty:result, voteRecord:record}
             },
-
             // resetAllPublicVote(){
             //     game.voteSet.forEach(v => v.resetRecord())
             // }
+
+            teamSetInit(){
+                if(game.teamSet === undefined)
+                    game.teamSet = []
+
+                for(const p of game.playerList){
+                    if(p.role.teamName !== undefined){
+                        const team = game.teamSet.find(t => t.affiliationName === p.role.affiliationName && t.name === p.role.teamName)
+                        if(team !== undefined)
+                            p.setTeam(team)
+                        else{
+                            const newTeam = new Team(game, p.role.affiliationName, p.role.teamName)
+                            game.teamSet.push(newTeam)
+                            p.setTeam(newTeam)
+                        }
+                    }
+                }
+
+                for(const t of game.teamSet){
+                    t.sendEventToAliveMember("SetTeam", t)
+                }
+            }
         }
     }
 
@@ -511,6 +524,9 @@ class Game{
     }
 
     newGameStage(name, durationMin){
+        if(this.onlinePlayerList === 0)
+            return
+
         this.gameStage = new this.GameStage(this, name, durationMin)
         return this.gameStage
     }
@@ -622,7 +638,7 @@ class Game{
     // 如果我们不引入一个生成过程，就得要对夜晚的行动队列进行反复修改
     generatePlayerAction(){
         for(const t of this.teamSet){
-            this.nightActionSequence.push(...t.generateNightAction())
+            this.nightActionSequence.push(...t.generateNightActions())
         }
 
         // SoloPlayer
@@ -659,7 +675,7 @@ class Game{
                 // action.origin.sendEvent("YouGoToKill", {targetIndex: action.target.index})
                 switch(action.type){
                     case 'Attack':
-                        const attackSource = action.isTeamAction ? action.origin.team.name : action.origin.role.name
+                        const attackSource = action.isTeamAction ? action.origin.team.affiliationName : action.origin.role.name
                         action.target.sendEvent('YouUnderAttack', {source:attackSource})
                         action.target.isAlive = false
                         tempDeathReason.push(`${attackSource}Attack`)
@@ -1096,24 +1112,27 @@ class Player{
         }
     }
 
-    setRole(roleMeta){
-        this.playedRoleNameRecord.push(roleMeta.name)
-        this.role = new Proxy({
+    setRole(role){
+        this.playedRoleNameRecord.push(role.name)
+        this.role = role
+    }
+
+    setTeam(team){
+        team.playerList.push(this)
+        this.team = new Proxy({
             player:this,
-            roleMeta,
-            affiliationName:roleMeta.defaultAffiliationName,
-            useAblity(data){
-                this.roleMeta.useAblity(this.player, data)
+            team,
+            playerVote(voteData){
+                this.team.playerVote(this.player, voteData)
             },
-            useAblityCancel(data){
-                this.roleMeta.useAblityCancel(this.player, data)
+            playerVoteCancel(voteData){
+                this.team.playerVoteCancel(this.player, voteData)
             }
         }, {
             get(target, prop) {
-                return prop in target ? target[prop] : target.roleMeta[prop]
+                return prop in target ? target[prop] : target.team[prop]
             }
         })
-        this.role.roleMeta.setRoleData(this)
     }
 
     toJSON_includeRole(){

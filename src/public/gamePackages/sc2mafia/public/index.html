@@ -328,9 +328,9 @@
                 <h3 x-text="roleCardData?.nameTranslate??roleCardData?.name" :style="`color:${roleCardData?.affiliation.color}`"></h3>
                 <p style="color:plum">
                     阵营：<span :style="`color: ${roleCardData?.affiliation.color};`" x-text="roleCardData?.affiliation.nameTranslate??roleCardData?.affiliation.name"></span>
-                    <span x-show="roleCardData?.tagStringsTranslate.length > 0">
+                    <span x-show="roleCardData?.tagsTranslate.length > 0">
                         (
-                            <template x-for="(tagString, index) of roleCardData?.tagStringsTranslate">
+                            <template x-for="(tagString, index) of roleCardData?.tagsTranslate">
                                 <span x-text="`${index === 0? '':'、'}${tagString}`"></span>
                             </template>
                         )
@@ -473,9 +473,9 @@
                                 </h3>
                                 <p style="color:plum">
                                     阵营：<span :style="`color: ${myRole?.affiliation.color};`" x-text="myRole?.affiliation.nameTranslate??myRole?.affiliation.name"></span>
-                                    <span x-show="myRole?.tagStringsTranslate.length > 0">
+                                    <span x-show="myRole?.tagsTranslate.length > 0">
                                     (
-                                        <template x-for="(tagString, index) of myRole?.tagStringsTranslate">
+                                        <template x-for="(tagString, index) of myRole?.tagsTranslate">
                                             <span x-text="`${index === 0? '':'、'}${tagString}`"></span>
                                         </template>
                                     )

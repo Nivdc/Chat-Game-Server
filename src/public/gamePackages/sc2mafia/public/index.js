@@ -401,7 +401,7 @@ document.addEventListener('alpine:init', () => {
 
                 const townColor = frontendData.factions.find(f => f.name === 'Town').color
                 const mafiaColor = frontendData.factions.find(f => f.name === 'Mafia').color
-                this.myTeam.color = this.myTeam.name === 'Mafia'? mafiaColor:townColor
+                this.myTeam.color = this.myTeam.affiliationName === 'Mafia'? mafiaColor:townColor
             },
 
             'SetWinner':function(data){
@@ -524,13 +524,14 @@ document.addEventListener('alpine:init', () => {
                 }
             },
 
-            'MafiaKillVote':function(data){
-                let voter = this.playerList[data.voterIndex]
-                let target = this.playerList[data.targetIndex]
-                let message = new MagicString()
+            'TeamVote':function(data){
+                const voter = this.playerList[data.voterIndex]
+                const target = this.playerList[data.targetIndex]
+                const message = new MagicString()
+                const abilityActionWord = data.teamAbilityName === 'Attack' ? '杀死' : '搜查'
                 message.append(voter.getNameMagicString())
                 if(data.previousTargetIndex === undefined)
-                    message.addText(' 投票杀死 ')
+                    message.addText(` 投票${abilityActionWord} `)
                 else
                     message.addText(' 将他的投票改为 ')
                 message.append(target.getNameMagicString())
@@ -541,7 +542,7 @@ document.addEventListener('alpine:init', () => {
                     this.myTeamAbilityVoteTargetIndex = target.index
                 }
             },
-            'MafiaKillVoteCancel':function(data){
+            'TeamVoteCancel':function(data){
                 let voter = this.playerList[data.voterIndex]
                 let message = new MagicString()
                 message.append(voter.getNameMagicString())
@@ -553,12 +554,17 @@ document.addEventListener('alpine:init', () => {
                     this.myTeamAbilityVoteTargetIndex = undefined
                 }
             },
-            'MafiaKillTargets':function(data){
+            'TeamAbilityTargetsNotice':function(data){
                 if(data){
-                    let message = new  MagicString()
-                    let targets = data.map(pidx => this.playerList[pidx])
-                    if(targets.length === 1){
-                        message.addText('你们决定杀死 ')
+                    const message = new  MagicString()
+                    const targets = data.targets?.map(pidx => this.playerList[pidx])
+                    const abilityActionWord = data.teamAbilityName === 'Attack' ? '杀死' : '搜查'
+                    if(targets === undefined || targets.length === 0){
+                        message.addText(`你们决定今晚不${abilityActionWord}任何人。`)
+                        message.style = `background-color: rgba(0, 0, 0, 0.5);`
+                    }
+                    else if(targets.length === 1){
+                        message.addText(`你们决定${abilityActionWord} `)
                         message.append(targets[0].getNameMagicString())
                         message.style = `background-color:${hexToRgba(targets[0].color, 0.5)};text-shadow: 1px 1px 0px #000000;`
                     }
@@ -569,77 +575,24 @@ document.addEventListener('alpine:init', () => {
                             if(i < (targets.length-1))
                                 message.addText('、')
                         }
-                        message.addText(' ] 中随机杀死一人。')
+                        message.addText(` ] 中随机${abilityActionWord}一人。`)
                         message.style = `background-color: rgba(0, 0, 0, 0.5);`
                     }
                     this.addMessage(message)
                 }
             },
-
-            'AuxiliaryOfficerCheckVote':function(data){
-                let voter = this.playerList[data.voterIndex]
-                let target = this.playerList[data.targetIndex]
-                let message = new MagicString()
-                message.append(voter.getNameMagicString())
-                if(data.previousTargetIndex === undefined)
-                    message.addText(' 投票搜查 ')
-                else
-                    message.addText(' 将他的投票改为 ')
-                message.append(target.getNameMagicString())
-                message.style = `background-color:${hexToRgba(target.color, 0.5)};text-shadow: 1px 1px 0px #000000;`
-                this.addMessage(message)
-
-                if(voter.index === this.myIndex){
-                    this.myTeamAbilityVoteTargetIndex = target.index
-                }
-            },
-            'AuxiliaryOfficerCheckVoteCancel':function(data){
-                let voter = this.playerList[data.voterIndex]
-                let message = new MagicString()
-                message.append(voter.getNameMagicString())
-                message.addText(' 取消了他的投票')
-                message.style = `background-color: rgba(0, 0, 0, 0.5);`
-                this.addMessage(message)
-
-                if(voter.index === this.myIndex){
-                    this.myTeamAbilityVoteTargetIndex = undefined
-                }
-            },
-            'AuxiliaryOfficerCheckTargets':function(data){
-                if(data){
-                    let message = new  MagicString()
-                    let targets = data.map(pidx => this.playerList[pidx])
-                    if(targets.length === 1){
-                        message.addText('你们决定搜查 ')
-                        message.append(targets[0].getNameMagicString())
-                        message.style = `background-color:${hexToRgba(targets[0].color, 0.5)};text-shadow: 1px 1px 0px #000000;`
-                    }
-                    else if(targets.length > 1){
-                        message.addText('你们决定在[ ')
-                        for(const [i, t] of targets.entries()){
-                            message.append(t.getNameMagicString())
-                            if(i < (targets.length-1))
-                                message.addText('、')
-                        }
-                        message.addText(' ] 中随机搜查一人。')
-                        message.style = `background-color: rgba(0, 0, 0, 0.5);`
-                    }
-                    this.addMessage(message)
-                }
-            },
-
-
-            'TeamActionNotice':function(data){
+            'TeamNightActionNotice':function(data){
+                const action = data
                 let message = new MagicString()
                 message.addText('你们决定派出 ')
-                message.append(this.playerList[data.originIndex].getNameMagicString())
-                if(this.myRole.affiliation.name === 'Mafia'){
+                message.append(this.playerList[action.originIndex].getNameMagicString())
+                if(action.name === 'Attack'){
                     message.addText(' 去杀死 ')
                 }
-                else if(this.myRole.name === 'AuxiliaryOfficer'){
+                else if(action.name === 'Detect'){
                     message.addText(' 去搜查 ')
                 }
-                message.append(this.playerList[data.targetIndex].getNameMagicString())
+                message.append(this.playerList[action.targetIndex].getNameMagicString())
                 this.addMessage(message)
             },
 
@@ -1754,7 +1707,7 @@ document.addEventListener('alpine:init', () => {
 
                     if(targetIndex === this.myAbilityTargetIndex)
                         buttons.push(useAbilityCancelButton)
-                    else if(abilityUseVerify(this, this.myRole.name, roleAbilityName, userIndex, targetIndex, this.myAbilityTargetIndex))
+                    else if(abilityUseVerify(this, roleAbilityName, userIndex, targetIndex, this.myAbilityTargetIndex))
                         buttons.push(useAbilityButton)
                 }
             }
@@ -2132,9 +2085,9 @@ class Role{
         this.defaultAffiliation = frontendData.factions.find(f => f.name === this.data.defaultAffiliationName)
         this.affiliation = this.defaultAffiliation
         this.gameSetting = gameSetting
-        this.tagStringsTranslate = this.data.tagStrings.map(tName =>{
+        this.tagsTranslate = this.data.tags?.map(tName =>{
             return tagSet.find(t => t.name === tName).nameTranslate
-        })
+        }) ?? []
 
         return new Proxy(this, {
             get(target, prop) {

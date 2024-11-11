@@ -1,3 +1,4 @@
+import { validateLocaleAndSetLanguage } from "typescript"
 import { originalGameData, Vote, Team, Role, getRoleTags, tagSet, getAllRoleData } from "./gameData"
 
 const gameDataPath = import.meta.dir + '/public/gameData/'
@@ -92,7 +93,7 @@ class Game{
 
     game_ws_message_router(ws, message){
         const event = JSON.parse(message)
-        let player = this.playerList.find(player => {return player.uuid === ws.data.uuid})
+        const player = this.playerList.find(player => {return player.uuid === ws.data.uuid})
 
         if (player !== undefined){
             console.log(`recive pidx: ${player.index}  <-`, event)
@@ -149,6 +150,11 @@ class Game{
 
                 case "ChatMessage":
                     this.sendChatMessage(player, event.data)
+                break
+
+                case "AnimationsFinished":
+                    player.animationsFinished = true
+                    this.gameDirector.CheckAllPlayersAnimationsFinished()
                 break
             }
 
@@ -492,6 +498,17 @@ class Game{
                 for(const t of game.teamSet){
                     t.sendEventToAliveMember("SetTeam", t)
                 }
+            },
+
+            CheckAllPlayersAnimationsFinished(){
+                const allPlayersAnimationsFinished = game.onlinePlayerList.map(p => p.animationsFinished).every(value => value)
+                if(allPlayersAnimationsFinished && game.status === 'animation/actions'){
+                    game.gameStage.abort()
+                    game.setStatus('animation/actions/last12Sec')
+                    setTimeout(() => {
+                        game.dayCycle()
+                    }, 1000 * 12)
+                }
             }
         }
     }
@@ -612,12 +629,8 @@ class Game{
 
         // 此处前端已经收到了所有事件通知，等待下面这个阶段出现就会播放动画队列
         // 而这里就有一个后端究竟要等多久的问题，理想情况下，它应该等待无限久，直到所有人的所有前端动画都播放完
-        // 但是这么做就会有一点点复杂，让我们暂且先偷个懒，就先设置成30秒吧
+        // 目前的设计是后端会固定等待30秒，在这30秒内如果所有人的动画都播完了，就只需等待12秒
         await this.newGameStage("animation/actions", 0.5)
-
-        for(const dp of this.recentlyDeadPlayers){
-            dp.sendEvent("YouAreDead")
-        }
 
         function actionSequencing(a,b){
             const priorityOfActions = {
@@ -962,7 +975,7 @@ class Game{
         let player = this.playerList.find(p => p.user === user)
         this.sendEventToGroup(this.onlinePlayerList, "PlayerQuit", player)
 
-        if(user === this.host.user)
+        if(user === this.host.user && this.notStartedYet)
             this.repickHost(this.getNewRandomHost())
 
         player.user = undefined
@@ -974,6 +987,10 @@ class Game{
         if(this.notStartedYet){
             this.playerList = this.onlinePlayerList
             this.sendEventToAll('SetPlayerList', this.playerList)
+        }
+
+        if(this.status === 'animation/actions'){
+            this.gameDirector.CheckAllPlayersAnimationsFinished()
         }
 
         if(this.onlinePlayerList.length === 0){
@@ -1092,23 +1109,8 @@ class Player{
             this.user.sendEvent(eventType, data)
     }
 
-    getTargetIndex(type){
-        type = type.charAt(0).toLowerCase() + type.slice(1)
-        return this[`${type}TargetIndex`] ?? undefined
-    }
-
-    setTargetIndex(type, targetIndex){
-        type = type.charAt(0).toLowerCase() + type.slice(1)
-        let ti = Number(targetIndex)
-        this[`${type}TargetIndex`] = isValidIndex(ti, this.playerList.length) ? ti : undefined
-    }
-
     resetCommonProperties(){
-        // this.lynchVoteTargetIndex = undefined
-        for (const key of Object.keys(this)) {
-            if(key.endsWith("TargetIndex"))
-                this[key] = undefined
-        }
+        this.animationsFinished = false
     }
 
     setRole(role){
@@ -1117,15 +1119,16 @@ class Player{
     }
 
     setTeam(team){
+        const player = this
         team.playerList.push(this)
         this.team = new Proxy({
-            player:this,
+            player,
             team,
             playerVote(voteData){
-                this.team.playerVote(this.player, voteData)
+                this.team.playerVote(player, voteData)
             },
             playerVoteCancel(voteData){
-                this.team.playerVoteCancel(this.player, voteData)
+                this.team.playerVoteCancel(player, voteData)
             }
         }, {
             get(target, prop) {

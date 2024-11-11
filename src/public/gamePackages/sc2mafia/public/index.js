@@ -326,6 +326,9 @@ document.addEventListener('alpine:init', () => {
                 else if(this.status === 'animation/actions'){
                     this.playActionAnimations()
                 }
+                else if(this.status === 'animation/actions/last12Sec'){
+                    this.createTimer('行动', 0.2, ()=>{this.timer = undefined})
+                }
                 else if(this.status === 'end'){
                     this.createTimer('谢幕', 0.2)
                     this.addSystemHintText("本局游戏已结束，将在12秒后返回大厅。")
@@ -441,6 +444,10 @@ document.addEventListener('alpine:init', () => {
 
             'SetRecentlyDeadPlayers':function(data){
                 this.recentlyDeadPlayers = data
+
+                const myData = data.find(dp => dp.index === this.myIndex)
+                if(myData !== undefined)
+                    this.addSystemHintText("哦不，你死了，但是你仍可以留下来观看本局游戏。", 'darkred')
             },
 
             'LynchVote':function(data){
@@ -638,10 +645,6 @@ document.addEventListener('alpine:init', () => {
 
             'ActionHappened':function(data){
                 this.actionSequence.push(data)
-            },
-
-            'YouAreDead':function(data){
-                this.addSystemHintText("哦不，你死了，但是你仍可以留下来观看本局游戏。", 'darkred')
             },
 
             'YouDecidedToCommitSuicide':function(data){
@@ -1106,7 +1109,7 @@ document.addEventListener('alpine:init', () => {
                 const animationName = action.name.charAt(0).toLowerCase() + action.name.slice(1)
                 await this.playAnimation(animationName, action)
             }
-            // sendEvent('AnimationsComplete')
+            sendEvent('AnimationsFinished')
         },
 
         get isRunning(){
@@ -1962,6 +1965,7 @@ const frontendData = {
             nameTranslate:"警长",
             descriptionTranslate:"一个执法机构的成员，迫于谋杀的威胁而身处隐匿。",
             abilityDescriptionTranslate:"这个角色有每晚侦查一人有无犯罪活动的能力。",
+            abilityDetails:["每晚调查一人的阵营。"],
         },
         {
             name:"AuxiliaryOfficer",

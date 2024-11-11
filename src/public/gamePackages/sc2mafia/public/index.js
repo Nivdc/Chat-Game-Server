@@ -10,7 +10,6 @@ document.addEventListener('alpine:init', () => {
 
         async init() {
             this.setting = cloneDeep(this.presets[0].setting)
-            this.eventHandlerInit()
             this.socketInit()
             this.readyPlayerIndexList = []
             this.tagSet = undefined
@@ -28,8 +27,8 @@ document.addEventListener('alpine:init', () => {
             // this.status = "night/discussion"
             // this.playAnimation('begin')
 
-            // this.actionAnimationNameSequence.push('mafiaKillAttack')
-            // this.actionAnimationNameSequence.push('doctorHealProtect')
+            // this.actionSequence.push('mafiaKillAttack')
+            // this.actionSequence.push('doctorHealProtect')
             // this.playActionAnimations()
             // this.playAnimation("mafiaKillAttack")
             
@@ -61,27 +60,6 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        eventHandlerInit(){
-            // 下面这些是夜间行动阶段会收到的事件，它们都遵循同样的处理逻辑，
-            // 先添加到actionAnimationNameSequence里面暂存起来
-            // 等到animation/actions阶段再顺序播放
-            const nightActionEvents = [
-                'YouGoToKill',
-                'YouUnderAttack',
-                'YouAreHealed',
-                'YourTargetIsAttacked',
-                'AuxiliaryOfficerCheckResult',
-
-                'YouCommittedSuicide',
-            ]
-
-            for(const eName of nightActionEvents){
-                this.eventHandler[eName] = function(data){
-                    const animationName = eName.charAt(0).toLowerCase() + eName.slice(1)
-                    this.actionAnimationNameSequence.push({name:animationName, data})
-                }
-            }
-        },
         eventHandler:{
             'BackendReady':function(data){
                 // 前端加载完毕，后端有可能仍未加载完毕（特别是在首次启动的时候
@@ -341,6 +319,9 @@ document.addEventListener('alpine:init', () => {
                 else if(this.status === 'animation/nightToAction'){
                     this.playAnimation('nightToAction')
                     this.myAbilityTargetIndex = undefined
+                }
+                else if(this.status === 'action'){
+                    // nothing to do...
                 }
                 else if(this.status === 'animation/actions'){
                     this.playActionAnimations()
@@ -655,6 +636,10 @@ document.addEventListener('alpine:init', () => {
                 this.trialTarget = undefined
             },
 
+            'ActionHappened':function(data){
+                this.actionSequence.push(data)
+            },
+
             'YouAreDead':function(data){
                 this.addSystemHintText("哦不，你死了，但是你仍可以留下来观看本局游戏。", 'darkred')
             },
@@ -672,6 +657,12 @@ document.addEventListener('alpine:init', () => {
                     case 'Heal':
                         this.addSystemHintText(`你决定在今晚治疗 ${this.playerList[data.targetIndex].getNameMagicString()}`, 'limegreen')
                     break
+                    case 'Attack':
+                        this.addSystemHintText(`你决定在今晚袭击 ${this.playerList[data.targetIndex].getNameMagicString()}`, 'red')
+                    break
+                    case 'Detect':
+                        this.addSystemHintText(`你决定在今晚调查 ${this.playerList[data.targetIndex].getNameMagicString()}`, 'limegreen')
+                    break
                 }
 
                 this.myAbilityTargetIndex = data.targetIndex
@@ -681,6 +672,12 @@ document.addEventListener('alpine:init', () => {
                 switch(abilityName){
                     case 'Heal':
                         this.addSystemHintText(`你放弃治疗 ${this.playerList[this.myAbilityTargetIndex].getNameMagicString()}`, 'yellow')
+                    break
+                    case 'Attack':
+                        this.addSystemHintText(`你放弃袭击 ${this.playerList[this.myAbilityTargetIndex].getNameMagicString()}`, 'yellow')
+                    break
+                    case 'Detect':
+                        this.addSystemHintText(`你放弃调查 ${this.playerList[this.myAbilityTargetIndex].getNameMagicString()}`, 'yellow')
                     break
                 }
 
@@ -1068,9 +1065,9 @@ document.addEventListener('alpine:init', () => {
                     })
                 break}
 
-                case 'auxiliaryOfficerCheckResult':{
+                case 'receiveDetectionReport':{
                     let target = this.playerList[data.targetIndex]
-                    let affiliation = frontendData.factions.find(f => f.name === data.targetAffiliation)
+                    let affiliation = frontendData.factions.find(f => f.name === data.targetAffiliationName)
                     let message = new MagicString()
                     message.append(target.getNameMagicString())
                     if(affiliation.name === 'Mafia'){
@@ -1102,11 +1099,12 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        actionAnimationNameSequence:[],
+        actionSequence:[],
         async playActionAnimations(){
-            while(this.actionAnimationNameSequence.length > 0){
-                const actionAnimation = this.actionAnimationNameSequence.shift()
-                await this.playAnimation(actionAnimation.name, actionAnimation.data)
+            while(this.actionSequence.length > 0){
+                const action = this.actionSequence.shift()
+                const animationName = action.name.charAt(0).toLowerCase() + action.name.slice(1)
+                await this.playAnimation(animationName, action)
             }
             // sendEvent('AnimationsComplete')
         },
@@ -1151,9 +1149,9 @@ document.addEventListener('alpine:init', () => {
                     
                     roleList: [
                         // "Citizen", "Citizen",
-                        // "Sheriff",
+                        "Sheriff",
                         // "Doctor",
-                        "Doctor",
+                        // "Doctor",
                         "Mafioso",
                         // "AllRandom",
                     ],
@@ -1421,19 +1419,6 @@ document.addEventListener('alpine:init', () => {
         myTeam:undefined,
         myIndex:undefined,
         lynchVoteCount:undefined,
-
-        // 玩家列表...的按钮
-        clickTempButton(target){
-            let targetIndex = target.index + 1
-            if(this.status.split('/').includes('lynchVote')){
-                this.commandHandler(`lynchVote ${targetIndex}`)
-            }else if(this.status === 'night/discussion'){
-                if(this.myRole.name === 'Doctor')
-                    this.commandHandler(`useAbility DoctorHealProtect ${targetIndex}`)
-                else
-                    this.commandHandler(`target ${targetIndex}`)
-            }
-        },
 
         // 游戏结束后显示的演员表
         cast:undefined,
@@ -1971,15 +1956,13 @@ const frontendData = {
             descriptionTranslate:"一个相信真理和正义的普通人",
             abilityDescriptionTranslate:"市民默认没有任何特殊能力",
             otherDescriptionTranslate:"市民在这个游戏中默认为最为普遍的角色",
-            abilityDetails:[],
-            featureDetails:[]
         },
-        // {
-        //     name:"Sheriff",
-        //     nameTranslate:"警长",
-        //     descriptionTranslate:"一个执法机构的成员，迫于谋杀的威胁而身处隐匿。",
-        //     abilityDescriptionTranslate:"这个角色有每晚侦查一人有无犯罪活动的能力。",
-        // },
+        {
+            name:"Sheriff",
+            nameTranslate:"警长",
+            descriptionTranslate:"一个执法机构的成员，迫于谋杀的威胁而身处隐匿。",
+            abilityDescriptionTranslate:"这个角色有每晚侦查一人有无犯罪活动的能力。",
+        },
         {
             name:"AuxiliaryOfficer",
             nameTranslate:"辅警",
@@ -2082,12 +2065,18 @@ class Role{
     constructor(roleFrontendData, roleBackendData, tagSet, gameSetting){
         this.data = roleFrontendData
         this.data = {...this.data, ...roleBackendData}
+
         this.defaultAffiliation = frontendData.factions.find(f => f.name === this.data.defaultAffiliationName)
         this.affiliation = this.defaultAffiliation
         this.gameSetting = gameSetting
         this.tagsTranslate = this.data.tags?.map(tName =>{
             return tagSet.find(t => t.name === tName).nameTranslate
         }) ?? []
+
+        if(this.data.abilityDetails === undefined)
+            this.abilityDetails = []
+        if(this.data.featureDetails === undefined)
+            this.featureDetails = []
 
         return new Proxy(this, {
             get(target, prop) {

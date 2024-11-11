@@ -602,7 +602,7 @@ class Game{
     }
 
     async nightAction(){
-        this.setStatus("night/action")
+        this.setStatus("action")
 
         this.generatePlayerAction()
         this.nightActionSequence.sort(actionSequencing)
@@ -623,9 +623,7 @@ class Game{
             const priorityOfActions = {
                 "Attack":9,
                 "Heal":19,
-
-                // "SheriffCheck":20,
-                "AuxiliaryOfficerCheck":21,
+                "Detect":21,
             }
 
             return priorityOfActions[a.type] - priorityOfActions[b.type]
@@ -676,7 +674,7 @@ class Game{
                 switch(action.type){
                     case 'Attack':
                         const attackSource = action.isTeamAction ? action.origin.team.affiliationName : action.origin.role.name
-                        action.target.sendEvent('YouUnderAttack', {source:attackSource})
+                        action.target.sendEvent('ActionHappened', {name:'YouUnderAttack', source:attackSource})
                         action.target.isAlive = false
                         tempDeathReason.push(`${attackSource}Attack`)
 
@@ -690,10 +688,10 @@ class Game{
                         if(tempDeathReason.length !== 0){
                             const roleNameLowerCase = action.origin.role.name.charAt(0).toLowerCase() + action.origin.role.name.slice(1)
                             if(this.setting.roleModifyOptions[roleNameLowerCase]['knowsIfTargetIsAttacked'])
-                                action.origin.sendEvent('YourTargetIsAttacked')
+                                action.origin.sendEvent('ActionHappened',{name:'YourTargetIsAttacked'})
                         }
                         if(action.name === 'Heal' && action.target.isAlive === false && p.deathReason === undefined){
-                            action.target.sendEvent('YouAreHealed')
+                            action.target.sendEvent('ActionHappened',{name:'YouAreHealed'})
                             action.target.isAlive = true
                         }
                     break
@@ -709,16 +707,17 @@ class Game{
 
         while(this.nightActionSequence.length > 0){
             let a = this.nightActionSequence.shift()
-            switch(a.type){
-                case 'AuxiliaryOfficerCheck':
+            switch(a.name){
+                case 'Detect':
                     if(a.origin.isAlive === true){
-                        this.sendEventToGroup(this.queryAlivePlayersByRoleName('AuxiliaryOfficer'), 
-                        'AuxiliaryOfficerCheckResult', {targetIndex:a.target.index, targetAffiliationName:a.target.role.affiliationName})
+                        if(a.isTeamAction){
+                            a.origin.team.sendEventToAliveMember(
+                            'ActionHappened', {name:'ReceiveDetectionReport', targetIndex:a.target.index, targetAffiliationName:a.target.role.affiliationName})
+                        }else{
+                            a.origin.sendEvent('ActionHappened', {name:'ReceiveDetectionReport', targetIndex:a.target.index, targetAffiliationName:a.target.role.affiliationName})
+                        }
                     }
                 break
-
-                // case "SheriffCheck":
-                // break
             }
         }
     }

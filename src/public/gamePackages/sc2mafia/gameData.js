@@ -178,49 +178,11 @@ export const originalGameData = {
         {
             name: "AttackTeam",
             abilityNames:['Attack'],
-            // abilities:[
-            //     {
-                    
-            //         generateNightAction(){
-            //             const targetIndexArray = this.vote.getResultIndex()
-            //             if(targetIndexArray !== undefined && targetIndexArray.length !== 0){
-            //                 const realKiller = getRandomElement(this.team.alivePlayerList)
-            //                 const realTargetIndex = getRandomElement(targetIndexArray)
-            //                 const realTarget = this.game.playerList[realTargetIndex]
-            //                 this.team.sendEvent('TeamActionNotice', {originIndex:realKiller.index, targetIndex:realTarget.index})
-            //                 return this.basedOnAbility.generateTeamNightAction(realKiller, realTarget)
-            //             }else{
-            //                 return undefined
-            //             }
-            //         }
-            //     }
-            // ],
         }, 
 
         {
             name:"DetectTeam",
             abilityNames:['Detect'],
-            // abilities:[
-            //     {
-            //         name:"AuxiliaryOfficerCheck",
-            //         targetNoticeEventType:"AuxiliaryOfficerCheckTargets",
-            //         voteData:{
-            //             name:"AuxiliaryOfficerCheckVote",
-            //         },
-            //         generateAction(){
-            //             const targetIndexArray = this.vote.getResultIndex()
-            //             if(targetIndexArray !== undefined && targetIndexArray.length !== 0){
-            //                 const realOrigin = getRandomElement(this.team.alivePlayerList)
-            //                 const realTargetIndex = getRandomElement(targetIndexArray)
-            //                 const realTarget = this.game.playerList[realTargetIndex]
-            //                 this.team.sendEvent('TeamActionNotice', {originIndex:realOrigin.index, targetIndex:realTarget.index})
-            //                 return {type:this.name, origin:realOrigin, target:realTarget}
-            //             }else{
-            //                 return undefined
-            //             }
-            //         }
-            //     }
-            // ],
         }
     ]
 }

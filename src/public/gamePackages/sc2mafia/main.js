@@ -1,5 +1,4 @@
-import { validateLocaleAndSetLanguage } from "typescript"
-import { originalGameData, Vote, Team, Role, getRoleTags, tagSet, getAllRoleData } from "./gameData"
+import { originalGameData, Vote, Team, Role, getRoleTags } from "./gameData"
 
 const gameDataPath = import.meta.dir + '/public/gameData/'
 let defaultSetting = await readJsonFile(gameDataPath+"defaultSetting.json")
@@ -99,7 +98,8 @@ class Game{
             console.log(`recive pidx: ${player.index}  <-`, event)
             switch(event.type){
                 case "FrontendReady":
-                    this.sendInitData(player)    
+                    if(player.isReady !== true)
+                        this.sendInitData(player)    
                 break
 
                 case "HostSetupGame":
@@ -248,15 +248,12 @@ class Game{
                         // fixme: 我发现这个地方有一个问题，玩家有可能可以通过反复的使用自杀指令来判断自己是不是被小丑亡语选中为自杀对象了
                         // ...我们先不要想太多，等小丑角色做出来再说吧。
                         // if((this.dayCount ?? 0) >= 3)
-                        const existingSuicideEffect = player.effects.find(e => e.name === 'Suicide')
-                        if(existingSuicideEffect === undefined){
-                            player.effects.push({name:'Suicide'})
+                        if(player.hasEffect('Suicide') === false){
+                            player.addEffect('Suicide')
                             player.sendEvent('YouDecidedToCommitSuicide')
                         }
                         else{
-                            if(existingSuicideEffect.reason === undefined){
-                                player.effects = player.effects.filter(e => e.name !== 'Suicide')
-                            }
+                            player.removeEffect('Suicide')
                             player.sendEvent('YouGiveUpSuicide')
                         }
 
@@ -284,8 +281,8 @@ class Game{
         p.sendEvent("SetHost", this.host)
         p.sendEvent("SetStatus", this.status)
         p.sendEvent("SetDayCount", this.dayCount ?? 1)
-        p.sendEvent("SetTagSet", tagSet)
-        p.sendEvent("SetRoleSet", getAllRoleData())
+        p.sendEvent("SetTagSet", originalGameData.tags)
+        p.sendEvent("SetRoleSet", originalGameData.roles)
         p.sendEvent("InitCompleted")
 
         p.isReady = true
@@ -560,7 +557,6 @@ class Game{
     }
 
     async dayCycle(){
-        this.nightActionSequence = []
         this.playerList.forEach((p) => p.resetCommonProperties())
         this.dayOver = false
 
@@ -602,8 +598,9 @@ class Game{
     }
 
     async nightCycle(){
-        if(this.nightActionSequence === undefined)
-            this.nightActionSequence = []
+        // if(this.nightActionLog === undefined)
+        //     this.nightActionLog = []
+        this.nightActionSequence = []
         this.recentlyDeadPlayers = []
 
         // 如果是第一天，就判断是否以夜晚开局，如果不是，那就执行。
@@ -622,25 +619,26 @@ class Game{
         this.setStatus("action")
 
         this.generatePlayerAction()
-        this.nightActionSequence.sort(actionSequencing)
-        // this.playerEffectsProcess_beforAction()
-        this.nightActionProcess()
-        this.playerEffectsProcess_afterAction()
+        // this.nightActionSequence.sort(actionSequencing)
+        this.nightActionAndEffectProcess()
 
         // 此处前端已经收到了所有事件通知，等待下面这个阶段出现就会播放动画队列
         // 而这里就有一个后端究竟要等多久的问题，理想情况下，它应该等待无限久，直到所有人的所有前端动画都播放完
         // 目前的设计是后端会固定等待30秒，在这30秒内如果所有人的动画都播完了，就只需等待12秒
         await this.newGameStage("animation/actions", 0.5)
 
-        function actionSequencing(a,b){
-            const priorityOfActions = {
-                "Attack":9,
-                "Heal":19,
-                "Detect":21,
-            }
+        // 注意这个排序过程，目前游戏中没有太多技能，所以它没什么用
+        // 目前行动的执行顺序是根据玩家行动的生成顺序，也就是他在alivePlayerList中的排序决定的，也就是index小，楼层低的玩家先执行
+        // 但是如果我们引入这个排序，则同一个行动将能够随机顺序执行
+        // function actionSequencing(a,b){
+        //     const priorityOfActions = {
+        //         "Attack":9,
+        //         "Heal":19,
+        //         "Detect":21,
+        //     }
 
-            return priorityOfActions[a.type] - priorityOfActions[b.type]
-        }
+        //     return priorityOfActions[a.type] - priorityOfActions[b.type]
+        // }
     }
 
     // generatePlayerAction
@@ -652,7 +650,6 @@ class Game{
             this.nightActionSequence.push(...t.generateNightActions())
         }
 
-        // SoloPlayer
         for(const p of this.alivePlayerList){
             for(const a of p.role.abilities ?? []){
                 const action = a.generateNightAction(p)
@@ -662,12 +659,26 @@ class Game{
         }
     }
 
-    // 每个action都至少包含三个数据: origin/行动者, target/对象, type/类型
-    nightActionProcess(){
-        // If no actions happend
-        if(this.nightActionSequence.length === 0){
-            return
-        }
+    // 每个action都至少包含三个数据: origin/行动者, target/对象, name/名称
+    // 有些action还会包含type/类型，目前用到的只有两个类Attack和Protect
+    nightActionAndEffectProcess(){
+        // // If no actions happend
+        // if(this.nightActionSequence.length === 0){
+        //     return
+        // }
+
+        this.nightActionSequence.forEach(a => sendActionEvent(a.origin, 'YouTakeAction', {actionName:a.name, targetIndex:a.target.index}))
+
+        // RoleBlock
+        const blockActions = this.nightActionSequence.filter(a => a.name === 'RoleBlock')
+        blockActions.forEach(a => {
+            if(a.origin.hasEffect('RoleBlocked') === false){
+                a.target.addEffect('RoleBlocked', 1)
+                sendActionEvent(a.target, 'YourRoleIsBlocked')
+            }
+        })
+        this.nightActionSequence = this.nightActionSequence.filter(a => a.origin.hasEffect('RoleBlocked') === false)
+        this.nightActionSequence = this.nightActionSequence.filter(a => a.name !== 'RoleBlock')
 
         // Attack and Protect Processing
         let attackSequence  = filterAndRemove(this.nightActionSequence, a => a.type === 'Attack')
@@ -678,16 +689,13 @@ class Game{
             let psf  = protectSequence.filter(a => a.target === p)
             let anps = interleaveArrays(asf, psf)
             let tempDeathReason = []
-            console.log('anps:', anps.map(a => a.name))
 
             while(anps.length > 0){
                 let action = anps.shift()
-                // fixme: 这里有个小问题要解决，如果杀手已经死了，还是会发送这个消息。
-                // action.origin.sendEvent("YouGoToKill", {targetIndex: action.target.index})
                 switch(action.type){
                     case 'Attack':
                         const attackSource = action.isTeamAction ? action.origin.team.affiliationName : action.origin.role.name
-                        action.target.sendEvent('ActionHappened', {name:'YouUnderAttack', source:attackSource})
+                        sendActionEvent(action.target, 'YouUnderAttack', {source:attackSource})
                         action.target.isAlive = false
                         tempDeathReason.push(`${attackSource}Attack`)
 
@@ -701,10 +709,10 @@ class Game{
                         if(tempDeathReason.length !== 0){
                             const roleNameLowerCase = action.origin.role.name.charAt(0).toLowerCase() + action.origin.role.name.slice(1)
                             if(this.setting.roleModifyOptions[roleNameLowerCase]['knowsIfTargetIsAttacked'])
-                                action.origin.sendEvent('ActionHappened',{name:'YourTargetIsAttacked'})
+                                sendActionEvent(action.origin, 'YourTargetIsAttacked')
                         }
                         if(action.name === 'Heal' && action.target.isAlive === false && p.deathReason === undefined){
-                            action.target.sendEvent('ActionHappened',{name:'YouAreHealed'})
+                            sendActionEvent(action.target, 'YouAreHealed')
                             action.target.isAlive = true
                         }
                     break
@@ -724,30 +732,41 @@ class Game{
                 case 'Detect':
                     if(a.origin.isAlive === true){
                         if(a.isTeamAction){
-                            a.origin.team.sendEventToAliveMember(
-                            'ActionHappened', {name:'ReceiveDetectionReport', targetIndex:a.target.index, targetAffiliationName:a.target.role.affiliationName})
+                            sendActionEvent(a.origin.team, 'ReceiveDetectionReport', {targetIndex:a.target.index, targetAffiliationName:a.target.role.affiliationName})
                         }else{
-                            a.origin.sendEvent('ActionHappened', {name:'ReceiveDetectionReport', targetIndex:a.target.index, targetAffiliationName:a.target.role.affiliationName})
+                            sendActionEvent(a.origin, 'ReceiveDetectionReport', {targetIndex:a.target.index, targetAffiliationName:a.target.role.affiliationName})
                         }
                     }
                 break
+
+                default:
+                    console.error('Unknow action: ', a)
+                break
             }
         }
-    }
 
-    playerEffectsProcess_afterAction(){
+        // effectsProcess_afterAction
         for(const p of this.alivePlayerList){
-            const effects = p.effects ?? []
-            for(const e of effects){
-                if(e.name === 'Suicide'){
-                    p.isAlive = false
-                    p.deathReason?.push('Suicide') ?? (p.deathReason = ['Suicide'])
-                    if(this.recentlyDeadPlayers.includes(p) === false)
-                        this.recentlyDeadPlayers.push(p)
+            if(p.hasEffect('Suicide')){
+                p.isAlive = false
+                p.deathReason?.push('Suicide') ?? (p.deathReason = ['Suicide'])
+                if(this.recentlyDeadPlayers.includes(p) === false)
+                    this.recentlyDeadPlayers.push(p)
 
-                    p.sendEvent('YouCommittedSuicide', e.reason ?? undefined)
-                }
+                sendActionEvent(p, 'YouCommittedSuicide')
             }
+        }
+
+        this.onlinePlayerList.forEach(p => p.reduceEffectsDurationTurns())
+
+        function sendActionEvent(target, actionName, data){
+            if(data && 'name' in data)
+                console.error("The parameter 'data' object of the function sendActionEvent must not contain the property 'name'.")
+
+            if(target.constructor.name === 'Player')
+                target.sendEvent('ActionHappened', {...{name:actionName}, ...data})
+            else if(target.constructor.name === 'Team')
+                target.sendEventToAliveMember('ActionHappened', {...{name:actionName}, ...data})
         }
     }
 
@@ -981,7 +1000,7 @@ class Game{
         player.user = undefined
 
         if(player.isAlive){
-            player.effects.push({name:'Suicide', reason:'AFK'})
+            player.addEffect('Suicide')
         }
 
         if(this.notStartedYet){
@@ -1075,7 +1094,6 @@ class Player{
     constructor(user, game){
         this.user = user
         this.playedRoleNameRecord = []
-        this.effects = []
         this.game = game
     }
 
@@ -1132,9 +1150,32 @@ class Player{
             }
         }, {
             get(target, prop) {
+                if(prop === 'constructor')
+                    return target.team[prop]
+
                 return prop in target ? target[prop] : target.team[prop]
             }
         })
+    }
+
+    #effetcs = []
+    addEffect(name, durationTurns = Infinity){
+        console.log(this.#effetcs)
+        this.#effetcs.push({name, durationTurns})
+        console.log(this.#effetcs)
+
+    }
+    removeEffect(eName){
+        this.#effetcs = this.#effetcs.filter(e => e.name !== eName)
+    }
+    hasEffect(eName){
+        console.log(this.#effetcs)
+        return this.#effetcs.map(e => e.name).includes(eName)
+    }
+    reduceEffectsDurationTurns(){
+        this.#effetcs.forEach(e => e.durationTurns -= 1)
+        this.#effetcs = this.#effetcs.filter(e => e.durationTurns > 0)
+        this.role.reduceEffectsDurationTurns()
     }
 
     toJSON_includeRole(){

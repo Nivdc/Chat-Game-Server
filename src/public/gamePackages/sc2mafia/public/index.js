@@ -320,9 +320,9 @@ document.addEventListener('alpine:init', () => {
                     this.playAnimation('nightToAction')
                     this.myAbilityTargetIndex = undefined
                 }
-                else if(this.status === 'action'){
-                    // nothing to do...
-                }
+                // else if(this.status === 'action'){
+                //     // nothing to do...
+                // }
                 else if(this.status === 'animation/actions'){
                     this.playActionAnimations()
                 }
@@ -382,6 +382,8 @@ document.addEventListener('alpine:init', () => {
                         return ms
                     })
                 }
+
+                this.playerList[this.myIndex].team = this.myTeam
 
                 const townColor = frontendData.factions.find(f => f.name === 'Town').color
                 const mafiaColor = frontendData.factions.find(f => f.name === 'Mafia').color
@@ -516,7 +518,7 @@ document.addEventListener('alpine:init', () => {
                 const voter = this.playerList[data.voterIndex]
                 const target = this.playerList[data.targetIndex]
                 const message = new MagicString()
-                const abilityActionWord = data.teamAbilityName === 'Attack' ? '杀死' : '搜查'
+                const abilityActionWord =  frontendData.abilities[data.teamAbilityName].actionWord
                 message.append(voter.getNameMagicString())
                 if(data.previousTargetIndex === undefined)
                     message.addText(` 投票${abilityActionWord} `)
@@ -546,7 +548,7 @@ document.addEventListener('alpine:init', () => {
                 if(data){
                     const message = new  MagicString()
                     const targets = data.targets?.map(pidx => this.playerList[pidx])
-                    const abilityActionWord = data.teamAbilityName === 'Attack' ? '杀死' : '搜查'
+                    const abilityActionWord =  frontendData.abilities[data.teamAbilityName].actionWord
                     if(targets === undefined || targets.length === 0){
                         message.addText(`你们决定今晚不${abilityActionWord}任何人。`)
                         message.style = `background-color: rgba(0, 0, 0, 0.5);`
@@ -571,15 +573,10 @@ document.addEventListener('alpine:init', () => {
             },
             'TeamNightActionNotice':function(data){
                 const action = data
-                let message = new MagicString()
+                const message = new MagicString()
                 message.addText('你们决定派出 ')
                 message.append(this.playerList[action.originIndex].getNameMagicString())
-                if(action.name === 'Attack'){
-                    message.addText(' 去杀死 ')
-                }
-                else if(action.name === 'Detect'){
-                    message.addText(' 去搜查 ')
-                }
+                message.addText(` 去${frontendData.abilities[action.name].actionWord} `)
                 message.append(this.playerList[action.targetIndex].getNameMagicString())
                 this.addMessage(message)
             },
@@ -656,33 +653,25 @@ document.addEventListener('alpine:init', () => {
 
             'UseAblitySuccess':function(data){
                 const abilityName = data.name
-                switch(abilityName){
-                    case 'Heal':
-                        this.addSystemHintText(`你决定在今晚治疗 ${this.playerList[data.targetIndex].getNameMagicString()}`, 'limegreen')
-                    break
-                    case 'Attack':
-                        this.addSystemHintText(`你决定在今晚袭击 ${this.playerList[data.targetIndex].getNameMagicString()}`, 'red')
-                    break
-                    case 'Detect':
-                        this.addSystemHintText(`你决定在今晚调查 ${this.playerList[data.targetIndex].getNameMagicString()}`, 'limegreen')
-                    break
-                }
+                const abilityActionWord =  frontendData.abilities[abilityName].actionWord
+                const abilityColor = frontendData.abilities[abilityName].color
+
+                const message = new MagicString()
+                message.addText(`你决定在今晚${abilityActionWord} `, abilityColor ?? this.myRole.color)
+                message.append(this.playerList[data.targetIndex].getNameMagicString())
+                this.addMessage(message)
 
                 this.myAbilityTargetIndex = data.targetIndex
             },
             'UseAblityCancelSuccess':function(data){
                 const abilityName = data.name
-                switch(abilityName){
-                    case 'Heal':
-                        this.addSystemHintText(`你放弃治疗 ${this.playerList[this.myAbilityTargetIndex].getNameMagicString()}`, 'yellow')
-                    break
-                    case 'Attack':
-                        this.addSystemHintText(`你放弃袭击 ${this.playerList[this.myAbilityTargetIndex].getNameMagicString()}`, 'yellow')
-                    break
-                    case 'Detect':
-                        this.addSystemHintText(`你放弃调查 ${this.playerList[this.myAbilityTargetIndex].getNameMagicString()}`, 'yellow')
-                    break
-                }
+                const abilityActionWord =  frontendData.abilities[abilityName].actionWord
+                const abilityColor = frontendData.abilities[abilityName].color
+
+                const message = new MagicString()
+                message.addText(`你放弃在今晚${abilityActionWord} `, abilityColor ?? this.myRole.color)
+                message.append(this.playerList[data.targetIndex].getNameMagicString())
+                this.addMessage(message)
 
                 this.myAbilityTargetIndex = undefined
             }
@@ -822,6 +811,7 @@ document.addEventListener('alpine:init', () => {
                     }
                 break
 
+                case 'Suicide':
                 case'suicide':
                     sendEvent('Suicide')
                 break
@@ -1018,9 +1008,13 @@ document.addEventListener('alpine:init', () => {
 
                 // action animations
                 // 行动动画和普通动画的区别就是它会返回一个promise，在动画结束时resolve
-                case 'youGoToKill':{
-                    let message = new MagicString()
-                    message.addText("你前去杀死 ")
+                case 'youTakeAction':{
+                    const abilityName = data.actionName
+                    const abilityActionWord =  frontendData.abilities[abilityName].actionWord
+                    const abilityColor = frontendData.abilities[abilityName].color
+
+                    const message = new MagicString()
+                    message.addText(`你前去${abilityActionWord} `, abilityColor ?? this.myRole.color)
                     message.append(this.playerList[data.targetIndex].getNameMagicString())
                     message.addText("。")
                     this.addMessage(message)
@@ -1033,7 +1027,7 @@ document.addEventListener('alpine:init', () => {
                 break}
 
                 case 'yourTargetIsAttacked':{
-                    this.addSystemHintText("你医治的对象今晚被攻击了", 'darkred')
+                    this.addSystemHintText("你医治的对象今晚被攻击了", 'red')
 
                     return new Promise((resolve) => {
                         setTimeout(()=>{
@@ -1099,6 +1093,18 @@ document.addEventListener('alpine:init', () => {
                         }, { once: true })
                     })
                 break}
+
+                case 'yourRoleIsBlocked':{
+                    this.addSystemHintText("一个迷人的身躯占据了你的夜晚，今晚你什么都做不了", 'Fuchsia')
+
+                    const gamePageElement = document.getElementById('gamePage')
+                    return new Promise((resolve) => {
+                        gamePageElement.classList.add('animation-roleBlocked-2s')
+                        gamePageElement.addEventListener('animationend', () => {
+                            resolve()
+                        }, { once: true })
+                    })
+                break}
             }
         },
 
@@ -1141,7 +1147,7 @@ document.addEventListener('alpine:init', () => {
                     startAt: "night",
                     
                     nightType: "Classic",
-                    nightLength: 0.6,
+                    nightLength: 0.3,
                     
                     revealPlayerRoleOnDeath: true,
                     protectCitizensMode:false,
@@ -1684,7 +1690,7 @@ document.addEventListener('alpine:init', () => {
                 const myRoleHasAbility = (this.myRole.abilityNames !== undefined && this.myRole.abilityNames?.length > 0)
                 if(myRoleHasAbility === false && this.myTeam?.abilityNames?.length > 0){
                     const teamAbilityName = this.myTeam.abilityNames[0]
-                    if(teamVoteVerify(this, this.myTeam.name, teamAbilityName, {voterIndex:this.myIndex, targetIndex, previousTargetIndex:this.myTeamAbilityVoteTargetIndex}))
+                    if(teamVoteVerify(this, this.myTeam, teamAbilityName, {voterIndex:this.myIndex, targetIndex, previousTargetIndex:this.myTeamAbilityVoteTargetIndex}))
                         buttons.push(teamVoteButton)
                     else if(targetIndex === this.myTeamAbilityVoteTargetIndex)
                         buttons.push(teamVoteCancelButton)
@@ -1952,6 +1958,22 @@ const frontendData = {
             color:"#00ccff",
         },
     ],
+    abilities:{
+        "Attack":{
+            actionWord:"袭击",
+            color:"red",
+        },
+        "Heal":{
+            actionWord:"治疗",
+            color:"limegreen",
+        },            
+        "RoleBlock":{
+            actionWord:"限制"
+        },
+        "Detect":{
+            actionWord:"调查"
+        },
+    },
     roles:[
         {
             name:"Citizen",
@@ -1986,13 +2008,19 @@ const frontendData = {
             descriptionTranslate:"一个熟练于医治外伤的秘密外科医生。",
             abilityDescriptionTranslate:"这个角色有每晚救治一人，使其免受一次死亡的能力。",
             abilityDetails:["每晚救治一人，使其免受一次死亡。"],
-            featureDetails:[],
             modifyDescriptionTranslate:{
                 knowsIfTargetIsAttacked:"目标受到攻击时可获知"
             },
             modifyFeatureDescriptionTranslate:{
                 knowsIfTargetIsAttacked_true:"你会获知你的目标是否被攻击。"
             }
+        },
+        {
+            name:"Escort",
+            nameTranslate:"舞娘",
+            descriptionTranslate:"一个衣着稀少的舞娘，秘密地工作。",
+            abilityDescriptionTranslate:"这个角色可以每晚限制一人，中断他的夜间能力。",
+            abilityDetails:["在夜晚限制一人，中断其夜间能力。"],
         },
         {
             name:"Mafioso",
@@ -2004,7 +2032,13 @@ const frontendData = {
                 "在晚上你可以与其他黑手党成员交谈",
             ]
         },
-
+        {
+            name:"Consort",
+            nameTranslate:"陪侍",
+            descriptionTranslate:"一个为犯罪组织工作的舞者。",
+            abilityDescriptionTranslate:"这个角色可以每晚限制一人，中断他的夜间能力。",
+            abilityDetails:["在夜晚限制一人，中断其夜间能力。"],
+        },
     ],
     randomRoles:[
         {

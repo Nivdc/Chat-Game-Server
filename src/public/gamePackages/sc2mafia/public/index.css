@@ -494,6 +494,10 @@ ul{
     animation: underAttack_style_2 2s forwards;
 }
 
+.animation-roleBlocked-2s {
+    animation: roleBlocked 2s forwards;
+}
+
 @keyframes dayToNight {
   0% { background-color: var(--background-highlights); }
   50% { background-color: linear-gradient(90deg,#073642 0%,#002B36 100%); }
@@ -534,6 +538,12 @@ ul{
 @keyframes underAttack_style_2 {
     0% { background-color: black }
     50% { background-color: red }
+    100% { background-color: black }
+}
+
+@keyframes roleBlocked {
+    0% { background-color: black }
+    50% { background-color: fuchsia }
     100% { background-color: black }
 }
 

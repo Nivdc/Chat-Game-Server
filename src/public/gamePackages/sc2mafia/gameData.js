@@ -1,9 +1,43 @@
 export const originalGameData = {
     factions: [
-        {name:'Town'},
+        {
+            name:'Town',
+            roleVariationList:[
+                {
+                    abilityNames:undefined,
+                    name: "Citizen",
+                },
+                {
+                    abilityNames:['Detect'],
+                    name: "Sheriff",
+                },
+                {
+                    abilityNames:['Heal'],
+                    name: "Doctor",
+                },
+                {
+                    abilityNames:['RoleBlock'],
+                    name: "Escort",
+                },
+                {
+                    defaultTeamName:"DetectTeam",
+                    name: "AuxiliaryOfficer",
+                },
+            ]
+        },
         {
             name:'Mafia',
             allMembersAreOnDefaultTeam:'AttackTeam',
+            roleVariationList:[
+                {
+                    abilityNames:undefined,
+                    name: "Mafioso",
+                },
+                {
+                    abilityNames:['RoleBlock'],
+                    name:'Consort'
+                }
+            ],
         }
     ],
     tags: [
@@ -20,9 +54,11 @@ export const originalGameData = {
     ],
 
     // ability其实很简单，它就是驱动逻辑
-    // 玩家使用了某项技能之后，它就会改变游戏数据，就这么简单
+    // 玩家使用了某项技能之后，它就会根据游戏数据改变游戏数据，就这么简单
     // 根据改变时机的不同，ability有两种效果，立刻改变游戏数据，或是延迟到夜晚再改变游戏数据。
     // 团队使用的ability和个人是一样的，区别在于团队通过机制和投票选出执行人和目标，且会在生成action的时候附带一些team数据。
+
+    // 记住game这个大对象里面已经包含了一切所需要的数据，it is All in One.
 
     // 在编写generateNightAction的时候我们要注意，虽然action这个命名隐含着强烈的动作意味
     // 但在这个游戏中，action是，且只是一种数据，一种abilityRecord，
@@ -30,6 +66,14 @@ export const originalGameData = {
 
     // 如果说gameDirector是线下游戏的主持人，那么这个action就是玩家在夜间递给主持人的小纸条
     // 上面写明了自己想要在今晚干什么
+
+    // 也就是说使用一个ability分为两个部分，能不能用ability？ 和 用了ability会产生什么效果？
+    // 此处的ability只用于解决第一个问题，第二个问题则要交由gameDirector处理
+    // 我觉得这么做是很自然且符合逻辑，试想如果我们在线下玩这类游戏，如果我想要声明我今晚要攻击你，
+    // 我是会直接对你：“你今晚被我攻击了”，然后你再来告诉我：“我死了”或者是“我身上有防弹衣，所以我不会死”吗？
+    // 肯定不会是这样，肯定是要由主持人来结算夜间发生的事情的
+
+    // 也许在其他游戏中攻击的实现方法不是这样的，但是在这个游戏中，我觉得只有这样才是正确的。
 
     // 两种特殊的ability类型Attack和Protect将会有特殊的处理行为。
     abilities:{
@@ -40,20 +84,20 @@ export const originalGameData = {
                 teamVoteData:{
                     name:`AttackVote`,
                     verify(game, voterIndex, targetIndex, previousTargetIndex){
-                        let voterIsAlive = game.playerList[voterIndex].isAlive
-                        let targetIsAlive = game.playerList[targetIndex].isAlive
-                        let targetIsNotPreviousTarget = targetIndex !== previousTargetIndex
+                        const voterIsAlive = game.playerList[voterIndex].isAlive
+                        const targetIsAlive = game.playerList[targetIndex].isAlive
+                        const targetIsNotPreviousTarget = targetIndex !== previousTargetIndex
                         // 为什么要限制黑手党在晚上投票呢？白天也可以投啊
-                        // let gameStatusIsNighdataiscussion = (this.status === 'night/discussion')
+                        // const gameStatusIsNighdataiscussion = (this.status === 'night/discussion')
                         // 为什么要限制黑手党给自己人投票呢？我觉得他可以啊
-                        // let targetIsNotMafia = (this.queryAlivePlayersByRoleTag('Mafia').map(p => p.index).includes(targetIndex) === false)
+                        // const targetIsNotMafia = (this.queryAlivePlayersByRoleTag('Mafia').map(p => p.index).includes(targetIndex) === false)
                         return voterIsAlive && targetIsAlive && targetIsNotPreviousTarget
                     },
                     getResultIndexArray(game, count){
                         const voteMax = count.reduce((a, b) => Math.max(a, b), -Infinity);
 
                         if(voteMax > 0){
-                            let voteMaxIndexArray = count.map((vc, idx) => {return  vc === voteMax ? idx:undefined}).filter(vidx => vidx !== undefined)
+                            const voteMaxIndexArray = count.map((vc, idx) => {return  vc === voteMax ? idx:undefined}).filter(vidx => vidx !== undefined)
                             return voteMaxIndexArray
                         }
                         return undefined
@@ -72,6 +116,16 @@ export const originalGameData = {
                 },
             },
             {
+                name:"RoleBlock",
+                verify(game, userIndex, targetIndex, previousTargetIndex){
+                    const userIsAlive = game.playerList[userIndex].isAlive
+                    const userIsNotTarget = (userIndex !== targetIndex)
+                    const targetIsNotPreviousTarget = targetIndex !== previousTargetIndex
+                    const targetIsAlive = game.playerList[targetIndex].isAlive
+                    return userIsAlive && userIsNotTarget && targetIsNotPreviousTarget && targetIsAlive
+                },
+            },
+            {
                 name:"Detect",
                 verify(game, userIndex, targetIndex, previousTargetIndex){
                     const userIsAlive = game.playerList[userIndex].isAlive
@@ -83,17 +137,17 @@ export const originalGameData = {
                 teamVoteData:{
                     name:`DetectVote`,
                     verify(game, voterIndex, targetIndex, previousTargetIndex){
-                        let voterIsAlive = game.playerList[voterIndex].isAlive
-                        let targetIsAlive = game.playerList[targetIndex].isAlive
-                        let targetIsNotPreviousTarget = targetIndex !== previousTargetIndex
-                        let targetIsNotAuxiliaryOfficer = (this.team.playerList.map(p => p.index).includes(targetIndex) === false)
+                        const voterIsAlive = game.playerList[voterIndex].isAlive
+                        const targetIsAlive = game.playerList[targetIndex].isAlive
+                        const targetIsNotPreviousTarget = targetIndex !== previousTargetIndex
+                        const targetIsNotAuxiliaryOfficer = (game.playerList[voterIndex].team.playerList.map(p => p.index).includes(targetIndex) === false)
                         return voterIsAlive && targetIsAlive && targetIsNotPreviousTarget && targetIsNotAuxiliaryOfficer
                     },
                     getResultIndexArray(game, count){
                         const voteMax = count.reduce((a, b) => Math.max(a, b), -Infinity);
 
                         if(voteMax > 0){
-                            let voteMaxIndexArray = count.map((vc, idx) => {return  vc === voteMax ? idx:undefined}).filter(vidx => vidx !== undefined)
+                            const voteMaxIndexArray = count.map((vc, idx) => {return  vc === voteMax ? idx:undefined}).filter(vidx => vidx !== undefined)
                             return voteMaxIndexArray
                         }
                         return undefined
@@ -104,29 +158,6 @@ export const originalGameData = {
     },
     // 
     roles: [
-        {
-            name: "Citizen",
-            defaultAffiliationName:"Town",
-        },
-        {
-            name: "Sheriff",
-            defaultAffiliationName:"Town",
-            abilityNames:['Detect'],
-        },
-        {
-            name: "Doctor",
-            defaultAffiliationName:"Town",
-            abilityNames:['Heal'],
-        },
-        {
-            name: "AuxiliaryOfficer",
-            defaultAffiliationName:"Town",
-            defaultTeamName:"DetectTeam",
-        },
-        {
-            name: "Mafioso",
-            defaultAffiliationName:"Mafia",
-        }
     ],
     votes: [
         {
@@ -187,31 +218,70 @@ export const originalGameData = {
     ]
 }
 
-export const tagSet = tagSetInit()
-function tagSetInit(){
-    const tagSet = originalGameData.tags
-    const teamTag = tagSet.find(t => t.name === 'Team')
-
-    if(teamTag.includeRoleNames.length === 0){        
-        const defaultAffiliationTable = getDefaultAffiliationTable()
+// 兜兜转转又回来了...
+gameDataInit()
+function gameDataInit(){
+    rolesInit()
+    tagsInit()
+    
+    function rolesInit(){
         for(const f of originalGameData.factions){
-            if('allMembersAreOnDefaultTeam' in f){
-                const factionMemberRoleNames = defaultAffiliationTable.find(fTag => fTag.name === f.name).includeRoleNames
-                teamTag.includeRoleNames = teamTag.includeRoleNames.concat(factionMemberRoleNames)
-            }
-        }
+            if('roleVariationList' in f){
+                for(const rv of f.roleVariationList){
+                    let role = {
+                        name:rv.name,
+                        defaultAffiliationName:f.name,
+                        abilityNames:rv.abilityNames,
+                        defaultTeamName:rv.defaultTeamName,
+                    }
 
-        for(const r of originalGameData.roles){
-            if('defaultTeamName' in r){
-                if(teamTag.includeRoleNames.includes(r.name) === false){
-                    teamTag.includeRoleNames.push(r.name)
+                    for (const keyName in role) {
+                        if (role[keyName] === undefined) {
+                            delete role[keyName]
+                        }
+                    }
+
+                    originalGameData.roles.push(role)
                 }
             }
         }
     }
 
-    return tagSet
+    function tagsInit(){
+        const tagSet = originalGameData.tags
+        const teamTag = tagSet.find(t => t.name === 'Team')
+    
+        if(teamTag.includeRoleNames.length === 0){        
+            const defaultAffiliationTable = getDefaultAffiliationTable()
+            for(const f of originalGameData.factions){
+                if('allMembersAreOnDefaultTeam' in f){
+                    const factionMemberRoleNames = defaultAffiliationTable.find(fTag => fTag.name === f.name).includeRoleNames
+                    teamTag.includeRoleNames = teamTag.includeRoleNames.concat(factionMemberRoleNames)
+                }
+            }
+    
+            for(const r of originalGameData.roles){
+                if('defaultTeamName' in r && r.defaultTeamName !== undefined){
+                    if(teamTag.includeRoleNames.includes(r.name) === false){
+                        teamTag.includeRoleNames.push(r.name)
+                    }
+                }
+            }
+        }
+
+        for(const role of originalGameData.roles){
+            if(role.tags === undefined){
+                let tags = originalGameData.tags.map(t => t.includeRoleNames.includes(role.name)? t.name:undefined).filter(t => t !== undefined)
+                tags = tags.length > 0 ? tags : undefined
+        
+                if(tags !== undefined)
+                    role.tags = tags
+            }
+        }
+    }
 }
+
+
 
 // 指向性技能类
 // 注意在这个类中代理对象会优先调用data里面的同名数据
@@ -350,6 +420,26 @@ export class Role{
         }
 
         return actions.filter(a => a !== undefined)
+    }
+
+    // ......嗯对，这里有个可以多重继承的东西...但是我更宁愿手动复制一下
+    #effetcs = []
+    addEffect(name, durationTurns = Infinity){
+        console.log(this.#effetcs)
+        this.#effetcs.push({name, durationTurns})
+        console.log(this.#effetcs)
+
+    }
+    removeEffect(eName){
+        this.#effetcs = this.#effetcs.filter(e => e.name !== eName)
+    }
+    hasEffect(eName){
+        console.log(this.#effetcs)
+        return this.#effetcs.map(e => e.name).includes(eName)
+    }
+    reduceEffectsDurationTurns(){
+        this.#effetcs.forEach(e => e.durationTurns -= 1)
+        this.#effetcs = this.#effetcs.filter(e => e.durationTurns > 0)
     }
 
     toJSON(){
@@ -516,7 +606,8 @@ export class Team{
     generateNightActions(){
         let actionSequence = []
         for(const [index, ability] of this.abilities.entries()){
-            const abilityExecutor = getRandomElement(this.alivePlayerList)
+            const membersWithoutAbilities = this.alivePlayerList.filter(p => p.role.abilities === undefined)
+            const abilityExecutor = getRandomElement(membersWithoutAbilities)
 
             const abilityVote = this.abilityVotes[index]
             if(abilityVote.getResultIndexArray() !== undefined){
@@ -547,11 +638,11 @@ export class Team{
     }
 }
 
-// 下面这个输出是用来调试的，和浏览器环境不兼容因此只能注释掉
+// // 下面这个输出是用来调试的，和浏览器环境不兼容因此只能注释掉
 // if(require.main === module){
 //     // console.log(gameDataInit({playerList:[]}))
 //     // console.log(getDefaultAffiliationTable())
-//     console.log(getAllRoleData())
+//     console.log(originalGameData)
 // }
 
 function getRandomElement(arr){
@@ -573,24 +664,7 @@ function arraysEqual(arr1, arr2) {
 
 export function getRoleTags(roleName){
     const role = originalGameData.roles.find(r => r.name === roleName)
-
-    if(role.tags === undefined){
-        var tags = tagSet.map(t => t.includeRoleNames.includes(role.name)? t.name:undefined).filter(t => t !== undefined)
-        tags = tags.length > 0 ? tags : undefined
-
-        if(tags !== undefined)
-            role.tags = tags
-    }
-
     return role.tags
-}
-
-export function getAllRoleData(){
-    const roles = originalGameData.roles
-    return roles.map(r => {
-        getRoleTags(r.name)
-        return r
-    })
 }
 
 export function abilityUseVerify(game, abilityName, userIndex, targetIndex, previousTargetIndex){
@@ -598,7 +672,7 @@ export function abilityUseVerify(game, abilityName, userIndex, targetIndex, prev
     return ability?.verify(game, userIndex, targetIndex, previousTargetIndex)
 }
 
-export function teamVoteVerify(game, teamName, teamAbilityName, {voterIndex, targetIndex, previousTargetIndex}){
+export function teamVoteVerify(game, team, teamAbilityName, {voterIndex, targetIndex, previousTargetIndex}){
     const voteVerify = originalGameData.abilities.targetedAbilities.find(a => a.name === teamAbilityName).teamVoteData.verify
     return voteVerify(game, voterIndex, targetIndex, previousTargetIndex)
 }

@@ -478,16 +478,12 @@ export class Role{
     // ......嗯对，这里有个可以多重继承的东西...但是我更宁愿手动复制一下
     #effetcs = []
     addEffect(name, durationTurns = Infinity){
-        console.log(this.#effetcs)
         this.#effetcs.push({name, durationTurns})
-        console.log(this.#effetcs)
-
     }
     removeEffect(eName){
         this.#effetcs = this.#effetcs.filter(e => e.name !== eName)
     }
     hasEffect(eName){
-        console.log(this.#effetcs)
         return this.#effetcs.map(e => e.name).includes(eName)
     }
     reduceEffectsDurationTurns(){
@@ -595,6 +591,12 @@ export class Vote{
     // }
 }
 
+// Team原本的设计是与玩家的身份完全隔离的，它只是一种PlayerGroup
+// 也就是说游戏是支持将玩家分组到各个团队里面的，但是我发现我们做不到完全隔离
+// 因为这里面临着一个团队行动由谁来执行，抽取执行人的问题（以及团队领袖有额外投票权的问题
+// 所以...目前的解决方案就是写死在代码里面，Mafia执行人就是Mafioso，三和就是暴徒，共济会就是长老，邪教就是邪教徒
+// 除此之外，游戏还会在白天开始时检测团队有无执行人，并检测团队有无可变身为执行人的角色
+// 如果没有预定的角色名，则会在团队成员中随机抽取
 export class Team{
     constructor(game, affiliationName, teamName){
         this.game = game
@@ -626,14 +628,36 @@ export class Team{
         return this.playerList.filter(p => p.isAlive)
     }
 
+    get defaultExecutionRoleName(){
+        const defaultExecutionRoleNameList = {
+            'Town':{
+                'DetectTeam':'AuxiliaryOfficer',
+            },
+            'Mafia':{
+                'AttackTeam':'Mafioso',
+            },
+        }
+
+        return defaultExecutionRoleNameList[this.affiliationName][this.name]
+    }
+
+    get defaultExecutionMembers(){
+        return this.alivePlayerList.filter(p => p.role.name === this.defaultExecutionRoleName)
+    }
+
     get executableTeamMembers(){
-        // fixme: 这里有个问题，就是教父实际上也没有任何的（主动）能力，怎么避免选中它呢？
-        const membersWithoutAbilities = this.alivePlayerList.filter(p => p.role.abilities === undefined)
-        // if(membersWithoutAbilities.length === 0){
-        //     var canBeExecutorMembers = this.alivePlayerList.filter(p => p.role.modifyObject?.['canBeTeamAbilityExecutor'] === true)
-        // }
-        // return membersWithoutAbilities.length > 0 ? membersWithoutAbilities : canBeExecutorMembers
-        return membersWithoutAbilities
+        if(this.defaultExecutionMembers.length === 0){
+            var canBeExecutorMembers = this.alivePlayerList.filter(p => p.role.modifyObject?.['canBeTeamActionExecutor'] === true)
+        }
+        return this.defaultExecutionMembers.length > 0 ? this.defaultExecutionMembers : canBeExecutorMembers
+    }
+
+    checkTeamHasActionExecutor(){
+        if(this.defaultExecutionMembers.length === 0){
+            const convertiblePlayer = this.alivePlayerList.find(p => p.role.modifyObject?.['canBeTurnedIntoTeamExecutor'] === true)
+            convertiblePlayer.setRole({name:this.defaultExecutionRoleName})
+            this.sendEventToAliveMember('SetTeam', this)
+        }
     }
 
     playerVote(voter, voteData){
@@ -675,14 +699,14 @@ export class Team{
     generateNightActions(){
         let actionSequence = []
         for(const [index, ability] of this.abilities.entries()){
-            const abilityExecutor = getRandomElement(this.executableTeamMembers)
+            const actionExecutor = getRandomElement(this.executableTeamMembers)
 
             const abilityVote = this.abilityVotes[index]
             if(abilityVote.getResultIndexArray() !== undefined){
                 const abilityTargetIndex = getRandomElement(abilityVote.getResultIndexArray())
                 const abilityTarget = this.game.playerList[abilityTargetIndex]
 
-                const action = ability.generateTeamNightAction(abilityExecutor, abilityTarget)
+                const action = ability.generateTeamNightAction(actionExecutor, abilityTarget)
                 if(action !== undefined){
                     action.isTeamAction = true
                     actionSequence.push(action)
@@ -714,7 +738,7 @@ export class Team{
 // }
 
 function extractNumbers(str) {
-return str.match(/\d+/g).map(Number) ?? []
+    return str.match(/\d+/g).map(Number) ?? []
 }
 
 export function getRoleTags(roleName){

@@ -408,7 +408,11 @@ document.addEventListener('alpine:init', () => {
                     let ms = new MagicString
                     ms.append(this.playerList[pd.index].getNameMagicString())
                     ms.addText(" 饰演 ")
-                    ms.append(this.roleSet.find(r => r.name === pd.role.name).getNameMagicString())
+                    for(const [index, roleName] of pd.playedRoleNameRecord.entries()){
+                        if(index !== 0)
+                            ms.addText('/')
+                        ms.append(this.roleSet.find(r => r.name === roleName).getNameMagicString())
+                    }
                     return ms
                 })
 
@@ -1195,6 +1199,7 @@ document.addEventListener('alpine:init', () => {
                             consecutiveAbilityUses_2_Cause_1_NightCooldown:true,
                         },
                         consort:{
+                            canBeTurnedIntoTeamExecutor:true,
                             hasEffect_ImmuneToRoleBlock:false,
                             knowsIfTargetHasEffect_ImmuneToRoleBlock:false,
                         }
@@ -2046,6 +2051,10 @@ const frontendData = {
             description:"连续使用技能2次将产生1晚间隔",
             featureDescription:"连续使用技能2次将产生1晚间隔。",
         },
+        'canBeTurnedIntoTeamExecutor':{
+            description:"团队无可执行角色时转变为可执行角色（党徒）",
+            featureDescription:"团队无可执行角色时转变为可执行角色（党徒）",
+        }
     }
 
     // 我觉得还不到引入一个本地化系统的时候

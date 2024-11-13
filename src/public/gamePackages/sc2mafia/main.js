@@ -308,12 +308,11 @@ class Game{
         this.sendEventToAll("SetPlayerList", this.playerList)
         for(let [index, p] of this.playerList.entries()){
             const playerRoleName = realRoleNameList[index]
-            const playerRole = {name:playerRoleName}
-            p.setRole(new Role(this, p, playerRole))
+            const playerRoleData = {name:playerRoleName}
+            p.setRole(playerRoleData)
             p.isAlive = true
 
             p.sendEvent("SetPlayerSelfIndex", p.index)
-            p.sendEvent("SetRole", p.role)
         }
 
         this.gameDirectorInit()
@@ -561,6 +560,8 @@ class Game{
         this.playerList.forEach((p) => p.resetCommonProperties())
         this.dayOver = false
 
+        this.teamSet.forEach(t => t.checkTeamHasActionExecutor())
+
         if(this.dayCount !== 1){
             await this.newGameStage("animation/actionToDay", 0.1)
             await this.deathDeclare()
@@ -708,6 +709,7 @@ class Game{
                             if(action.origin.role.modifyObject?.['knowsIfTargetIsAttacked'])
                                 sendActionEvent(action.origin, 'YourTargetIsAttacked')
                         }
+                        // fixme?: 如果医生已经死了，他还是能救下他要救的人
                         if(action.name === 'Heal' && action.target.isAlive === false && p.deathReason === undefined){
                             sendActionEvent(action.target, 'YouAreHealed')
                             action.target.isAlive = true
@@ -1123,9 +1125,10 @@ class Player{
         this.animationsFinished = false
     }
 
-    setRole(role){
-        this.playedRoleNameRecord.push(role.name)
-        this.role = role
+    setRole(roleData){
+        this.playedRoleNameRecord.push(roleData.name)
+        this.role = new Role(this.game, this, roleData)
+        this.sendEvent("SetRole", this.role)
     }
 
     setTeam(team){
@@ -1173,6 +1176,7 @@ class Player{
     toJSON_includeRole(){
         const json = this.toJSON()
         json.role = this.role
+        json.playedRoleNameRecord = this.playedRoleNameRecord
         return json
     }
 

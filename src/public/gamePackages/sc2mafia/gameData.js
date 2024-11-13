@@ -1,3 +1,5 @@
+import { arraysEqual, getRandomElement } from "./utils.js"
+
 export const originalGameData = {
     factions: [
         {
@@ -58,7 +60,7 @@ export const originalGameData = {
     // 根据改变时机的不同，ability有两种效果，立刻改变游戏数据，或是延迟到夜晚再改变游戏数据。
     // 团队使用的ability和个人是一样的，区别在于团队通过机制和投票选出执行人和目标，且会在生成action的时候附带一些team数据。
 
-    // 记住game这个大对象里面已经包含了一切所需要的数据，it is All in One.
+    // 记住，无论你想要实现多么复杂的功能，game这个大对象里面已经包含了一切所需要的数据，it is All in One.
 
     // 在编写generateNightAction的时候我们要注意，虽然action这个命名隐含着强烈的动作意味
     // 但在这个游戏中，action是，且只是一种数据，一种abilityRecord，
@@ -122,7 +124,8 @@ export const originalGameData = {
                     const userIsNotTarget = (userIndex !== targetIndex)
                     const targetIsNotPreviousTarget = targetIndex !== previousTargetIndex
                     const targetIsAlive = game.playerList[targetIndex].isAlive
-                    return userIsAlive && userIsNotTarget && targetIsNotPreviousTarget && targetIsAlive
+                    const targetIsNotUserTeamMember = (game.playerList[userIndex].team?.playerList.map(p => p.index).includes(targetIndex) !== true)
+                    return userIsAlive && userIsNotTarget && targetIsNotPreviousTarget && targetIsAlive && targetIsNotUserTeamMember
                 },
             },
             {
@@ -281,8 +284,6 @@ function gameDataInit(){
     }
 }
 
-
-
 // 指向性技能类
 // 注意在这个类中代理对象会优先调用data里面的同名数据
 // 也就是说，除非data里面的存在相应的函数，否则的话，
@@ -339,7 +340,9 @@ class TargetedAbility{
     }
 
     createAbilityTeamVote(game){
-        return new Vote(game, this.teamVoteData)
+        const v = new Vote(game, this.teamVoteData)
+        v.isTeamVote = true
+        return v
     }
 
     generateTeamNightAction(executor, target){
@@ -383,6 +386,38 @@ export class Role{
                 this.abilities.push(abilitySet.targetedAbilities.find(a => a.name === aName))
             }
         }
+
+        if(this.modifyObject){
+            for(const keyName in this.modifyObject ){
+                if(keyName.startsWith('hasEffect_')){
+                    const effectName = keyName.split('_')[1]
+                    if(this.modifyObject[keyName])
+                        this.addEffect(effectName)
+                }
+            }
+
+            if(this.modifyObject['consecutiveAbilityUses_2_Cause_1_NightCooldown']){
+                const consecutiveAbilityUsesLimit = 2
+                const causeNightColldownNumber = 1
+                this.abilityStates = [
+                    {
+                        get UnableToUse(){
+                            let v = this.consecutiveUsageCount % (consecutiveAbilityUsesLimit + causeNightColldownNumber)
+                            if(v === 0)
+                                v = (consecutiveAbilityUsesLimit + causeNightColldownNumber)
+
+                            return v > consecutiveAbilityUsesLimit
+                        },
+                        consecutiveUsageCount: 1
+                    }
+                ]
+            }
+        }
+    }
+
+    get modifyObject(){
+        const roleNameLowerCase = this.name.charAt(0).toLowerCase() + this.name.slice(1)
+        return this.game.setting.roleModifyOptions[roleNameLowerCase]
     }
 
     useAblity(data){
@@ -395,7 +430,10 @@ export class Role{
 
         const success = ability?.use(this.game, this.player, data)
         if(success){
-            this.player.sendEvent('UseAblitySuccess', data)
+            if(this.abilityStates?.[this.abilities.indexOf(ability)].UnableToUse !== true)
+                this.player.sendEvent('UseAblitySuccess', data)
+            else
+                this.player.sendEvent('UseAblityFailed', data)
         }
     }
 
@@ -415,11 +453,26 @@ export class Role{
 
     generateNightActions(){
         const actions = []
-        for(const a of this.abilities){
-            actions.push(a.generateNightAction())
+        for(const [index, a] of this.abilities?.entries()){
+            const action = a.generateNightAction(this.player)
+            if(action !== undefined){
+                if(this.abilityStates?.[index] === undefined)
+                    actions.push(action)
+                else{
+                    if(this.abilityStates[index].UnableToUse === false){
+                        actions.push(action)
+                        this.abilityStates[index].consecutiveUsageCount ++
+                    }else{
+                        this.abilityStates[index].consecutiveUsageCount = 1
+                    }
+                }
+            }else{
+                if(this.abilityStates?.[index] !== undefined)
+                    this.abilityStates[index].consecutiveUsageCount = 1
+            }
         }
 
-        return actions.filter(a => a !== undefined)
+        return actions
     }
 
     // ......嗯对，这里有个可以多重继承的东西...但是我更宁愿手动复制一下
@@ -498,8 +551,14 @@ export class Vote{
         let count = new Array(this.record.length).fill(0)
         for(const [voterIndex, targetIndex] of this.record.entries()){
             const p = this.game.playerList[voterIndex]
-            if(targetIndex !== undefined)
-                count[targetIndex] += `${this.type}Weight` in p.role ? p.role[`${this.type}Weight`] : 1
+            if(targetIndex !== undefined){
+                let voteWeight = `${this.type}Weight` in p.role ? p.role[`${this.type}Weight`] : 1
+                if(this.isTeamVote && p.role.hasEffect('TeamLeader')){
+                    voteWeight = (p.team.playerList.length + 1)
+                }
+
+                count[targetIndex] += voteWeight
+            }
         }
 
         return count
@@ -567,6 +626,16 @@ export class Team{
         return this.playerList.filter(p => p.isAlive)
     }
 
+    get executableTeamMembers(){
+        // fixme: 这里有个问题，就是教父实际上也没有任何的（主动）能力，怎么避免选中它呢？
+        const membersWithoutAbilities = this.alivePlayerList.filter(p => p.role.abilities === undefined)
+        // if(membersWithoutAbilities.length === 0){
+        //     var canBeExecutorMembers = this.alivePlayerList.filter(p => p.role.modifyObject?.['canBeTeamAbilityExecutor'] === true)
+        // }
+        // return membersWithoutAbilities.length > 0 ? membersWithoutAbilities : canBeExecutorMembers
+        return membersWithoutAbilities
+    }
+
     playerVote(voter, voteData){
         if(this.abilities.length === 1){
             const ability = this.abilities[0]
@@ -606,8 +675,7 @@ export class Team{
     generateNightActions(){
         let actionSequence = []
         for(const [index, ability] of this.abilities.entries()){
-            const membersWithoutAbilities = this.alivePlayerList.filter(p => p.role.abilities === undefined)
-            const abilityExecutor = getRandomElement(membersWithoutAbilities)
+            const abilityExecutor = getRandomElement(this.executableTeamMembers)
 
             const abilityVote = this.abilityVotes[index]
             if(abilityVote.getResultIndexArray() !== undefined){
@@ -645,21 +713,8 @@ export class Team{
 //     console.log(originalGameData)
 // }
 
-function getRandomElement(arr){
-    const randomIndex = Math.floor(Math.random() * arr.length)
-    return arr[randomIndex]
-}
-
-function arraysEqual(arr1, arr2) {
-    if (arr1?.length !== arr2?.length)
-        return false
-    else if(arr1 === arr2)
-        return true
-
-    const sortedArr1 = arr1.slice().sort()
-    const sortedArr2 = arr2.slice().sort()
-
-    return sortedArr1.every((value, index) => value === sortedArr2[index])
+function extractNumbers(str) {
+return str.match(/\d+/g).map(Number) ?? []
 }
 
 export function getRoleTags(roleName){

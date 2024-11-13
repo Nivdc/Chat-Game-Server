@@ -1,4 +1,5 @@
-import { originalGameData, Vote, Team, Role, getRoleTags } from "./gameData"
+import { originalGameData, Vote, Team, Role, getRoleTags } from "./gameData.js"
+import { getRandomElement } from "./utils.js"
 
 const gameDataPath = import.meta.dir + '/public/gameData/'
 let defaultSetting = await readJsonFile(gameDataPath+"defaultSetting.json")
@@ -651,29 +652,26 @@ class Game{
         }
 
         for(const p of this.alivePlayerList){
-            for(const a of p.role.abilities ?? []){
-                const action = a.generateNightAction(p)
-                if(action !== undefined)
-                    this.nightActionSequence.push(action)
-            }
+            this.nightActionSequence.push(...p.generateNightActions())
         }
     }
 
     // 每个action都至少包含三个数据: origin/行动者, target/对象, name/名称
     // 有些action还会包含type/类型，目前用到的只有两个类Attack和Protect
     nightActionAndEffectProcess(){
-        // // If no actions happend
-        // if(this.nightActionSequence.length === 0){
-        //     return
-        // }
-
         this.nightActionSequence.forEach(a => sendActionEvent(a.origin, 'YouTakeAction', {actionName:a.name, targetIndex:a.target.index}))
 
         // RoleBlock
         const blockActions = this.nightActionSequence.filter(a => a.name === 'RoleBlock')
         blockActions.forEach(a => {
             if(a.origin.hasEffect('RoleBlocked') === false){
-                a.target.addEffect('RoleBlocked', 1)
+                if(a.target.hasEffect('ImmuneToRoleBlock') === false){
+                    a.target.addEffect('RoleBlocked', 1)
+                }else{
+                    if(a.origin.role.modifyObject?.['knowsIfTargetHasEffect_ImmuneToRoleBlock']){
+                        sendActionEvent(a.origin, 'YourTargetHasEffect', {effectName:'ImmuneToRoleBlock'})
+                    }
+                }
                 sendActionEvent(a.target, 'YourRoleIsBlocked')
             }
         })
@@ -707,8 +705,7 @@ class Game{
 
                     case 'Protect':
                         if(tempDeathReason.length !== 0){
-                            const roleNameLowerCase = action.origin.role.name.charAt(0).toLowerCase() + action.origin.role.name.slice(1)
-                            if(this.setting.roleModifyOptions[roleNameLowerCase]['knowsIfTargetIsAttacked'])
+                            if(action.origin.role.modifyObject?.['knowsIfTargetIsAttacked'])
                                 sendActionEvent(action.origin, 'YourTargetIsAttacked')
                         }
                         if(action.name === 'Heal' && action.target.isAlive === false && p.deathReason === undefined){
@@ -1020,11 +1017,6 @@ class Game{
     }
 }
 
-function getRandomElement(arr){
-    const randomIndex = Math.floor(Math.random() * arr.length)
-    return arr[randomIndex]
-}
-
 function shuffleArray(array) {
     for (let i = array.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -1158,19 +1150,19 @@ class Player{
         })
     }
 
+    generateNightActions(){
+        return this.role.generateNightActions()
+    }
+
     #effetcs = []
     addEffect(name, durationTurns = Infinity){
-        console.log(this.#effetcs)
         this.#effetcs.push({name, durationTurns})
-        console.log(this.#effetcs)
-
     }
     removeEffect(eName){
         this.#effetcs = this.#effetcs.filter(e => e.name !== eName)
     }
     hasEffect(eName){
-        console.log(this.#effetcs)
-        return this.#effetcs.map(e => e.name).includes(eName)
+        return (this.#effetcs.map(e => e.name).includes(eName) || this.role.hasEffect(eName))
     }
     reduceEffectsDurationTurns(){
         this.#effetcs.forEach(e => e.durationTurns -= 1)

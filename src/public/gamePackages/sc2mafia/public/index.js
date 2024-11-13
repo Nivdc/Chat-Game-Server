@@ -1,4 +1,5 @@
 import { abilityUseVerify, getDefaultAffiliationTable, publicVoteVerify, teamVoteVerify} from "../gameData.js"
+import { arraysEqual } from "../utils.js"
 
 let socket = undefined
 
@@ -180,6 +181,7 @@ document.addEventListener('alpine:init', () => {
             'SetReadyPlayerIndexList':function(data){
                 const newReadyPlayerIndexList = data
                 const newPlayerIndexList = getComplement(newReadyPlayerIndexList, this.readyPlayerIndexList)
+                console.log(newPlayerIndexList)
                 for(const pIndex of newPlayerIndexList){
                     let message = new MagicString({style:'background-color:rgba(0, 0, 0, 0.2);color:yellow;text-shadow: 1px 1px 0px #000000;'})
                     let player  = this.playerList[pIndex]
@@ -674,6 +676,9 @@ document.addEventListener('alpine:init', () => {
                 this.addMessage(message)
 
                 this.myAbilityTargetIndex = undefined
+            },
+            'UseAblityFailed':function(data){
+                this.addSystemHintText('技能使用失败，可能是因为在冷却、没次数了。更多提示以后再做吧。')
             }
         },
         commandHandler(commandString){
@@ -1105,6 +1110,21 @@ document.addEventListener('alpine:init', () => {
                         }, { once: true })
                     })
                 break}
+
+                case 'yourTargetHasEffect':{
+                    switch(data.effectName){
+                        case 'ImmuneToRoleBlock':
+                            this.addSystemHintText("你的目标免疫限制", 'white')
+                        break
+                    }
+
+                    return new Promise((resolve) => {
+                        setTimeout(()=>{
+                            resolve()
+                        }, 2 * 1000)
+                    })
+                break}
+                
             }
         },
 
@@ -1158,60 +1178,29 @@ document.addEventListener('alpine:init', () => {
                     
                     roleList: [
                         // "Citizen", "Citizen",
-                        "Sheriff",
+                        "Escort",
                         // "Doctor",
                         // "Doctor",
-                        "Mafioso",
+                        "Consort",
                         // "AllRandom",
                     ],
 
                     roleModifyOptions: {
                         doctor:{
                             knowsIfTargetIsAttacked:true,
+                        },
+                        escort:{
+                            hasEffect_ImmuneToRoleBlock:false,
+                            knowsIfTargetHasEffect_ImmuneToRoleBlock:false,
+                            consecutiveAbilityUses_2_Cause_1_NightCooldown:true,
+                        },
+                        consort:{
+                            hasEffect_ImmuneToRoleBlock:false,
+                            knowsIfTargetHasEffect_ImmuneToRoleBlock:false,
                         }
                     }
                 }
             },
-            {
-                name:"黑手必胜测试板",
-                description:"用来测试游戏的预设，默认情况下，除非医生猜中刀，否则黑手已经赢了",
-                setting:{
-                    dayVoteType: "Majority",
-                    dayLength: 0.7,
-
-                    enableDiscussion: true,
-                    discussionTime: 0.3,
-
-                    enableTrial: false,
-                    enableTrialDefense: true,
-                    trialTime: 0.2,
-                    pauseDayTimerDuringTrial: false,
-                    
-                    startAt: "day/No-Lynch",
-                    
-                    nightType: "Classic",
-                    nightLength: 0.6,
-                    
-                    revealPlayerRoleOnDeath: true,
-                    protectCitizensMode:false,
-                    enableCustomName: true,
-                    enableKillerMessage: true,
-                    enableLastWill: true,
-                    enablePrivateMessage: true,
-                    
-                    roleList: [
-                        "Citizen", "Citizen", "Citizen",
-                        "Doctor",
-                        "Mafioso", "Mafioso", "Mafioso"
-                    ],
-
-                    roleModifyOptions: {
-                        doctor:{
-                            knowsIfTargetIsAttacked:true,
-                        }
-                    }
-                }
-            }
         ],
         selectPreset(preset){
             this.selectedPreset = preset
@@ -1722,8 +1711,8 @@ document.addEventListener('alpine:init', () => {
                 if(modifyObject !== undefined){
                     for(const keyName of Object.keys(modifyObject)){
                         if(this.setting.roleModifyOptions[roleNameLowerCase][keyName]){
-                            const modifyFeatureDescriptionTranslate = r.modifyFeatureDescriptionTranslate[`${keyName}_true`]
-                            r.featureDetails.push(modifyFeatureDescriptionTranslate)
+                            const modifyFeatureDescription = frontendData.roleModifyDescriptions[keyName].featureDescription
+                            r.featureDetails.push(modifyFeatureDescription)
                         }
                     }
                 }
@@ -2008,12 +1997,6 @@ const frontendData = {
             descriptionTranslate:"一个熟练于医治外伤的秘密外科医生。",
             abilityDescriptionTranslate:"这个角色有每晚救治一人，使其免受一次死亡的能力。",
             abilityDetails:["每晚救治一人，使其免受一次死亡。"],
-            modifyDescriptionTranslate:{
-                knowsIfTargetIsAttacked:"目标受到攻击时可获知"
-            },
-            modifyFeatureDescriptionTranslate:{
-                knowsIfTargetIsAttacked_true:"你会获知你的目标是否被攻击。"
-            }
         },
         {
             name:"Escort",
@@ -2044,11 +2027,26 @@ const frontendData = {
         {
             name:"AllRandom",
             descriptionTranslate:"可能是游戏中的任意角色",
-            modifyDescriptionTranslate:{
-                excludeTagKilling:"不包含 致命角色"
-            },
         },
-    ]
+    ],
+    roleModifyDescriptions:{
+        'knowsIfTargetIsAttacked':{
+            description:"目标受到攻击时可获知",
+            featureDescription:"你会获知你的目标是否被攻击。",
+        },
+        'hasEffect_ImmuneToRoleBlock':{
+            description:"无法被限制",
+            featureDescription:"你不会被舞娘、陪侍和交际花限制。",
+        },
+        'knowsIfTargetHasEffect_ImmuneToRoleBlock':{
+            description:"察觉目标是否免疫限制",
+            featureDescription:"你会获知你的目标是否免疫限制。",
+        },
+        'consecutiveAbilityUses_2_Cause_1_NightCooldown':{
+            description:"连续使用技能2次将产生1晚间隔",
+            featureDescription:"连续使用技能2次将产生1晚间隔。",
+        },
+    }
 
     // 我觉得还不到引入一个本地化系统的时候
     // translateData:{
@@ -2138,7 +2136,7 @@ class Role{
 
         if(modifyObject !== undefined)
             return Object.keys(modifyObject).map(keyName => {
-                const description = this.data.modifyDescriptionTranslate[keyName]
+                const description = frontendData.roleModifyDescriptions[keyName].description
                 return {description, roleName, keyName}
             })
         else
@@ -2211,6 +2209,9 @@ class RandomRole{
             }
             this.game.settingWatchIgnore = true
             this.game.setting.roleModifyOptions[roleNameLowerCase] = modifyObject
+            this.modifyDescriptionTranslate={
+                excludeTagKilling:"不包含 致命角色"
+            }
         }
         else{
             // 如果是随机阵营
@@ -2262,16 +2263,6 @@ function getIntersection(arr1, arr2) {
 function getComplement(arr1, arr2) {
     const set2 = new Set(arr2);
     return arr1.filter(item => !set2.has(item));
-}
-
-function arraysEqual(arr1, arr2) {
-    if (arr1.length !== arr2.length)
-        return false
-
-    const sortedArr1 = arr1.slice().sort()
-    const sortedArr2 = arr2.slice().sort()
-
-    return sortedArr1.every((value, index) => value === sortedArr2[index])
 }
 
 function disableElements(containerId) {

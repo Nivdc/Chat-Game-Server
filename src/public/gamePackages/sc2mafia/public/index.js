@@ -1206,6 +1206,11 @@ document.addEventListener('alpine:init', () => {
                             knowsIfTargetHasEffect_ImmuneToRoleBlock:false,
                             consecutiveAbilityUses_2_Cause_1_NightCooldown:true,
                         },
+                        vigilante:{
+                            hasAbilityUsesLimit_2_Times: true,
+                            hasAbilityUsesLimit_3_Times: false,
+                            hasAbilityUsesLimit_4_Times: false,
+                        },
                         consort:{
                             canBeTurnedIntoTeamExecutor:true,
                             hasEffect_ImmuneToRoleBlock:false,
@@ -2001,7 +2006,7 @@ const frontendData = {
                 "在晚上你可以与其他辅警交谈。",
                 "你知道其他辅警的身份。" ,
                 "辅警团队在晚上可以投票（随机）派出一人调查某人的阵营。",
-                "调查结果全团可知，但如果调查人被杀，则没有结果。"
+                "调查结果全团可知，但如果调查人被杀或被限制，则没有结果。"
             ]
         },
         {
@@ -2017,6 +2022,13 @@ const frontendData = {
             descriptionTranslate:"一个衣着稀少的舞娘，秘密地工作。",
             abilityDescriptionTranslate:"这个角色可以每晚限制一人，中断他的夜间能力。",
             abilityDetails:["在夜晚限制一人，中断其夜间能力。"],
+        },
+        {
+            name:"Vigilante",
+            nameTranslate:"义警",
+            descriptionTranslate:"一个污点警察，无视法律规定而制定公正。",
+            abilityDescriptionTranslate:"这个角色有每晚杀死某人的能力。",
+            abilityDetails:["在夜晚杀死一人。"],
         },
         {
             name:"Mafioso",
@@ -2043,13 +2055,25 @@ const frontendData = {
         },
     ],
     roleModifyDescriptions:{
-        'knowsIfTargetIsAttacked':{
-            description:"目标受到攻击时可获知",
-            featureDescription:"你会获知你的目标是否被攻击。",
-        },
         'hasEffect_ImmuneToRoleBlock':{
             description:"无法被限制",
             featureDescription:"你不会被舞娘、陪侍和交际花限制。",
+        },
+        'hasAbilityUsesLimit_2_Times':{
+            description:"技能只有 2 次使用机会",
+            featureDescription:"你的技能只能使用 2 次。",
+        },
+        'hasAbilityUsesLimit_3_Times':{
+            description:"技能只有 3 次使用机会",
+            featureDescription:"你的技能只能使用 3 次。",
+        },
+        'hasAbilityUsesLimit_4_Times':{
+            description:"技能只有 4 次使用机会",
+            featureDescription:"你的技能只能使用 4 次。",
+        },
+        'knowsIfTargetIsAttacked':{
+            description:"目标受到攻击时可获知",
+            featureDescription:"你会获知你的目标是否被攻击。",
         },
         'knowsIfTargetHasEffect_ImmuneToRoleBlock':{
             description:"察觉目标是否免疫限制",

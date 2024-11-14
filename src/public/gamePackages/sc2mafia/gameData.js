@@ -25,6 +25,10 @@ export const originalGameData = {
                     defaultTeamName:"DetectTeam",
                     name: "AuxiliaryOfficer",
                 },
+                {
+                    abilityNames:['Attack'],
+                    name: "Vigilante",
+                },
             ]
         },
         {
@@ -294,29 +298,52 @@ function gameDataInit(){
 class AbilityBase{
     constructor(game, player, roleModifyObject){
         this.game = game
-        this.player = player
+        this.player = player // owner
 
         this.state = {
-            unableToUse:false,
+            unableToUseCheckFunctions:[
+                function(){
+                    return this.forceDisableTurns > 0
+                },
+            ],
+            get unableToUse(){
+                return this.unableToUseCheckFunctions.some(f => f.call(this))
+            },
             consecutiveUsageCount:0,
             usageCount:0,
+            forceDisableTurns:0,
         }
 
         if(roleModifyObject){
+            // note: 注意这里想要造成多于1晚的冷却是不合理的，因为只要有1晚冷却了，就不能算是连续使用了呀...
             if(roleModifyObject['consecutiveAbilityUses_2_Cause_1_NightCooldown']){
                 const consecutiveAbilityUsesLimit = 2
                 const causeNightColldownNumber = 1
-                Object.defineProperty(this.state, 'unableToUse', {
-                    get: function(){
+                this.state.unableToUseCheckFunctions.push(
+                    function(){
                         let v = (this.consecutiveUsageCount + 1) % (consecutiveAbilityUsesLimit + causeNightColldownNumber)
                         if(v === 0)
                             v = (consecutiveAbilityUsesLimit + causeNightColldownNumber)
     
                         return v > consecutiveAbilityUsesLimit
                     }
-                })
+                )
+            }
+
+            if(Object.keys(roleModifyObject).find(keyName => keyName.startsWith('hasAbilityUsesLimit_'))){
+                const usesLimit = extractNumbers(Object.keys(roleModifyObject).find(keyName => keyName.startsWith('hasAbilityUsesLimit')))[0]
+                this.state.unableToUseCheckFunctions.push(
+                    function(){
+                        return this.usageCount >= usesLimit
+                    }
+                )
             }
         }
+    }
+
+    reduceForceDisableTurns(){
+        if(this.state.forceDisableTurns > 0)
+            this.state.forceDisableTurns --
     }
 }
 
@@ -379,6 +406,10 @@ class TargetedAbility extends AbilityBase{
         }
         return undefined
     }
+}
+
+class EnabledAbility  extends AbilityBase{
+
 }
 
 // 仁慈的父，我已坠入，看不见罪的国度，请原谅我的自负~
@@ -466,6 +497,12 @@ export class Role{
     reduceEffectsDurationTurns(){
         this.#effetcs.forEach(e => e.durationTurns -= 1)
         this.#effetcs = this.#effetcs.filter(e => e.durationTurns > 0)
+
+        this.abilities.forEach(a => a.reduceForceDisableTurns())
+    }
+
+    addAbilityForceDisableTurns(durationTurns = 0){
+        this.abilities.forEach(a => a.state.forceDisableTurns += durationTurns)
     }
 
     toJSON(){

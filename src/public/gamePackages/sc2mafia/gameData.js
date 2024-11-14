@@ -291,18 +291,10 @@ function gameDataInit(){
     }
 }
 
-// 指向性技能类
-// 注意在这个类中代理对象会优先调用data里面的同名数据
-// 也就是说，除非data里面的存在相应的函数，否则的话，
-// TargetedAbility将会遵循类中定义的默认行为
-class TargetedAbility{
-    constructor(game, player, role, abilityName){
+class AbilityBase{
+    constructor(game, player, roleModifyObject){
         this.game = game
         this.player = player
-
-        this.data = originalGameData.abilities.targetedAbilities.find(a => a.name === abilityName)
-        if(this.data === undefined) console.error(`Unknow Ability: ${abilityName}`);
-        if(this.data.verify === undefined) console.error(`Ability: ${abilityName} has no 'verify' Function`);
 
         this.state = {
             unableToUse:false,
@@ -310,19 +302,35 @@ class TargetedAbility{
             usageCount:0,
         }
 
-        if(role?.modifyObject?.['consecutiveAbilityUses_2_Cause_1_NightCooldown']){
-            const consecutiveAbilityUsesLimit = 2
-            const causeNightColldownNumber = 1
-            Object.defineProperty(this.state, 'unableToUse', {
-                get: function(){
-                    let v = (this.consecutiveUsageCount + 1) % (consecutiveAbilityUsesLimit + causeNightColldownNumber)
-                    if(v === 0)
-                        v = (consecutiveAbilityUsesLimit + causeNightColldownNumber)
-
-                    return v > consecutiveAbilityUsesLimit
-                }
-            })
+        if(roleModifyObject){
+            if(roleModifyObject['consecutiveAbilityUses_2_Cause_1_NightCooldown']){
+                const consecutiveAbilityUsesLimit = 2
+                const causeNightColldownNumber = 1
+                Object.defineProperty(this.state, 'unableToUse', {
+                    get: function(){
+                        let v = (this.consecutiveUsageCount + 1) % (consecutiveAbilityUsesLimit + causeNightColldownNumber)
+                        if(v === 0)
+                            v = (consecutiveAbilityUsesLimit + causeNightColldownNumber)
+    
+                        return v > consecutiveAbilityUsesLimit
+                    }
+                })
+            }
         }
+    }
+}
+
+// 指向性技能类
+// 注意在这个类中代理对象会优先调用data里面的同名数据
+// 也就是说，除非data里面的存在相应的函数，否则的话，
+// TargetedAbility将会遵循类中定义的默认行为
+class TargetedAbility extends AbilityBase{
+    constructor(game, player, abilityName, roleModifyObject){
+        super(game, player, roleModifyObject)
+
+        this.data = originalGameData.abilities.targetedAbilities.find(a => a.name === abilityName)
+        if(this.data === undefined) console.error(`Unknow Ability: ${abilityName}`);
+        if(this.data.verify === undefined) console.error(`Ability: ${abilityName} has no 'verify' Function`);
 
         return new Proxy(this, {
             get(target, prop) {
@@ -390,7 +398,7 @@ export class Role{
         if(abilityNames !== undefined){
             this.abilities = []
             for(const aName of abilityNames){
-                this.abilities.push(new TargetedAbility(this.game, this.player, this, aName))
+                this.abilities.push(new TargetedAbility(this.game, this.player, aName, this.modifyObject))
             }
         }
 
@@ -476,6 +484,8 @@ export class Vote{
         this.game = game
         this.data = data
         this.record = new Array(game.playerList.length).fill(undefined)
+        if(this.data.verify === undefined) console.error(`Vote: ${data.name} has no 'verify' Function`);
+
 
         if(Object.keys(data).find(k => k.startsWith('getResult')) === undefined)
             console.error(data.name, ' Unable to get results')
@@ -582,7 +592,7 @@ export class Team{
             this.abilities = []
             this.abilityVotes = []
             for(const aName of data.abilityNames){
-                const ability = new TargetedAbility(this.game, undefined, undefined, aName)
+                const ability = new TargetedAbility(this.game, undefined, aName)
                 this.abilities.push(ability)
                 this.abilityVotes.push(ability.createAbilityTeamVote(game))
             }
@@ -708,8 +718,28 @@ export class Team{
 //     console.log(originalGameData)
 // }
 
+// function createAbility(game, user, abilityName, role){
+//     if(user.constructor.name === 'Player'){
+//         return 
+//     }
+// }
+
 function extractNumbers(str) {
     return str.match(/\d+/g).map(Number) ?? []
+}
+
+function getDefaultAffiliationTable(){
+    let  defaultAffiliationTable = []
+    const roles = originalGameData.roles
+    const factionNameSet = new Set(roles.map(r => r.defaultAffiliationName))
+    for(const factionName of factionNameSet){
+        defaultAffiliationTable.push({
+            name:factionName,
+            includeRoleNames:roles.filter(r => r.defaultAffiliationName === factionName).map(r => r.name)
+        })
+    }
+
+    return defaultAffiliationTable
 }
 
 export function getRoleTags(roleName){
@@ -730,18 +760,4 @@ export function teamVoteVerify(game, team, teamAbilityName, {voterIndex, targetI
 export function publicVoteVerify(game, voteTypeName, {voterIndex, targetIndex, previousTargetIndex}){
     const vote = originalGameData.votes.find(v => v.name === voteTypeName)
     return vote.verify(game, voterIndex, targetIndex, previousTargetIndex)
-}
-
-export function getDefaultAffiliationTable(){
-    let  defaultAffiliationTable = []
-    const roles = originalGameData.roles
-    const factionNameSet = new Set(roles.map(r => r.defaultAffiliationName))
-    for(const factionName of factionNameSet){
-        defaultAffiliationTable.push({
-            name:factionName,
-            includeRoleNames:roles.filter(r => r.defaultAffiliationName === factionName).map(r => r.name)
-        })
-    }
-
-    return defaultAffiliationTable
 }

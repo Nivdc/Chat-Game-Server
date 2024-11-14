@@ -282,6 +282,7 @@ class Game{
         p.sendEvent("SetHost", this.host)
         p.sendEvent("SetStatus", this.status)
         p.sendEvent("SetDayCount", this.dayCount ?? 1)
+        p.sendEvent("SetFactionSet", originalGameData.factions)
         p.sendEvent("SetTagSet", originalGameData.tags)
         p.sendEvent("SetRoleSet", originalGameData.roles)
         p.sendEvent("InitCompleted")

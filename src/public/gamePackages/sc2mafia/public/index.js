@@ -1,4 +1,4 @@
-import { abilityUseVerify, getDefaultAffiliationTable, publicVoteVerify, teamVoteVerify} from "../gameData.js"
+import { abilityUseVerify, publicVoteVerify, teamVoteVerify} from "../gameData.js"
 import { arraysEqual } from "../utils.js"
 
 let socket = undefined
@@ -390,13 +390,11 @@ document.addEventListener('alpine:init', () => {
 
                 this.playerList[this.myIndex].team = this.myTeam
 
-                const townColor = frontendData.factions.find(f => f.name === 'Town').color
-                const mafiaColor = frontendData.factions.find(f => f.name === 'Mafia').color
-                this.myTeam.color = this.myTeam.affiliationName === 'Mafia'? mafiaColor:townColor
+                this.myTeam.color = this.factionSet.find(f => f.name === this.myTeam.affiliationName).color
             },
 
             'SetWinner':function(data){
-                let winningFaction = frontendData.factions.find(f => f.name === data.winningFactionName)
+                let winningFaction = this.factionSet.find(f => f.name === data.winningFactionName)
                 let winners = data.winners.map(dw => this.playerList[dw.index])
 
                 this.gamePageTipMessage = new MagicString()
@@ -438,18 +436,25 @@ document.addEventListener('alpine:init', () => {
             'SetDayCount':function(data){
                 this.dayCount = Number(data)
             },
+            'SetFactionSet':function(data){
+                const factionFrontendDatas = frontendData.factions
+                const factionBackendDatas = data
+
+                this.factionSet = factionFrontendDatas.map(ffd => new Faction(ffd, factionBackendDatas.find(fbd => fbd.name === ffd.name)))
+            },
             'SetTagSet':function(data){
                 const tagFrontendDatas = frontendData.tags
                 const tagBackendDatas = data
 
                 this.tagSet = tagFrontendDatas.map(tfd => new Tag(tfd, tagBackendDatas.find(tbd => tbd.name === tfd.name)))
-                this.categoryList = frontendData.factions
+                this.categoryList = this.factionSet
             },
             'SetRoleSet':function(data){
                 const roleFrontendDatas = frontendData.roles
                 const roleBackendDatas = data.filter(rd => roleFrontendDatas.find(rfd => rfd.name === rd.name) !== undefined)
 
-                this.roleSet = roleFrontendDatas.map(rfd => new Role(rfd, roleBackendDatas.find(rbd => rbd.name === rfd.name), this.tagSet, this.setting))
+                this.roleSet = roleFrontendDatas.map(rfd => new Role(rfd, roleBackendDatas.find(rbd => rbd.name === rfd.name), this.tagSet, this.factionSet, this.setting))
+                this.factionSet.forEach(f => f.addExtraRoleName(this.roleSet))
                 this.addRandomRoles()
             },
 
@@ -1076,7 +1081,7 @@ document.addEventListener('alpine:init', () => {
 
                 case 'receiveDetectionReport':{
                     let target = this.playerList[data.targetIndex]
-                    let affiliation = frontendData.factions.find(f => f.name === data.targetAffiliationName)
+                    let affiliation = this.factionSet.find(f => f.name === data.targetAffiliationName)
                     let message = new MagicString()
                     message.append(target.getNameMagicString())
                     if(affiliation.name === 'Mafia'){
@@ -1282,11 +1287,11 @@ document.addEventListener('alpine:init', () => {
         addRandomRoles(){
             // 首先添加AllRandom
             const allTag = {name:'All', nameTranslate:'全体', color:'white', includeRoleNames:this.roleSet.map(r => r.name)}
-            const randomFaction = frontendData.factions.find(f => f.name === 'Random')
+            const randomFaction = this.factionSet.find(f => f.name === 'Random')
             this.roleSet.push(new RandomRole({factionTag:allTag, randomFaction, game:this}))
 
             // 然后剩下的标签与Faction标签排列组合
-            const factionTags = getDefaultAffiliationTable().map(f => {return {...f, ...frontendData.factions.find(fd => fd.name === f.name)}})
+            const factionTags = this.factionSet.filter(f => f.name !== 'Random')
             const nonFactionTags = this.tagSet.filter(t => (t.isFaction !== true))
             for(const factionTag of factionTags){
                 this.roleSet.push(new RandomRole({factionTag, randomFaction, game:this}))
@@ -2091,6 +2096,33 @@ const frontendData = {
     // }
 }
 
+class Faction{
+    constructor(factionFrontendData, factionBackendData){
+        this.data = {...factionFrontendData, ...factionBackendData}
+        if(this.data.roleVariationList !== undefined)
+            this.includeRoleNames = this.data.roleVariationList.map(rv => rv.name)
+
+        return new Proxy(this, {
+            get(target, prop) {
+                return prop in target ? target[prop] : target.data[prop]
+            }
+        })
+    }
+
+    getNameMagicString(){
+        const name = this.data.nameTranslate ?? this.name
+        return new MagicString({text:name, style:`color:${this.color};`})
+    }
+
+    addExtraRoleName(roleSet){
+        for(const role of roleSet){
+            if(role.defaultAffiliationName === this.name && this.includeRoleNames.includes(role.name) === false){
+                this.includeRoleNames.push(role.name)
+            }
+        }
+    }
+}
+
 class Tag{
     constructor(tagFrontendData, tagBackendData){
         this.data = tagFrontendData
@@ -2110,11 +2142,11 @@ class Tag{
 }
 
 class Role{
-    constructor(roleFrontendData, roleBackendData, tagSet, gameSetting){
+    constructor(roleFrontendData, roleBackendData, tagSet, factionSet, gameSetting){
         this.data = roleFrontendData
         this.data = {...this.data, ...roleBackendData}
 
-        this.defaultAffiliation = frontendData.factions.find(f => f.name === this.data.defaultAffiliationName)
+        this.defaultAffiliation = factionSet.find(f => f.name === this.data.defaultAffiliationName)
         this.affiliation = this.defaultAffiliation
         this.gameSetting = gameSetting
         this.tagsTranslate = this.data.tags?.map(tName =>{

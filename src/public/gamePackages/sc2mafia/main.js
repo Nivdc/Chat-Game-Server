@@ -618,7 +618,7 @@ class Game{
     }
 
     async nightAction(){
-        this.setStatus("action")
+        // this.setStatus("action")
 
         this.generatePlayerAction()
         // this.nightActionSequence.sort(actionSequencing)

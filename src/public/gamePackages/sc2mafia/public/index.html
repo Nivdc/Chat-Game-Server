@@ -233,7 +233,7 @@
                                     <template x-for="modifyOption in selectedRole?.getModifyOptions()">
                                         <p>
                                             <span x-text="modifyOption.description"></span>
-                                            <input type="checkbox" x-model="setting.roleModifyOptions[modifyOption.roleName][modifyOption.keyName]" />
+                                            <input type="checkbox" x-model="setting.roleModifyOptions[modifyOption.roleName][modifyOption.keyName]" :disabled="myIndex !== host.index" />
                                         </p>
                                     </template>
                                 </div>

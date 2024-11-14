@@ -83,6 +83,13 @@ export const originalGameData = {
             {
                 name:"Attack",
                 type:"Attack",
+                verify(game, userIndex, targetIndex, previousTargetIndex){
+                    const userIsAlive = game.playerList[userIndex].isAlive
+                    const targetIsAlive = game.playerList[targetIndex].isAlive
+                    const targetIsNotPreviousTarget = targetIndex !== previousTargetIndex
+            
+                    return userIsAlive && targetIsAlive && targetIsNotPreviousTarget
+                },
                 teamVoteData:{
                     name:`AttackVote`,
                     verify(game, voterIndex, targetIndex, previousTargetIndex){
@@ -289,8 +296,33 @@ function gameDataInit(){
 // 也就是说，除非data里面的存在相应的函数，否则的话，
 // TargetedAbility将会遵循类中定义的默认行为
 class TargetedAbility{
-    constructor(data){
-        this.data = data
+    constructor(game, player, role, abilityName){
+        this.game = game
+        this.player = player
+
+        this.data = originalGameData.abilities.targetedAbilities.find(a => a.name === abilityName)
+        if(this.data === undefined) console.error(`Unknow Ability: ${abilityName}`);
+        if(this.data.verify === undefined) console.error(`Ability: ${abilityName} has no 'verify' Function`);
+
+        this.state = {
+            unableToUse:false,
+            consecutiveUsageCount:0,
+            usageCount:0,
+        }
+
+        if(role?.modifyObject?.['consecutiveAbilityUses_2_Cause_1_NightCooldown']){
+            const consecutiveAbilityUsesLimit = 2
+            const causeNightColldownNumber = 1
+            Object.defineProperty(this.state, 'unableToUse', {
+                get: function(){
+                    let v = (this.consecutiveUsageCount + 1) % (consecutiveAbilityUsesLimit + causeNightColldownNumber)
+                    if(v === 0)
+                        v = (consecutiveAbilityUsesLimit + causeNightColldownNumber)
+
+                    return v > consecutiveAbilityUsesLimit
+                }
+            })
+        }
 
         return new Proxy(this, {
             get(target, prop) {
@@ -299,44 +331,32 @@ class TargetedAbility{
         })
     }
 
-    init(){}
-
-    verify(game, userIndex, targetIndex, previousTargetIndex){
-        return this.userVerify(game, userIndex) && this.targetVerify(game, targetIndex, previousTargetIndex)
-    }
-
-    userVerify(game, userIndex){
-        const userIsAlive = game.playerList[userIndex].isAlive
-        return userIsAlive
-    }
-
-    targetVerify(game, targetIndex, previousTargetIndex){
-        const targetIsAlive = game.playerList[targetIndex].isAlive
-        const targetIsNotPreviousTarget = targetIndex !== previousTargetIndex
-        return targetIsAlive && targetIsNotPreviousTarget
-    }
-
-    use(game, user, data){
+    use(game, data){
         const target = game.playerList[data.targetIndex]
-        if(this.verify(game, user.index, target.index)){
-            user.role[`${this.name}Target`] = target
-            return true
+        if(this.verify(game, this.player.index, target.index) && this.state.unableToUse === false){
+            this.target = target
+            this.player.sendEvent('UseAblitySuccess', data)
+        }else{
+            this.player.sendEvent('UseAblityFailed', data)
         }
-        return false
     }
 
-    cancel(game, user){
-        user.role[`${this.name}Target`] = undefined
-        return true
+    cancel(game, data){
+        this.target = undefined
+        this.player.sendEvent('UseAblityCancelSuccess', data)
     }
 
-    generateNightAction(user){
-        if(user.role[`${this.name}Target`] !== undefined){
-            const abilityTarget = user.role[`${this.name}Target`]
-            user.role[`${this.name}Target`] = undefined
-            return {name:this.name, type:this.type, origin:user, target:abilityTarget}
+    generateNightAction(){
+        if(this.target !== undefined){
+            const abilityTarget = this.target
+            this.target = undefined
+            this.state.usageCount ++
+            this.state.consecutiveUsageCount ++
+            return {name:this.name, type:this.type, origin:this.player, target:abilityTarget}
+        }else{
+            this.state.consecutiveUsageCount = 0
+            return undefined
         }
-        return undefined
     }
 
     createAbilityTeamVote(game){
@@ -351,19 +371,6 @@ class TargetedAbility{
         }
         return undefined
     }
-}
-
-const abilitySet = abilitySetInit()
-function abilitySetInit(){
-    const abilitySet = {
-        targetedAbilities:[]
-    }
-
-    for(const tAbData of originalGameData.abilities.targetedAbilities){
-        abilitySet.targetedAbilities.push(new TargetedAbility(tAbData))
-    }
-
-    return abilitySet
 }
 
 // 仁慈的父，我已坠入，看不见罪的国度，请原谅我的自负~
@@ -383,7 +390,7 @@ export class Role{
         if(abilityNames !== undefined){
             this.abilities = []
             for(const aName of abilityNames){
-                this.abilities.push(abilitySet.targetedAbilities.find(a => a.name === aName))
+                this.abilities.push(new TargetedAbility(this.game, this.player, this, aName))
             }
         }
 
@@ -394,23 +401,6 @@ export class Role{
                     if(this.modifyObject[keyName])
                         this.addEffect(effectName)
                 }
-            }
-
-            if(this.modifyObject['consecutiveAbilityUses_2_Cause_1_NightCooldown']){
-                const consecutiveAbilityUsesLimit = 2
-                const causeNightColldownNumber = 1
-                this.abilityStates = [
-                    {
-                        get UnableToUse(){
-                            let v = this.consecutiveUsageCount % (consecutiveAbilityUsesLimit + causeNightColldownNumber)
-                            if(v === 0)
-                                v = (consecutiveAbilityUsesLimit + causeNightColldownNumber)
-
-                            return v > consecutiveAbilityUsesLimit
-                        },
-                        consecutiveUsageCount: 1
-                    }
-                ]
             }
         }
     }
@@ -428,13 +418,7 @@ export class Role{
             var ability = this.abilities.find(a => a.name === data.name)
         }
 
-        const success = ability?.use(this.game, this.player, data)
-        if(success){
-            if(this.abilityStates?.[this.abilities.indexOf(ability)].UnableToUse !== true)
-                this.player.sendEvent('UseAblitySuccess', data)
-            else
-                this.player.sendEvent('UseAblityFailed', data)
-        }
+        ability?.use(this.game, data)
     }
 
     useAblityCancel(data){
@@ -445,31 +429,16 @@ export class Role{
             var ability = this.abilities.find(a => a.name === data.name)
         }
 
-        const success = ability?.cancel(this.game, this.player, data)
-        if(success){
-            this.player.sendEvent('UseAblityCancelSuccess', data)
-        }
+        ability?.cancel(this.game, data)
     }
 
     generateNightActions(){
         const actions = []
-        for(const [index, a] of this.abilities?.entries()){
-            const action = a.generateNightAction(this.player)
-            if(action !== undefined){
-                if(this.abilityStates?.[index] === undefined)
-                    actions.push(action)
-                else{
-                    if(this.abilityStates[index].UnableToUse === false){
-                        actions.push(action)
-                        this.abilityStates[index].consecutiveUsageCount ++
-                    }else{
-                        this.abilityStates[index].consecutiveUsageCount = 1
-                    }
-                }
-            }else{
-                if(this.abilityStates?.[index] !== undefined)
-                    this.abilityStates[index].consecutiveUsageCount = 1
-            }
+        if(this.abilities !== undefined)
+        for(const a of this.abilities){
+            const action = a.generateNightAction()
+            if(action !== undefined)
+                actions.push(action)
         }
 
         return actions
@@ -613,7 +582,7 @@ export class Team{
             this.abilities = []
             this.abilityVotes = []
             for(const aName of data.abilityNames){
-                const ability = abilitySet.targetedAbilities.find(a => a.name === aName)
+                const ability = new TargetedAbility(this.game, undefined, undefined, aName)
                 this.abilities.push(ability)
                 this.abilityVotes.push(ability.createAbilityTeamVote(game))
             }
@@ -655,8 +624,10 @@ export class Team{
     checkTeamHasActionExecutor(){
         if(this.defaultExecutionMembers.length === 0){
             const convertiblePlayer = this.alivePlayerList.find(p => p.role.modifyObject?.['canBeTurnedIntoTeamExecutor'] === true)
-            convertiblePlayer.setRole({name:this.defaultExecutionRoleName})
-            this.sendEventToAliveMember('SetTeam', this)
+            if(convertiblePlayer !== undefined){
+                convertiblePlayer.setRole({name:this.defaultExecutionRoleName})
+                this.sendEventToAliveMember('SetTeam', this)
+            }
         }
     }
 
@@ -747,7 +718,7 @@ export function getRoleTags(roleName){
 }
 
 export function abilityUseVerify(game, abilityName, userIndex, targetIndex, previousTargetIndex){
-    const ability = abilitySet.targetedAbilities.find(a => a.name === abilityName)
+    const ability = originalGameData.abilities.targetedAbilities.find(a => a.name === abilityName)
     return ability?.verify(game, userIndex, targetIndex, previousTargetIndex)
 }
 

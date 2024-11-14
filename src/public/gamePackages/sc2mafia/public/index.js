@@ -181,15 +181,18 @@ document.addEventListener('alpine:init', () => {
             'SetReadyPlayerIndexList':function(data){
                 const newReadyPlayerIndexList = data
                 const newPlayerIndexList = getComplement(newReadyPlayerIndexList, this.readyPlayerIndexList)
-                console.log(newPlayerIndexList)
+                // console.log(newPlayerIndexList)
                 for(const pIndex of newPlayerIndexList){
                     let message = new MagicString({style:'background-color:rgba(0, 0, 0, 0.2);color:yellow;text-shadow: 1px 1px 0px #000000;'})
                     let player  = this.playerList[pIndex]
+                    // console.log(pIndex)
+                    // console.log(this.playerList[pIndex])
                     if(player !== undefined){
                         player.isReady = true
                         message.append(player.getNameMagicString_Bold())
                         message.append({text:` 加入了游戏 (${this.playerList.filter(p => p.isReady === true).length} / ${this.playerList.length})`})
                         this.addMessage(message)
+                        // console.log(message)
                     }
                 }
 
@@ -675,14 +678,14 @@ document.addEventListener('alpine:init', () => {
                 const abilityColor = frontendData.abilities[abilityName].color
 
                 const message = new MagicString()
-                message.addText(`你放弃在今晚${abilityActionWord} `, abilityColor ?? this.myRole.color)
-                message.append(this.playerList[data.targetIndex].getNameMagicString())
+                message.addText(`你放弃在今晚${abilityActionWord} `, 'yellow')
+                message.append(this.playerList[this.myAbilityTargetIndex].getNameMagicString())
                 this.addMessage(message)
 
                 this.myAbilityTargetIndex = undefined
             },
             'UseAblityFailed':function(data){
-                this.addSystemHintText('技能使用失败，可能是因为在冷却、没次数了。更多提示以后再做吧。')
+                this.addSystemHintText('技能使用失败，可能是因为在冷却、没次数了。(更多提示以后再做吧。)')
             }
         },
         commandHandler(commandString){
@@ -832,6 +835,10 @@ document.addEventListener('alpine:init', () => {
             }
         },
         async playAnimation(animationName, data){
+            const classList = document.getElementById('gamePage').classList
+            const animationClassList = [...classList].filter(className => className.startsWith('animation'))
+            animationClassList.forEach(c => classList.remove(c))
+
             switch(animationName){
                 case 'begin':
                     this.gamePageTipMessage = new MagicString()
@@ -852,10 +859,8 @@ document.addEventListener('alpine:init', () => {
                     }, 3000)
                 break
                 case 'dayToNight':
-                    // document.getElementById('gamePage').classList.replace('animation-nightToDay', 'animation-dayToNight')
-                    document.getElementById('gamePage').classList.remove('animation-nightToDay-6s')
                     document.getElementById('gamePage').classList.add('animation-dayToNight-6s')
-
+                    document.getElementById('gamePage').style.backgroundColor = '#002B36'
                     this.gamePageTipMessage = new MagicString({text:"不幸的是，再讨论下去太晚了..."})
                     this.gamePageTipMessage.class = 'animation-fadeIn-1s'
                     setTimeout(()=>{
@@ -863,8 +868,8 @@ document.addEventListener('alpine:init', () => {
                     }, 3000)
                 break
                 case 'nightToDay':
-                    document.getElementById('gamePage').classList.remove('animation-dayToNight-6s')
                     document.getElementById('gamePage').classList.add('animation-nightToDay-6s')
+                    document.getElementById('gamePage').style.backgroundColor = '#073642'
                     setTimeout(()=>{
                         document.getElementById('music').volume -= 0.25
                         setTimeout(()=>{
@@ -880,8 +885,9 @@ document.addEventListener('alpine:init', () => {
                     }, 1000)
                 break
                 case 'nightToAction':
-                    document.getElementById('gamePage').classList.remove('animation-dayToNight-6s')
                     document.getElementById('gamePage').classList.add('animation-nightToAction-6s')
+                    document.getElementById('gamePage').style.backgroundColor = 'black'
+
                     setTimeout(()=>{
                         document.getElementById('music').volume -= 0.25
                         setTimeout(()=>{
@@ -897,10 +903,8 @@ document.addEventListener('alpine:init', () => {
                     }, 1000)
                 break
                 case 'actionToDay':{
-                    const classList = document.getElementById('gamePage').classList
-                    let animationClassList = [...classList].filter(className => className.startsWith('animation'))
-                    animationClassList.forEach(c => classList.remove(c))
-                    classList.add('animation-actionToDay-6s')
+                    document.getElementById('gamePage').classList.add('animation-actionToDay-6s')
+                    document.getElementById('gamePage').style.backgroundColor = '#073642'
                 break}
                 case 'showDayCount':{
                     let time = this.status.startsWith('day') ? '白天' : '夜晚'
@@ -1050,7 +1054,6 @@ document.addEventListener('alpine:init', () => {
                         this.addSystemHintText("你被黑手党攻击了", 'darkred')
 
                     const gamePageElement = document.getElementById('gamePage')
-                    gamePageElement.classList.remove('animation-nightToAction-6s')
                     return new Promise((resolve) => {
                         gamePageElement.classList.add('animation-underAttack-6s')
                         gamePageElement.addEventListener('animationend', () => {
@@ -2270,8 +2273,8 @@ function getIntersection(arr1, arr2) {
 }
 
 function getComplement(arr1, arr2) {
-    const set2 = new Set(arr2);
-    return arr1.filter(item => !set2.has(item));
+    const set2 = new Set(arr2)
+    return arr1.filter(item => !set2.has(item))
 }
 
 function disableElements(containerId) {

@@ -42,7 +42,11 @@ export const originalGameData = {
                 {
                     abilityNames:['RoleBlock'],
                     name:'Consort'
-                }
+                },
+                {
+                    abilityNames:['Silence'],
+                    name:'Blackmailer'
+                },
             ],
         }
     ],
@@ -137,6 +141,17 @@ export const originalGameData = {
                     const targetIsAlive = game.playerList[targetIndex].isAlive
                     const targetIsNotUserTeamMember = (game.playerList[userIndex].team?.playerList.map(p => p.index).includes(targetIndex) !== true)
                     return userIsAlive && userIsNotTarget && targetIsNotPreviousTarget && targetIsAlive && targetIsNotUserTeamMember
+                },
+            },
+            {
+                name:"Silence",
+                verify(game, userIndex, targetIndex, previousTargetIndex){
+                    const userIsAlive = game.playerList[userIndex].isAlive
+                    const userIsNotTarget = (userIndex !== targetIndex)
+                    const targetIsNotPreviousTarget = targetIndex !== previousTargetIndex
+                    const targetIsAlive = game.playerList[targetIndex].isAlive
+                    // const targetIsNotUserTeamMember = (game.playerList[userIndex].team?.playerList.map(p => p.index).includes(targetIndex) !== true)
+                    return userIsAlive && userIsNotTarget && targetIsNotPreviousTarget && targetIsAlive
                 },
             },
             {
@@ -330,13 +345,34 @@ class AbilityBase{
                 )
             }
 
-            if(Object.keys(roleModifyObject).find(keyName => keyName.startsWith('hasAbilityUsesLimit_'))){
-                const usesLimit = extractNumbers(Object.keys(roleModifyObject).find(keyName => keyName.startsWith('hasAbilityUsesLimit')))[0]
-                this.state.unableToUseCheckFunctions.push(
-                    function(){
-                        return this.usageCount >= usesLimit
+            // note: 基于下面的代码，同名的modify选项只有第一个为true的会生效
+            const roleModifyObjectKeyNames = Object.keys(roleModifyObject)
+            if(roleModifyObjectKeyNames.filter(keyName => keyName.startsWith('hasAbilityUsesLimit_')).length > 0){
+                const options = roleModifyObjectKeyNames.filter(keyName => keyName.startsWith('hasAbilityUsesLimit_'))
+                for(const oName of options){
+                    if(roleModifyObject[oName]){
+                        const usesLimit = extractNumbers(oName)[0]
+                        this.state.unableToUseCheckFunctions.push(
+                            function(){
+                                return this.usageCount >= usesLimit
+                            }
+                        )
+
+                        break
                     }
-                )
+                }
+            }
+
+            if(roleModifyObjectKeyNames.filter(keyName => keyName.startsWith('hasAbilityForceDisableTurn_')).length > 0){
+                const options = roleModifyObjectKeyNames.filter(keyName => keyName.startsWith('hasAbilityForceDisableTurn_'))
+                for(const oName of options){
+                    if(roleModifyObject[oName]){
+                        const extraForceDisableTurn = extractNumbers(oName)[0]
+                        this.state.forceDisableTurns += extraForceDisableTurn
+
+                        break
+                    }
+                }
             }
         }
     }
@@ -487,6 +523,9 @@ export class Role{
     #effetcs = []
     addEffect(name, durationTurns = Infinity){
         this.#effetcs.push({name, durationTurns})
+    }
+    addEffect_skipThisTurn(name, durationTurns){
+        this.addEffect(name, (durationTurns+1))
     }
     removeEffect(eName){
         this.#effetcs = this.#effetcs.filter(e => e.name !== eName)

@@ -498,6 +498,10 @@ ul{
     animation: roleBlocked 2s forwards;
 }
 
+.animation-silenced-2s {
+    animation: silenced 2s forwards;
+}
+
 @keyframes dayToNight {
   0% { background-color: var(--background-highlights); }
   50% { background-color: linear-gradient(90deg,#073642 0%,#002B36 100%); }
@@ -544,6 +548,12 @@ ul{
 @keyframes roleBlocked {
     0% { background-color: black }
     50% { background-color: fuchsia }
+    100% { background-color: black }
+}
+
+@keyframes silenced {
+    0% { background-color: black }
+    50% { background-color: yellow }
     100% { background-color: black }
 }
 

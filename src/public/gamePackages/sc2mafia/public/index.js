@@ -121,8 +121,12 @@ document.addEventListener('alpine:init', () => {
                 const sender  = this.playerList[data.senderIndex]
                 const senderIsDead = data.senderIsDead
 
-                let message = new MagicString()
-                message.append(sender.getNameMagicStringWithExtras({text:': ', style:`font-weight:bold;`}))
+                const message = new MagicString()
+                if(sender !== undefined)
+                    message.append(sender.getNameMagicStringWithExtras({text:': ', style:`font-weight:bold;`}))
+                else{
+                    message.append(new MagicString({text:'匿名者: ', style:`font-weight:bold;`}))
+                }
                 message.addText(data.message)
 
                 if(senderIsDead)
@@ -181,18 +185,18 @@ document.addEventListener('alpine:init', () => {
             'SetReadyPlayerIndexList':function(data){
                 const newReadyPlayerIndexList = data
                 const newPlayerIndexList = getComplement(newReadyPlayerIndexList, this.readyPlayerIndexList)
-                // console.log(newPlayerIndexList)
+                console.log(newPlayerIndexList)
                 for(const pIndex of newPlayerIndexList){
                     let message = new MagicString({style:'background-color:rgba(0, 0, 0, 0.2);color:yellow;text-shadow: 1px 1px 0px #000000;'})
                     let player  = this.playerList[pIndex]
-                    // console.log(pIndex)
-                    // console.log(this.playerList[pIndex])
+                    console.log(pIndex)
+                    console.log(this.playerList[pIndex])
                     if(player !== undefined){
                         player.isReady = true
                         message.append(player.getNameMagicString_Bold())
                         message.append({text:` 加入了游戏 (${this.playerList.filter(p => p.isReady === true).length} / ${this.playerList.length})`})
                         this.addMessage(message)
-                        // console.log(message)
+                        console.log(message)
                     }
                 }
 
@@ -691,6 +695,10 @@ document.addEventListener('alpine:init', () => {
             },
             'UseAblityFailed':function(data){
                 this.addSystemHintText('技能使用失败，可能是因为在冷却、没次数了。(更多提示以后再做吧。)')
+            },
+
+            'TrialTargetIsSilenced':function(data){
+                this.addSystemHintText('系统提示：当前审判的玩家被沉默了')
             }
         },
         commandHandler(commandString){
@@ -1056,7 +1064,7 @@ document.addEventListener('alpine:init', () => {
 
                 case 'youUnderAttack':{
                     if(data.source === 'Mafia')
-                        this.addSystemHintText("你被黑手党攻击了", 'darkred')
+                        this.addSystemHintText("你被黑手党攻击了", 'red')
 
                     const gamePageElement = document.getElementById('gamePage')
                     return new Promise((resolve) => {
@@ -1117,6 +1125,18 @@ document.addEventListener('alpine:init', () => {
                     const gamePageElement = document.getElementById('gamePage')
                     return new Promise((resolve) => {
                         gamePageElement.classList.add('animation-roleBlocked-2s')
+                        gamePageElement.addEventListener('animationend', () => {
+                            resolve()
+                        }, { once: true })
+                    })
+                break}
+
+                case 'youWereSilenced':{
+                    this.addSystemHintText("一名极度危险的人物威胁了你，你被沉默了。", 'yellow')
+
+                    const gamePageElement = document.getElementById('gamePage')
+                    return new Promise((resolve) => {
+                        gamePageElement.classList.add('animation-silenced-2s')
                         gamePageElement.addEventListener('animationend', () => {
                             resolve()
                         }, { once: true })
@@ -1215,6 +1235,10 @@ document.addEventListener('alpine:init', () => {
                             canBeTurnedIntoTeamExecutor:true,
                             hasEffect_ImmuneToRoleBlock:false,
                             knowsIfTargetHasEffect_ImmuneToRoleBlock:false,
+                        },
+                        blackmailer:{
+                            canBeTurnedIntoTeamExecutor:true,
+                            hasAbilityForceDisableTurn_1_AtStart:false,
                         }
                     }
                 }
@@ -1980,6 +2004,9 @@ const frontendData = {
         "Detect":{
             actionWord:"调查"
         },
+        "Silence":{
+            actionWord:"恐吓"
+        },
     },
     roles:[
         {
@@ -2047,6 +2074,16 @@ const frontendData = {
             abilityDescriptionTranslate:"这个角色可以每晚限制一人，中断他的夜间能力。",
             abilityDetails:["在夜晚限制一人，中断其夜间能力。"],
         },
+        {
+            name:"Blackmailer",
+            nameTranslate:"恐吓者",
+            descriptionTranslate:"一个为犯罪组织工作的舞者。",
+            abilityDescriptionTranslate:"每晚使一个人沉默",
+            abilityDetails:["被沉默的玩家无法在次日说话。",
+                "被沉默的玩家在到要说遗言时可以说话。",
+                "被沉默的玩家被审判时全体玩家会收到提示。"
+            ],
+        },
     ],
     randomRoles:[
         {
@@ -2070,6 +2107,10 @@ const frontendData = {
         'hasAbilityUsesLimit_4_Times':{
             description:"技能只有 4 次使用机会",
             featureDescription:"你的技能只能使用 4 次。",
+        },
+        'hasAbilityForceDisableTurn_1_AtStart':{
+            description:"开局首夜技能不可用",
+            featureDescription:"开局首夜技能不可用",
         },
         'knowsIfTargetIsAttacked':{
             description:"目标受到攻击时可获知",

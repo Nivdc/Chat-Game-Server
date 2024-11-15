@@ -664,7 +664,7 @@ class Game{
         this.nightActionSequence.forEach(a => sendActionEvent(a.origin, 'YouTakeAction', {actionName:a.name, targetIndex:a.target.index}))
 
         // RoleBlock
-        const blockActions = this.nightActionSequence.filter(a => a.name === 'RoleBlock')
+        const blockActions = filterAndRemove(this.nightActionSequence, a => a.name === 'RoleBlock')
         blockActions.forEach(a => {
             if(a.origin.hasEffect('RoleBlocked') === false){
                 if(a.target.hasEffect('ImmuneToRoleBlock') === false){
@@ -678,7 +678,13 @@ class Game{
             }
         })
         this.nightActionSequence = this.nightActionSequence.filter(a => a.origin.hasEffect('RoleBlocked') === false)
-        this.nightActionSequence = this.nightActionSequence.filter(a => a.name !== 'RoleBlock')
+
+        // Silence
+        const silenceActions = filterAndRemove(this.nightActionSequence, a => a.name === 'Silence')
+        silenceActions.forEach(a => {
+            a.target.addEffect_skipThisTurn('Silenced', 1)
+            sendActionEvent(a.target, 'YouWereSilenced')
+        })
 
         // Attack and Protect Processing
         let attackSequence  = filterAndRemove(this.nightActionSequence, a => a.type === 'Attack')
@@ -785,15 +791,17 @@ class Game{
         if(this.notStartedYet || this.status === "end")
             targetGroup = this.onlinePlayerList
         else{
-            if(sender.isAlive === true){
+            if(sender.isAlive){
                 if(this.status.startsWith("day") && this.status.split('/').includes("discussion")){
-                    targetGroup = this.onlinePlayerList
-                }else if(this.status.startsWith("night") && this.status.split('/').includes("discussion")){
-                    if(sender.role.affiliationName === "Mafia"){
-                        targetGroup = this.queryAlivePlayersByRoleFaction(sender.role.affiliationName)
+                    if(sender.hasEffect('Silenced') === false){
+                        targetGroup = this.onlinePlayerList
                     }
-                    else if(sender.role.name === "AuxiliaryOfficer")
-                        targetGroup = this.queryAlivePlayersByRoleName("AuxiliaryOfficer")
+                }
+                // fixme?:夜间...可以让被沉默的人说话吗？
+                else if(this.status.startsWith("night") && this.status.split('/').includes("discussion")){
+                    if(sender.team){
+                        targetGroup = sender.team.alivePlayerList
+                    }
                 }
             }else{
                 var senderIsDead = true
@@ -804,7 +812,8 @@ class Game{
         if(this.status.split('/').includes('lastWord') && sender === this.executionTarget)
             targetGroup = this.onlinePlayerList
         if(this.status.split('/').includes('defense')  && sender === this.trialTarget){
-            targetGroup = this.onlinePlayerList
+            if(sender.hasEffect('Silenced') === false)
+                targetGroup = this.onlinePlayerList
         }
 
         if(targetGroup !== undefined)
@@ -898,6 +907,10 @@ class Game{
 
         this.trialTarget = player
         this.sendEventToAll("SetTrialTarget", this.trialTarget)
+        if(this.trialTarget.hasEffect('Silenced')){
+            this.sendEventToAll('TrialTargetIsSilenced')
+        }
+
         if(this.setting.enableTrialDefense){
             await this.newGameStage("day/trial/defense", trialLenghtMin/2)
             await this.newGameStage("day/discussion/trial/trialVote", trialLenghtMin/2)
@@ -1161,6 +1174,9 @@ class Player{
     #effetcs = []
     addEffect(name, durationTurns = Infinity){
         this.#effetcs.push({name, durationTurns})
+    }
+    addEffect_skipThisTurn(name, durationTurns){
+        this.addEffect(name, (durationTurns+1))
     }
     removeEffect(eName){
         this.#effetcs = this.#effetcs.filter(e => e.name !== eName)

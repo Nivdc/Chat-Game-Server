@@ -1,4 +1,4 @@
-import { originalGameData, Vote, Team, Role, getRoleTags } from "./gameData.js"
+import { originalGameData, Vote, Faction, Team, Role, getRoleTags } from "./gameData.js"
 import { getRandomElement } from "./utils.js"
 
 const gameDataPath = import.meta.dir + '/public/gameData/'
@@ -316,8 +316,9 @@ class Game{
             p.sendEvent("SetPlayerSelfIndex", p.index)
         }
 
+        this.factionSetInit()
+        this.teamSetInit()
         this.gameDirectorInit()
-        this.gameDirector.teamSetInit()
 
         this.dayCount = 1
 
@@ -390,6 +391,47 @@ class Game{
         }
 
         return {realRoleNameList, possibleRoleSet:possibleRoleArray}
+    }
+
+    factionSetInit(){
+        this.factionSet = []
+
+        for(const p of this.playerList){
+            if(p.role.affiliationName !== 'Neutral'){
+                const faction = this.factionSet.find(f => f.name === p.role.affiliationName)
+                if(faction !== undefined)
+                    faction.playerList.push(p)
+                else{
+                    const newFaction = new Faction(this, p.role.affiliationName)
+                    this.factionSet.push(newFaction)
+                    newFaction.playerList.push(p)
+                }
+            }
+        }
+    }
+
+    
+    // 目前的实现是Team的name同时具有着name和type的作用，且同一个faction下不会创建同名的team，
+    // 不过我们的游戏实际上可以支持创建不同name，但相同type的team，也就是说黑手党faction可以有两个AttackTeam
+    teamSetInit(){
+        this.teamSet = []
+
+        for(const p of this.playerList){
+            if(p.role.teamName !== undefined){
+                const team = this.teamSet.find(t => t.affiliationName === p.role.affiliationName && t.name === p.role.teamName)
+                if(team !== undefined)
+                    p.setTeam(team)
+                else{
+                    const newTeam = new Team(this, p.role.affiliationName, p.role.teamName)
+                    this.teamSet.push(newTeam)
+                    p.setTeam(newTeam)
+                }
+            }
+        }
+
+        for(const t of this.teamSet){
+            t.sendEventToAliveMember("SetTeam", t)
+        }
     }
 
     gameDirectorInit(){
@@ -475,28 +517,6 @@ class Game{
             // resetAllPublicVote(){
             //     game.voteSet.forEach(v => v.resetRecord())
             // }
-
-            teamSetInit(){
-                if(game.teamSet === undefined)
-                    game.teamSet = []
-
-                for(const p of game.playerList){
-                    if(p.role.teamName !== undefined){
-                        const team = game.teamSet.find(t => t.affiliationName === p.role.affiliationName && t.name === p.role.teamName)
-                        if(team !== undefined)
-                            p.setTeam(team)
-                        else{
-                            const newTeam = new Team(game, p.role.affiliationName, p.role.teamName)
-                            game.teamSet.push(newTeam)
-                            p.setTeam(newTeam)
-                        }
-                    }
-                }
-
-                for(const t of game.teamSet){
-                    t.sendEventToAliveMember("SetTeam", t)
-                }
-            },
 
             CheckAllPlayersAnimationsFinished(){
                 const allPlayersAnimationsFinished = game.onlinePlayerList.map(p => p.animationsFinished).every(value => value)
@@ -960,35 +980,39 @@ class Game{
         return data
     }
 
+    // 游戏的主循环终止于某个Faction达成胜利目标（或所有Faction已无人生还...这里面有一个例外-邪教），
+    // 然后依次结算每个玩家的Faction、Team、Role胜利目标，游戏宣布所有目标皆达成的玩家胜出。
+
+    // 基于此，我们可以肯定地说，主要阵营的获胜是具有排他性的，
+    // 在这个游戏中，不存在某一个阵营可以与另一个阵营同时获胜，这一点很重要。
     async victoryCheck(){
-        let town_ap_l = this.queryAlivePlayersByRoleFaction("Town").length
-        let mafia_ap_l = this.queryAlivePlayersByRoleFaction("Mafia").length
-        
-        if(town_ap_l === 0){
-            this.winningFaction = "Mafia"
-            this.winners = this.queryAlivePlayersByRoleFaction("Mafia")
-        }else if(mafia_ap_l === 0){
-            this.winningFaction = "Town"
-            this.winners = this.queryAlivePlayersByRoleFaction("Town")
-        }else if(this.setting.protectCitizensMode === true){
-            let citizens_ap_l = this.queryAlivePlayersByRoleName("Citizen").length
-            if(citizens_ap_l === 0){
-                this.winningFaction = "Mafia"
-                this.winners = this.queryAlivePlayersByRoleFaction("Mafia")
+        if(this.factionSet.some(f => f.alivePlayerList.length > 0)){
+            this.winningFaction = this.factionSet.find(f => f.victoryCheck())
+            this.winners = this.winningFaction.playerList
+            if(this.winningFaction !== undefined){
+                this.sendEventToAll("SetWinner", {winningFactionName:this.winningFaction.name, winners:this.winners})
+                this.sendEventToAll("SetCast", this.playerList.map(p => p.toJSON_includeRole()))
+
+                await this.newGameStage("end", 0.2)
+                this.room.endGame()
             }
         }
-        
-        if(this.winningFaction !== undefined){
-            this.sendEventToAll("SetWinner", {winningFactionName:this.winningFaction, winners:this.winners})
-            this.sendEventToAll("SetCast", this.playerList.map(p => p.toJSON_includeRole()))
+        // else if(this.factionSet.every(f => f.alivePlayerList.length === 0)){
 
-            await this.newGameStage("end", 0.2)
-            this.room.endGame()
-        }
+        // }
         else if(this.onlinePlayerList.length === 0){
             this.status = 'end'
             this.room.endGame()
         }
+    }
+
+    queryAliveMajorFactionPlayers_except(exceptFactionName){
+        const majorFationNames = this.factionSet.map(f => f.name)
+        const remainingFactionNames  = majorFationNames.filter(fName => fName !== exceptFactionName)
+
+        return this.alivePlayerList.filter(p =>{
+            return remainingFactionNames.includes(p.role.affiliationName)
+        })
     }
 
     queryAlivePlayersByRoleFaction(factionName){

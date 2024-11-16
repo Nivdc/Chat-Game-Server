@@ -29,7 +29,18 @@ export const originalGameData = {
                     abilityNames:['Attack'],
                     name: "Vigilante",
                 },
-            ]
+            ],
+            victoryCheck(game){
+                const hasMemberRemaining = game.queryAlivePlayersByRoleFaction(this.name).length > 0
+                const isLastSurvivingFaction = game.queryAliveMajorFactionPlayers_except(this.name).length === 0
+                if(hasMemberRemaining && isLastSurvivingFaction){
+                    return true
+                }
+                else if(hasMemberRemaining === false){
+                    return false
+                }
+                return undefined
+            },
         },
         {
             name:'Mafia',
@@ -48,7 +59,18 @@ export const originalGameData = {
                     name:'Blackmailer'
                 },
             ],
-        }
+            victoryCheck(game){
+                const hasMemberRemaining = game.queryAlivePlayersByRoleFaction(this.name).length > 0
+                const isLastSurvivingFaction = game.queryAliveMajorFactionPlayers_except(this.name).length === 0
+                if(hasMemberRemaining && isLastSurvivingFaction){
+                    return true
+                }
+                else if(hasMemberRemaining === false){
+                    return false
+                }
+                return undefined
+            },
+        },
     ],
     tags: [
         {
@@ -310,6 +332,32 @@ function gameDataInit(){
     }
 }
 
+// faction是由玩家组成的集合，它有一个胜利目标
+export class Faction{
+    constructor(game, factionName){
+        this.game = game
+        this.playerList = []
+
+        this.data = originalGameData.factions.find(f => f.name === factionName)
+        if(this.data === undefined) console.error(`Unknow faction Name: ${factionName}`);
+        if('victoryCheck' in this.data === false) console.error(`Faction: ${factionName} has no 'victoryCheck' function`);
+
+        return new Proxy(this, {
+            get(target, prop) {
+                return prop in target ? target[prop] : target.data[prop]
+            }
+        })
+    }
+
+    get alivePlayerList(){
+        return this.playerList.filter(p => p.isAlive)
+    }
+
+    victoryCheck(){
+        return this.data.victoryCheck(this.game)
+    }
+}
+
 class AbilityBase{
     constructor(game, player, roleModifyObject){
         this.game = game
@@ -456,7 +504,7 @@ export class Role{
         this.name   = roleData.name
 
         const defaultRoleData = originalGameData.roles.find(r => r.name === roleData.name)
-        this.affiliationName = roleData.affiliationName ?? defaultRoleData.defaultAffiliationName
+        this.affiliationName = roleData.affiliationName ?? defaultRoleData.defaultAffiliationName ?? 'Neutral'
 
         const factionMemberDefaultTeamName = originalGameData.factions.find(f => f.name === this.affiliationName).allMembersAreOnDefaultTeam
         this.teamName = roleData.teamName ?? defaultRoleData.defaultTeamName ?? factionMemberDefaultTeamName

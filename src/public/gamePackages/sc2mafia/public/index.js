@@ -1908,22 +1908,32 @@ class Player{
             ms.addText(')')
 
             if(includeDeathReason === true){
-                ms.addText(': ')
-                let deathReasonDescriptions = []
-                while(this.deathReason?.length > 0 )
-                switch(this.deathReason.shift()){
-                    case 'MafiaAttack':
-                        deathReasonDescriptions.push('死于黑手党的攻击')
-                    break
-                    case 'Execution':
-                        deathReasonDescriptions.push('死于处刑')
-                    break
-                    case 'Suicide':
-                        deathReasonDescriptions.push('死于自杀')
-                    break
+                ms.addText(': 死于')
+                const deathReasonDescriptions = []
+                while(this.deathReason?.length > 0 ){
+                    const deathReason = this.deathReason.shift()
+                    if(deathReason.endsWith('Attack')){
+                        const attackSourceName = deathReason.split('Attack')[0]
+                        const attackSource = this.factionSet.find(f => f.name === attackSourceName) ?? this.roleSet.find(r => r.name === attackSourceName)
+
+                        if(attackSource === undefined){
+                            console.error(`Unknow attackSourceName:${attackSourceName}`)
+                        }else{
+                            deathReasonDescriptions.push(`${attackSource.nameTranslate}的攻击`)
+                        }
+                    }
+                    switch(deathReason){
+                        case 'Execution':
+                            deathReasonDescriptions.push('处刑')
+                        break
+                        case 'Suicide':
+                            deathReasonDescriptions.push('自杀')
+                        break
+                    }
                 }
+
                 if(deathReasonDescriptions.length === 0){
-                    deathReasonDescriptions.push('死于未知原因')
+                    deathReasonDescriptions.push('未知原因')
                 }
 
                 while(deathReasonDescriptions.length > 0 )

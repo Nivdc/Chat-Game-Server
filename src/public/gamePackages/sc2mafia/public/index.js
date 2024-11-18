@@ -1076,7 +1076,7 @@ document.addEventListener('alpine:init', () => {
                 case 'youUnderAttack':{
                     const source = this.factionSet.find(f => f.name === data.source) ?? this.roleSet.find(r => r.name === data.source)
                     if(source !== undefined)
-                        this.addSystemHintText(`你被${source.name}袭击了`, 'red')
+                        this.addSystemHintText(`你被${source.nameTranslate}袭击了`, 'red')
                     else
                         this.addSystemHintText("你被人袭击了", 'red')
 

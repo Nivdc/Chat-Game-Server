@@ -612,7 +612,7 @@ export class Role{
         this.#effetcs.forEach(e => e.durationTurns -= 1)
         this.#effetcs = this.#effetcs.filter(e => e.durationTurns > 0)
 
-        this.abilities.forEach(a => a.reduceForceDisableTurns())
+        this.abilities?.forEach(a => a.reduceForceDisableTurns())
     }
 
     addAbilityForceDisableTurns(durationTurns = 0){

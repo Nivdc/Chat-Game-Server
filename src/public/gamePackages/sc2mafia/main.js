@@ -737,7 +737,7 @@ class Game{
                             sendActionEvent(action.target, 'YouUnderAttack', {source:attackSource})
                             action.target.isAlive = false
                         }else{
-                            sendActionEvent(action.target, 'SomeoneIsTryingToDoSomethingToYou', {actionName:action.name})
+                            sendActionEvent(action.target, 'SomeoneIsTryingToDoSomethingToYou', {actionName:action.name, source:attackSource})
                             sendActionEvent(action.origin, 'YourTargetHasEffect', {effectName:'ImmuneToAttack'})
                         }
 

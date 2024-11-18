@@ -1074,8 +1074,12 @@ document.addEventListener('alpine:init', () => {
                 break}
 
                 case 'youUnderAttack':{
-                    if(data.source === 'Mafia')
-                        this.addSystemHintText("你被黑手党攻击了", 'red')
+                    const source = this.factionSet.find(f => f.name === data.source) ?? this.roleSet.find(r => r.name === data.source)
+                    if(source !== undefined)
+                        this.addSystemHintText(`你被${source.name}袭击了`, 'red')
+                    else
+                        this.addSystemHintText("你被人袭击了", 'red')
+
 
                     const gamePageElement = document.getElementById('gamePage')
                     return new Promise((resolve) => {
@@ -1167,7 +1171,7 @@ document.addEventListener('alpine:init', () => {
                         break
 
                         case 'ImmuneToAttack':{
-                            this.addSystemHintText("你的目标矫健的躲过了你的攻击!（他拥有夜间无敌）")
+                            this.addSystemHintText("你的目标矫健地躲过了你的攻击!（夜间无敌）")
                         }
                     }
 
@@ -1179,9 +1183,9 @@ document.addEventListener('alpine:init', () => {
                 break}
 
                 case 'someoneIsTryingToDoSomethingToYou':{
-                    console.log(data)
                     const actionWord = frontendData.abilities[data.actionName].actionWord
-                    this.addSystemHintText(`今晚有人试图 ${actionWord} 你！`)
+                    const source = this.factionSet.find(f => f.name === data.source) ?? this.roleSet.find(r => r.name === data.source)
+                    this.addSystemHintText(`今晚${source?.nameTranslate ?? '有人'}试图 ${actionWord} 你！`)
 
                     return new Promise((resolve) => {
                         setTimeout(()=>{

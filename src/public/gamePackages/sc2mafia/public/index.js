@@ -114,7 +114,7 @@ document.addEventListener('alpine:init', () => {
                     "98FB98", "696969", "fuchsia"
                 ];
 
-                this.playerList = playerDatas.map(pd => new Player(pd, playerColors[pd.index]))
+                this.playerList = playerDatas.map(pd => new Player(this, pd, playerColors[pd.index]))
             },
 
             'ChatMessage':function(data){
@@ -409,9 +409,13 @@ document.addEventListener('alpine:init', () => {
                 if(winningFaction !== undefined){
                     this.gamePageTipMessage.addText(winningFaction.nameTranslate, winningFaction.color)
                 }else{
-                    for(const [index, nw] of neutralWinners.entries()){
-                        if(index !== 0) this.gamePageTipMessage.addText('、');
-                        this.gamePageTipMessage.append(nw.role.getNameMagicString())
+                    if(neutralWinners.length > 0){
+                        for(const [index, nw] of neutralWinners.entries()){
+                            if(index !== 0) this.gamePageTipMessage.addText('、');
+                            this.gamePageTipMessage.append(nw.role.getNameMagicString())
+                        }
+                    }else{
+                        this.gamePageTipMessage.addText("无人")
                     }
                 }
                 this.gamePageTipMessage.addText(" 胜利！")
@@ -1864,7 +1868,8 @@ document.addEventListener('alpine:init', () => {
 })
 
 class Player{
-    constructor(playerData, color){
+    constructor(game, playerData, color){
+        this.game    = game
         this.data    = playerData
         this.isAlive = playerData.isAlive ?? true
         this.color   = html5ColorHexMap[color]??(color.startsWith('#')? color:`#${color}`)
@@ -1914,7 +1919,7 @@ class Player{
                     const deathReason = this.deathReason.shift()
                     if(deathReason.endsWith('Attack')){
                         const attackSourceName = deathReason.split('Attack')[0]
-                        const attackSource = this.factionSet.find(f => f.name === attackSourceName) ?? this.roleSet.find(r => r.name === attackSourceName)
+                        const attackSource = this.game.factionSet.find(f => f.name === attackSourceName) ?? this.game.roleSet.find(r => r.name === attackSourceName)
 
                         if(attackSource === undefined){
                             console.error(`Unknow attackSourceName:${attackSourceName}`)

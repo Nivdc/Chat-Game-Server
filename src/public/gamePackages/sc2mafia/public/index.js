@@ -185,18 +185,14 @@ document.addEventListener('alpine:init', () => {
             'SetReadyPlayerIndexList':function(data){
                 const newReadyPlayerIndexList = data
                 const newPlayerIndexList = getComplement(newReadyPlayerIndexList, this.readyPlayerIndexList)
-                console.log(newPlayerIndexList)
                 for(const pIndex of newPlayerIndexList){
                     let message = new MagicString({style:'background-color:rgba(0, 0, 0, 0.2);color:yellow;text-shadow: 1px 1px 0px #000000;'})
                     let player  = this.playerList[pIndex]
-                    console.log(pIndex)
-                    console.log(this.playerList[pIndex])
                     if(player !== undefined){
                         player.isReady = true
                         message.append(player.getNameMagicString_Bold())
                         message.append({text:` 加入了游戏 (${this.playerList.filter(p => p.isReady === true).length} / ${this.playerList.length})`})
                         this.addMessage(message)
-                        console.log(message)
                     }
                 }
 
@@ -398,12 +394,26 @@ document.addEventListener('alpine:init', () => {
             },
 
             'SetWinner':function(data){
-                let winningFaction = this.factionSet.find(f => f.name === data.winningFactionName)
-                let winners = data.winners.map(dw => this.playerList[dw.index])
+                const winningFaction = this.factionSet.find(f => f.name === data.winningFactionName)
+                const winners = data.winners.map(dw => {
+                    const winnerPlayer = this.playerList[dw.index]
+                    winnerPlayer.role = this.roleSet.find(r => r.name === dw.role.name)
+                    winnerPlayer.affiliationName = dw.affiliationName
+                    return winnerPlayer
+                })
+
+                const neutralWinners = winners.filter(w => w.affiliationName === undefined)
 
                 this.gamePageTipMessage = new MagicString()
                 this.gamePageTipMessage.addText("我们得到的结果是 ... ")
-                this.gamePageTipMessage.addText(winningFaction.nameTranslate, winningFaction.color)
+                if(winningFaction !== undefined){
+                    this.gamePageTipMessage.addText(winningFaction.nameTranslate, winningFaction.color)
+                }else{
+                    for(const [index, nw] of neutralWinners.entries()){
+                        if(index !== 0) this.gamePageTipMessage.addText('、');
+                        this.gamePageTipMessage.append(nw.role.getNameMagicString())
+                    }
+                }
                 this.gamePageTipMessage.addText(" 胜利！")
                 this.gamePageTipMessage.class = 'animation-fadeIn-1s'
             },
@@ -456,6 +466,7 @@ document.addEventListener('alpine:init', () => {
             'SetRoleSet':function(data){
                 const roleFrontendDatas = frontendData.roles
                 const roleBackendDatas = data.filter(rd => roleFrontendDatas.find(rfd => rfd.name === rd.name) !== undefined)
+                roleBackendDatas.filter(rbd => rbd.defaultAffiliationName === undefined).forEach(rbd => rbd.defaultAffiliationName = 'Neutral')
 
                 this.roleSet = roleFrontendDatas.map(rfd => new Role(rfd, roleBackendDatas.find(rbd => rbd.name === rfd.name), this.tagSet, this.factionSet, this.setting))
                 this.factionSet.forEach(f => f.addExtraRoleName(this.roleSet))
@@ -1088,14 +1099,20 @@ document.addEventListener('alpine:init', () => {
                 break}
 
                 case 'receiveDetectionReport':{
-                    let target = this.playerList[data.targetIndex]
-                    let affiliation = this.factionSet.find(f => f.name === data.targetAffiliationName)
-                    let message = new MagicString()
+                    const target = this.playerList[data.targetIndex]
+                    const faction = this.factionSet.find(f => f.name === data.targetAffiliationName)
+                    const role = this.roleSet.find(r => r.name === data.targetRoleName)
+                    const message = new MagicString()
                     message.append(target.getNameMagicString())
-                    if(affiliation.name === 'Mafia'){
+                    if(faction !== undefined && faction.name !== 'Neutral'){
                         message.addText(' 是 ')
-                        message.addText(affiliation.nameTranslate, affiliation.color)
-                    }else{
+                        message.append(faction.getNameMagicString())
+                    }
+                    else if(role !== undefined){
+                        message.addText(' 是 ')
+                        message.append(role.getNameMagicString())
+                    }
+                    else{
                         message.addText(' 看起来不可疑。')
                     }
                     this.addMessage(message)
@@ -1148,7 +1165,22 @@ document.addEventListener('alpine:init', () => {
                         case 'ImmuneToRoleBlock':
                             this.addSystemHintText("你的目标免疫限制", 'white')
                         break
+
+                        case 'ImmuneToAttack':{
+                            this.addSystemHintText("你的目标矫健的躲过了你的攻击!（他拥有夜间无敌）", 'white')
+                        }
                     }
+
+                    return new Promise((resolve) => {
+                        setTimeout(()=>{
+                            resolve()
+                        }, 2 * 1000)
+                    })
+                break}
+
+                case 'someoneIsTryingToDoSomethingToYou':{
+                    const actionWord = frontendData.abilities[data.actionName].actionWord
+                    this.addSystemHintText(`今晚有人试图 ${actionWord} 你！`)
 
                     return new Promise((resolve) => {
                         setTimeout(()=>{
@@ -1210,14 +1242,16 @@ document.addEventListener('alpine:init', () => {
                     
                     roleList: [
                         // "Citizen", "Citizen",
-                        "Escort",
+                        // "Escort",
                         // "Doctor",
-                        // "Doctor",
-                        "Consort",
+                        "SerialKiller",
+                        "Sheriff",
+                        // "Consort",
                         // "AllRandom",
                     ],
 
                     roleModifyOptions: {
+                        // Town
                         doctor:{
                             knowsIfTargetIsAttacked:true,
                         },
@@ -1231,6 +1265,7 @@ document.addEventListener('alpine:init', () => {
                             hasAbilityUsesLimit_3_Times: false,
                             hasAbilityUsesLimit_4_Times: false,
                         },
+                        // Mafia
                         consort:{
                             canBeTurnedIntoTeamExecutor:true,
                             hasEffect_ImmuneToRoleBlock:false,
@@ -1239,6 +1274,12 @@ document.addEventListener('alpine:init', () => {
                         blackmailer:{
                             canBeTurnedIntoTeamExecutor:true,
                             hasAbilityForceDisableTurn_1_AtStart:false,
+                        },
+                        //
+                        serialKiller:{
+                            // hasEffect_ImmuneToAttack:true,
+                            fightBackAgainstRoleBlocker:false,
+                            hasEffect_ImmuneToDetect:false,
                         }
                     }
                 }
@@ -1969,6 +2010,10 @@ const frontendData = {
             name: "Team",
             nameTranslate:'团队',
         },
+        {
+            name:"Evil",
+            nameTranslate:'邪恶',
+        }
     ],
     factions:[
         {
@@ -1982,6 +2027,11 @@ const frontendData = {
             nameTranslate:'黑手党',
             color:"red",
             goalDescriptionTranslate:"杀光城镇以及所有想要对抗你们的人。"
+        },
+        {
+            name:"Neutral",
+            nameTranslate:'中立',
+            color:"lightgray",
         },
         {
             name:"Random",
@@ -2022,6 +2072,7 @@ const frontendData = {
             descriptionTranslate:"一个执法机构的成员，迫于谋杀的威胁而身处隐匿。",
             abilityDescriptionTranslate:"这个角色有每晚侦查一人有无犯罪活动的能力。",
             abilityDetails:["每晚调查一人的阵营。"],
+            featureDetails:["警长可以查出所有邪恶角色"]
         },
         {
             name:"AuxiliaryOfficer",
@@ -2077,13 +2128,23 @@ const frontendData = {
         {
             name:"Blackmailer",
             nameTranslate:"恐吓者",
-            descriptionTranslate:"一个为犯罪组织工作的舞者。",
+            descriptionTranslate:"一个恐吓者...",
             abilityDescriptionTranslate:"每晚使一个人沉默",
             abilityDetails:["被沉默的玩家无法在次日说话。",
                 "被沉默的玩家在到要说遗言时可以说话。",
                 "被沉默的玩家被审判时全体玩家会收到提示。"
             ],
         },
+        {
+            name:"SerialKiller",
+            nameTranslate:"连环杀手",
+            color:"fuchsia",
+            descriptionTranslate:"一个疯狂的罪犯，一个憎恨世界的人。",
+            abilityDescriptionTranslate:"这个角色有每晚杀死一人的能力",
+            otherDescriptionTranslate:"连环杀手在成为最后活着的人时胜利",
+
+            goalDescriptionTranslate:"成为最后一个活着的人"
+        }
     ],
     randomRoles:[
         {
@@ -2096,6 +2157,15 @@ const frontendData = {
             description:"无法被限制",
             featureDescription:"你不会被舞娘、陪侍和交际花限制。",
         },
+        'hasEffect_ImmuneToAttack':{
+            description:"在夜间无敌",
+            featureDescription:"你拥有夜间无敌。（注意，攻击你的人会知道你有无敌）",
+        },
+        'hasEffect_ImmuneToDetect':{
+            description:"免疫调查",
+            featureDescription:"你在调查角色眼里像是不活跃的市民。",
+        },
+
         'hasAbilityUsesLimit_2_Times':{
             description:"技能只有 2 次使用机会",
             featureDescription:"你的技能只能使用 2 次。",
@@ -2108,10 +2178,12 @@ const frontendData = {
             description:"技能只有 4 次使用机会",
             featureDescription:"你的技能只能使用 4 次。",
         },
+
         'hasAbilityForceDisableTurn_1_AtStart':{
             description:"开局首夜技能不可用",
             featureDescription:"开局首夜技能不可用",
         },
+
         'knowsIfTargetIsAttacked':{
             description:"目标受到攻击时可获知",
             featureDescription:"你会获知你的目标是否被攻击。",
@@ -2120,13 +2192,20 @@ const frontendData = {
             description:"察觉目标是否免疫限制",
             featureDescription:"你会获知你的目标是否免疫限制。",
         },
+
         'consecutiveAbilityUses_2_Cause_1_NightCooldown':{
             description:"连续使用技能2次将产生1晚间隔",
             featureDescription:"连续使用技能2次将产生1晚间隔。",
         },
+
         'canBeTurnedIntoTeamExecutor':{
             description:"团队无可执行角色时转变为可执行角色（党徒）",
             featureDescription:"团队无可执行角色时转变为可执行角色（党徒）",
+        },
+
+        'fightBackAgainstRoleBlocker':{
+            description:"反杀限制者",
+            featureDescription:"如果有人试图限制你，你会转而攻击他。",
         }
     }
 
@@ -2164,6 +2243,7 @@ const frontendData = {
 class Faction{
     constructor(factionFrontendData, factionBackendData){
         this.data = {...factionFrontendData, ...factionBackendData}
+        this.includeRoleNames = []
         if(this.data.roleVariationList !== undefined)
             this.includeRoleNames = this.data.roleVariationList.map(rv => rv.name)
 
@@ -2262,6 +2342,7 @@ class RandomRole{
         this.affiliation = randomFaction
         this.game = game
 
+        // 为随机角色添加角色数据里的数据...如果有的话
         const thisRandomRoleData = frontendData.randomRoles.find(r => r.name === this.name)
         for(const key in thisRandomRoleData){
             if(key in this === false){
@@ -2269,6 +2350,8 @@ class RandomRole{
             }
         }
 
+        if('descriptionTranslate' in this === false)
+            this.descriptionTranslate = `可能是任意一个 ${this.factionTag.nameTranslate} ${this.nonFactionTag?.nameTranslate ?? ''} 角色`
         this.generateModifyOptions()
     }
 

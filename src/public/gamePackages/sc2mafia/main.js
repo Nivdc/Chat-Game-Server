@@ -288,7 +288,9 @@ class Game{
         p.sendEvent("InitCompleted")
 
         p.isReady = true
-        this.sendEventToAll("SetReadyPlayerIndexList", this.playerList.filter(p => p.isReady).map(p => p.index))
+        // 如果我们将下面这个消息发送给没有准备好的玩家，就会因为ws协议保证消息收发的顺序性
+        // 它会先于上面所有事件接收到，于是因为没有准备好的玩家没有接收到SetPlayerList事件，导致前端错误
+        this.sendEventToGroup(this.playerList.filter(p => p.isReady),"SetReadyPlayerIndexList", this.playerList.filter(p => p.isReady).map(p => p.index))
     }
 
     // 如果这个游戏继续发展下去，一个role应该附带三个信息{name, fation, team}
@@ -397,14 +399,15 @@ class Game{
         this.factionSet = []
 
         for(const p of this.playerList){
-            if(p.role.affiliationName !== 'Neutral'){
+            if(p.role.affiliationName !== undefined){
                 const faction = this.factionSet.find(f => f.name === p.role.affiliationName)
                 if(faction !== undefined)
-                    faction.playerList.push(p)
+                    p.setFaction(faction)
                 else{
                     const newFaction = new Faction(this, p.role.affiliationName)
                     this.factionSet.push(newFaction)
-                    newFaction.playerList.push(p)
+                    p.setFaction(newFaction)
+
                 }
             }
         }
@@ -689,12 +692,19 @@ class Game{
             if(a.origin.hasEffect('RoleBlocked') === false){
                 if(a.target.hasEffect('ImmuneToRoleBlock') === false){
                     a.target.addEffect('RoleBlocked', 1)
-                }else{
+                    sendActionEvent(a.target, 'YourRoleIsBlocked')
+                }
+                else if(a.target.role.modifyObject?.['fightBackAgainstRoleBlocker']){
+                    this.nightActionSequence = this.nightActionSequence.filter(na => na.origin === a.target)
+                    this.nightActionSequence.push({name:'Attack', type:'Attack', origin:a.target, target:a.origin})
+                    sendActionEvent(a.target, 'SomeoneIsTryingToDoSomethingToYou.', {actionName:a.name})
+                }
+                else{
                     if(a.origin.role.modifyObject?.['knowsIfTargetHasEffect_ImmuneToRoleBlock']){
                         sendActionEvent(a.origin, 'YourTargetHasEffect', {effectName:'ImmuneToRoleBlock'})
                     }
+                    sendActionEvent(a.target, 'SomeoneIsTryingToDoSomethingToYou.', {actionName:a.name})
                 }
-                sendActionEvent(a.target, 'YourRoleIsBlocked')
             }
         })
         this.nightActionSequence = this.nightActionSequence.filter(a => a.origin.hasEffect('RoleBlocked') === false)
@@ -757,10 +767,26 @@ class Game{
             switch(a.name){
                 case 'Detect':
                     if(a.origin.isAlive === true){
+                        const detectionReport = {
+                            targetIndex: a.target.index,
+                            targetAffiliationName: a.target.faction?.name ?? 'Neutral',
+                        }
+
+                        if(detectionReport.targetAffiliationName === 'Neutral'){
+                            if(a.target.role.tags.includes('Evil')){
+                                detectionReport.targetRoleName = a.target.role.name
+                            }
+                        }
+
+                        if(a.target.hasEffect('ImmuneToDetect')){
+                            delete detectionReport.targetRoleName
+                            delete detectionReport.targetAffiliationName
+                        }
+
                         if(a.isTeamAction){
-                            sendActionEvent(a.origin.team, 'ReceiveDetectionReport', {targetIndex:a.target.index, targetAffiliationName:a.target.role.affiliationName})
+                            sendActionEvent(a.origin.team, 'ReceiveDetectionReport', detectionReport)
                         }else{
-                            sendActionEvent(a.origin, 'ReceiveDetectionReport', {targetIndex:a.target.index, targetAffiliationName:a.target.role.affiliationName})
+                            sendActionEvent(a.origin, 'ReceiveDetectionReport', detectionReport)
                         }
                     }
                 break
@@ -988,22 +1014,34 @@ class Game{
     async victoryCheck(){
         if(this.factionSet.some(f => f.alivePlayerList.length > 0)){
             this.winningFaction = this.factionSet.find(f => f.victoryCheck())
-            this.winners = this.winningFaction.playerList
             if(this.winningFaction !== undefined){
-                this.sendEventToAll("SetWinner", {winningFactionName:this.winningFaction.name, winners:this.winners})
+                this.winners = this.playerList.filter(p => p.victoryCheck())
                 this.sendEventToAll("SetCast", this.playerList.map(p => p.toJSON_includeRole()))
+                this.sendEventToAll("SetWinner", {winningFactionName:this.winningFaction.name, winners:this.winners.map(p => p.toJSON_includeRole())})
 
                 await this.newGameStage("end", 0.2)
                 this.room.endGame()
             }
         }
-        // else if(this.factionSet.every(f => f.alivePlayerList.length === 0)){
+        else if(this.factionSet.every(f => f.alivePlayerList.length === 0)){
+            this.winningFaction = undefined
+            this.winners = this.playerList.filter(p => p.victoryCheck())
+            this.sendEventToAll("SetCast", this.playerList.map(p => p.toJSON_includeRole()))
+            this.sendEventToAll("SetWinner", {winners:this.winners.map(p => p.toJSON_includeRole())})
 
-        // }
+            await this.newGameStage("end", 0.2)
+            this.room.endGame()
+        }
         else if(this.onlinePlayerList.length === 0){
             this.status = 'end'
             this.room.endGame()
         }
+    }
+
+    queryAlivePlayersByRoleFaction(factionName){
+        return this.alivePlayerList.filter((p)=>{
+            return p.role.affiliationName === factionName
+        })
     }
 
     queryAliveMajorFactionPlayers_except(exceptFactionName){
@@ -1015,15 +1053,15 @@ class Game{
         })
     }
 
-    queryAlivePlayersByRoleFaction(factionName){
-        return this.alivePlayerList.filter((p)=>{
-            return p.role.affiliationName === factionName
-        })
-    }
-
     queryAlivePlayersByRoleName(roleName){
         return this.alivePlayerList.filter((p)=>{
             return p.role.name === roleName
+        })
+    }
+
+    queryAliveNeutralPlayersByRoleTag(roleTagName){
+        return this.alivePlayerList.filter(p => p.faction === undefined).filter(p => {
+            return p.role.tags.includes(roleTagName)
         })
     }
 
@@ -1169,6 +1207,11 @@ class Player{
         this.sendEvent("SetRole", this.role)
     }
 
+    setFaction(faction){
+        this.faction = faction
+        faction.playerList.push(this)
+    }
+
     setTeam(team){
         const player = this
         team.playerList.push(this)
@@ -1189,6 +1232,14 @@ class Player{
                 return prop in target ? target[prop] : target.team[prop]
             }
         })
+    }
+
+    victoryCheck(){
+        const factionVictory = this.faction?.victoryCheck() ?? true
+        const teamVictory = this.team?.victoryCheck?.() ?? true
+        const roleVictory = this.role.victoryCheck?.() ?? true
+
+        return factionVictory && teamVictory && roleVictory
     }
 
     generateNightActions(){
@@ -1216,6 +1267,7 @@ class Player{
 
     toJSON_includeRole(){
         const json = this.toJSON()
+        json.affiliationName = this.faction?.name
         json.role = this.role
         json.playedRoleNameRecord = this.playedRoleNameRecord
         return json

@@ -33,7 +33,10 @@ export const originalGameData = {
             victoryCheck(game){
                 const hasMemberRemaining = game.queryAlivePlayersByRoleFaction(this.name).length > 0
                 const isLastSurvivingFaction = game.queryAliveMajorFactionPlayers_except(this.name).length === 0
-                if(hasMemberRemaining && isLastSurvivingFaction){
+                const neutralEvilDoesNotExist = game.queryAliveNeutralPlayersByRoleTag('Evil').length === 0
+                const neutralKillingDoesNotExist = game.queryAliveNeutralPlayersByRoleTag('Killing').length === 0
+
+                if(hasMemberRemaining && isLastSurvivingFaction && neutralEvilDoesNotExist && neutralKillingDoesNotExist){
                     return true
                 }
                 else if(hasMemberRemaining === false){
@@ -62,7 +65,9 @@ export const originalGameData = {
             victoryCheck(game){
                 const hasMemberRemaining = game.queryAlivePlayersByRoleFaction(this.name).length > 0
                 const isLastSurvivingFaction = game.queryAliveMajorFactionPlayers_except(this.name).length === 0
-                if(hasMemberRemaining && isLastSurvivingFaction){
+                const neutralKillingDoesNotExist = game.queryAliveNeutralPlayersByRoleTag('Killing').length === 0
+
+                if(hasMemberRemaining && isLastSurvivingFaction && neutralKillingDoesNotExist){
                     return true
                 }
                 else if(hasMemberRemaining === false){
@@ -76,7 +81,14 @@ export const originalGameData = {
         {
             name: "Killing",
             includeRoleNames: [
-                "Mafioso"
+                "Mafioso",
+                "SerialKiller"
+            ]
+        },
+        {
+            name:"Evil",
+            includeRoleNames: [
+                "SerialKiller"
             ]
         },
         {
@@ -207,8 +219,13 @@ export const originalGameData = {
             }
         ]
     },
-    // 
+    // 在阵营内的角色现在是自动生成的，详见faction中的roleVariationList
+    // 下方只有中立角色
     roles: [
+        {
+            name:'SerialKiller',
+            abilityNames:['Attack'],
+        }
     ],
     votes: [
         {
@@ -504,10 +521,13 @@ export class Role{
         this.name   = roleData.name
 
         const defaultRoleData = originalGameData.roles.find(r => r.name === roleData.name)
-        this.affiliationName = roleData.affiliationName ?? defaultRoleData.defaultAffiliationName ?? 'Neutral'
+        this.affiliationName = roleData.affiliationName ?? defaultRoleData.defaultAffiliationName ?? undefined
 
-        const factionMemberDefaultTeamName = originalGameData.factions.find(f => f.name === this.affiliationName).allMembersAreOnDefaultTeam
-        this.teamName = roleData.teamName ?? defaultRoleData.defaultTeamName ?? factionMemberDefaultTeamName
+        this.tags = defaultRoleData.tags
+
+
+        const factionMemberDefaultTeamName = originalGameData.factions.find(f => f.name === this.affiliationName)?.allMembersAreOnDefaultTeam
+        this.teamName = roleData.teamName ?? defaultRoleData.defaultTeamName ?? factionMemberDefaultTeamName ?? undefined
 
         const abilityNames = defaultRoleData.abilityNames
         if(abilityNames !== undefined){

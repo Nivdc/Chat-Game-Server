@@ -562,7 +562,7 @@ class Game{
     }
 
     newGameStage(name, durationMin){
-        if(this.onlinePlayerList === 0)
+        if(this.onlinePlayerList === 0 || this.status === 'end')
             return
 
         this.gameStage = new this.GameStage(this, name, durationMin)
@@ -925,7 +925,7 @@ class Game{
         for(const p of checkPlayers){
             if(p[`${voteType}TargetIndex`] !== undefined){
                 voteCount[p[`${voteType}TargetIndex`]] += `${voteType}Weight` in p ? p[`${voteType}Weight`] : 1
-                console.log('voteType:', voteType, `->${p.index} voteTo`, p[`${voteType}TargetIndex`])
+                // console.log('voteType:', voteType, `->${p.index} voteTo`, p[`${voteType}TargetIndex`])
             }
         }
 
@@ -1031,7 +1031,7 @@ class Game{
                 this.sendEventToAll("SetWinner", {winningFactionName:this.winningFaction.name, winners:this.winners.map(p => p.toJSON_includeRole())})
 
                 await this.newGameStage("end", 0.2)
-                this.room.endGame()
+                this.end()
             }
         }
         else if(this.factionSet.every(f => f.alivePlayerList.length === 0)){
@@ -1041,12 +1041,17 @@ class Game{
             this.sendEventToAll("SetWinner", {winners:this.winners.map(p => p.toJSON_includeRole())})
 
             await this.newGameStage("end", 0.2)
-            this.room.endGame()
+            this.end()
         }
         else if(this.onlinePlayerList.length === 0){
-            this.status = 'end'
-            this.room.endGame()
+            this.end()
         }
+    }
+
+    end(){
+        this.status = 'end'
+        this.playerList.forEach(p => p.user = undefined)
+        this.room.endGame()
     }
 
     queryAlivePlayersByRoleFaction(factionName){

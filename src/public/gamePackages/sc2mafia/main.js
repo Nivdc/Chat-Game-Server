@@ -697,13 +697,13 @@ class Game{
                 else if(a.target.role.modifyObject?.['fightBackAgainstRoleBlocker']){
                     this.nightActionSequence = this.nightActionSequence.filter(na => na.origin === a.target)
                     this.nightActionSequence.push({name:'Attack', type:'Attack', origin:a.target, target:a.origin})
-                    sendActionEvent(a.target, 'SomeoneIsTryingToDoSomethingToYou.', {actionName:a.name})
+                    sendActionEvent(a.target, 'SomeoneIsTryingToDoSomethingToYou', {actionName:a.name})
                 }
                 else{
                     if(a.origin.role.modifyObject?.['knowsIfTargetHasEffect_ImmuneToRoleBlock']){
                         sendActionEvent(a.origin, 'YourTargetHasEffect', {effectName:'ImmuneToRoleBlock'})
                     }
-                    sendActionEvent(a.target, 'SomeoneIsTryingToDoSomethingToYou.', {actionName:a.name})
+                    sendActionEvent(a.target, 'SomeoneIsTryingToDoSomethingToYou', {actionName:a.name})
                 }
             }
         })
@@ -731,9 +731,15 @@ class Game{
                 switch(action.type){
                     case 'Attack':
                         const attackSource = action.isTeamAction ? action.origin.team.affiliationName : action.origin.role.name
-                        sendActionEvent(action.target, 'YouUnderAttack', {source:attackSource})
-                        action.target.isAlive = false
                         tempDeathReason.push(`${attackSource}Attack`)
+
+                        if(action.target.hasEffect('ImmuneToAttack') === false){
+                            sendActionEvent(action.target, 'YouUnderAttack', {source:attackSource})
+                            action.target.isAlive = false
+                        }else{
+                            sendActionEvent(action.target, 'SomeoneIsTryingToDoSomethingToYou', {actionName:action.name})
+                            sendActionEvent(action.origin, 'YourTargetHasEffect', {effectName:'ImmuneToAttack'})
+                        }
 
                         if('killerMessage' in action.origin)
                             action.target.messageLeftByKiller = action.origin.killerMessage
@@ -747,9 +753,14 @@ class Game{
                                 sendActionEvent(action.origin, 'YourTargetIsAttacked')
                         }
                         // fixme?: 如果医生已经死了，他还是能救下他要救的人
-                        if(action.name === 'Heal' && action.target.isAlive === false && p.deathReason === undefined){
-                            sendActionEvent(action.target, 'YouAreHealed')
+                        if(action.name === 'Heal' && tempDeathReason.length !== 0 && p.deathReason === undefined){
                             action.target.isAlive = true
+
+                            if(action.target.hasEffect('ImmuneToAttack')){
+                                sendActionEvent(action.target, 'SomeoneIsTryingToDoSomethingToYou', {actionName:action.name})
+                            }else{
+                                sendActionEvent(action.target, 'YouAreHealed')
+                            }
                         }
                     break
                 }

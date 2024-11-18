@@ -1167,7 +1167,7 @@ document.addEventListener('alpine:init', () => {
                         break
 
                         case 'ImmuneToAttack':{
-                            this.addSystemHintText("你的目标矫健的躲过了你的攻击!（他拥有夜间无敌）", 'white')
+                            this.addSystemHintText("你的目标矫健的躲过了你的攻击!（他拥有夜间无敌）")
                         }
                     }
 
@@ -1179,6 +1179,7 @@ document.addEventListener('alpine:init', () => {
                 break}
 
                 case 'someoneIsTryingToDoSomethingToYou':{
+                    console.log(data)
                     const actionWord = frontendData.abilities[data.actionName].actionWord
                     this.addSystemHintText(`今晚有人试图 ${actionWord} 你！`)
 
@@ -1189,6 +1190,9 @@ document.addEventListener('alpine:init', () => {
                     })
                 break}
                 
+                default:
+                    console.error(`Unknow animationName: ${animationName}`)
+                break
             }
         },
 
@@ -1197,6 +1201,7 @@ document.addEventListener('alpine:init', () => {
             while(this.actionSequence.length > 0){
                 const action = this.actionSequence.shift()
                 const animationName = action.name.charAt(0).toLowerCase() + action.name.slice(1)
+                console.log(animationName)
                 await this.playAnimation(animationName, action)
             }
             sendEvent('AnimationsFinished')
@@ -1277,7 +1282,7 @@ document.addEventListener('alpine:init', () => {
                         },
                         //
                         serialKiller:{
-                            // hasEffect_ImmuneToAttack:true,
+                            hasEffect_ImmuneToAttack:true,
                             fightBackAgainstRoleBlocker:false,
                             hasEffect_ImmuneToDetect:false,
                         }

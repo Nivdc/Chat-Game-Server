@@ -225,6 +225,9 @@ export const originalGameData = {
         {
             name:'SerialKiller',
             abilityNames:['Attack'],
+            victoryCheck(game, player){
+                return player.isAlive
+            }
         }
     ],
     votes: [
@@ -523,8 +526,8 @@ export class Role{
         const defaultRoleData = originalGameData.roles.find(r => r.name === roleData.name)
         this.affiliationName = roleData.affiliationName ?? defaultRoleData.defaultAffiliationName ?? undefined
 
+        this.data = defaultRoleData
         this.tags = defaultRoleData.tags
-
 
         const factionMemberDefaultTeamName = originalGameData.factions.find(f => f.name === this.affiliationName)?.allMembersAreOnDefaultTeam
         this.teamName = roleData.teamName ?? defaultRoleData.defaultTeamName ?? factionMemberDefaultTeamName ?? undefined
@@ -585,6 +588,10 @@ export class Role{
         }
 
         return actions
+    }
+
+    victoryCheck(){
+        return this.data.victoryCheck(this.game, this.player)
     }
 
     // ......嗯对，这里有个可以多重继承的东西...但是我更宁愿手动复制一下

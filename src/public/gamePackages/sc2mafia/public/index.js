@@ -1782,6 +1782,8 @@ document.addEventListener('alpine:init', () => {
 
                     if(targetIndex === this.myAbilityTargetIndex)
                         buttons.push(useAbilityCancelButton)
+                    else if(this.myRole.affiliation.name === 'Town' && roleAbilityName === 'Attack'){
+                    }
                     else if(abilityUseVerify(this, roleAbilityName, userIndex, targetIndex, this.myAbilityTargetIndex))
                         buttons.push(useAbilityButton)
                 }

@@ -591,7 +591,7 @@ export class Role{
     }
 
     victoryCheck(){
-        return this.data.victoryCheck(this.game, this.player)
+        return this.data.victoryCheck?.(this.game, this.player)
     }
 
     // ......嗯对，这里有个可以多重继承的东西...但是我更宁愿手动复制一下

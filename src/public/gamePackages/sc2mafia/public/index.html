@@ -508,7 +508,7 @@
                                         </template>
 
                                         <!-- <button @click="clickTempButton(player)" style="border:none;">临时按钮</button> -->
-                                        <span x-text="lynchVoteCount?.at(player.index)" x-show="status.split('/').includes('lynchVote')"></span>
+                                        <span x-text="lynchVoteCount?.at(player.index)" x-show="status.split('/').includes('lynchVote') && player.isAlive"></span>
                                     </p>
                                 </template>
                                 <!-- <table>

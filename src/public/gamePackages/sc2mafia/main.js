@@ -690,14 +690,17 @@ class Game{
         const blockActions = filterAndRemove(this.nightActionSequence, a => a.name === 'RoleBlock')
         blockActions.forEach(a => {
             if(a.origin.hasEffect('RoleBlocked') === false){
-                if(a.target.hasEffect('ImmuneToRoleBlock') === false){
+                if(a.target.role.modifyObject?.['fightBackAgainstRoleBlocker']){
+                    console.log(this.nightActionSequence)
+                    this.nightActionSequence = this.nightActionSequence.filter(na => na.origin !== a.target)
+                    this.nightActionSequence.push({name:'Attack', type:'Attack', origin:a.target, target:a.origin})
+                    console.log(this.nightActionSequence)
+
+                    sendActionEvent(a.target, 'SomeoneIsTryingToDoSomethingToYou', {actionName:a.name})
+                }
+                else if(a.target.hasEffect('ImmuneToRoleBlock') === false){
                     a.target.addEffect('RoleBlocked', 1)
                     sendActionEvent(a.target, 'YourRoleIsBlocked')
-                }
-                else if(a.target.role.modifyObject?.['fightBackAgainstRoleBlocker']){
-                    this.nightActionSequence = this.nightActionSequence.filter(na => na.origin === a.target)
-                    this.nightActionSequence.push({name:'Attack', type:'Attack', origin:a.target, target:a.origin})
-                    sendActionEvent(a.target, 'SomeoneIsTryingToDoSomethingToYou', {actionName:a.name})
                 }
                 else{
                     if(a.origin.role.modifyObject?.['knowsIfTargetHasEffect_ImmuneToRoleBlock']){

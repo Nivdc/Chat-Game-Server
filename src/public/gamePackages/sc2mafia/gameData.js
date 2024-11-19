@@ -107,6 +107,7 @@ export const originalGameData = {
     // 在编写generateNightAction的时候我们要注意，虽然action这个命名隐含着强烈的动作意味
     // 但在这个游戏中，action是，且只是一种数据，一种abilityRecord，
     // 它的作用是帮助gameDirector判断夜间发生了什么，并最终结算结果
+    // 也正因为action本质上是一种abilityRecord，因此action.name = ability.name
 
     // 如果说gameDirector是线下游戏的主持人，那么这个action就是玩家在夜间递给主持人的小纸条
     // 上面写明了自己想要在今晚干什么
@@ -120,104 +121,205 @@ export const originalGameData = {
     // 也许在其他游戏中攻击的实现方法不是这样的，但是在这个游戏中，我觉得只有这样才是正确的。
 
     // 两种特殊的ability类型Attack和Protect将会有特殊的处理行为。
+
+    // 如果没有编写自己的处理逻辑，技能将会遵循default里的处理逻辑
+    // 调用优先顺序是这样的: (各个ability里的内容) -> default对象里的内容 -> class Ability里的内容(如果有的话)
+    // 我们仔细考虑一下这个结构，它实际上是添加了一个类型系统
+    //
+    // 传统的对象模型可能是这样的:
+    //                                   ┌───► Attack      
+    //                                   │                 
+    //   AbilityBase ┬─► TargetedAbility ┴───► Heal        
+    //               │                                     
+    //               └─► EnabledAbility  ────► BulletProof 
+    //
+    //
+    // 而在我们的实现中，基于JS强大的灵活性，它是这样的: 
+    //                                                            ┌───► Attack         
+    //                                                            │                    
+    //                             ┌──► targetedAbilities.default ┴───► Heal           
+    //                             │                                                   
+    //                             │                                                   
+    //   AbilityBase ────► Ability ┴──► enabledAbilities.default  ────► BulletProof    
+    //
+    // 我现在还判断不出两种模式的优劣，也许它们实际上殊途同归，但是我愿意尝试下面这条路子
+    // 尽管当前的实现方式在语法上可能看不出来它的继承，但是它在事实（接口）上确实是继承的
+    // 我们应该特别注意到，下面这种继承方式，与JS的原型链设计、Proxy类有着密不可分的关系
+
+    // 也许我使上浑身解数弄出来的这个抽象玩意，只是为了少写几个class 和 extend 和 constructor ？
+    // 值了！
+    
     abilities:{
-        targetedAbilities:[
-            {
-                name:"Attack",
-                type:"Attack",
-                verify(game, userIndex, targetIndex, previousTargetIndex){
+        targetedAbilities: {
+            default:{
+                use(game, data){
+                    const target = game.playerList[data.targetIndex]
+                    if(this.verify(game, this.player.index, target.index) && this.state.unableToUse === false){
+                        this.target = target
+                        this.player.sendEvent('UseAblitySuccess', data)
+                    }else{
+                        this.player.sendEvent('UseAblityFailed', data)
+                    }
+                },
+            
+                cancel(game, data){
+                    this.target = undefined
+                    this.player.sendEvent('UseAblityCancelSuccess', data)
+                },
+            
+                generateNightAction(){
+                    if(this.target !== undefined){
+                        const abilityTarget = this.target
+                        this.target = undefined
+                        this.addUsageCount()
+                        return {name:this.name, type:this.type, origin:this.player, target:abilityTarget}
+                    }else{
+                        this.resetConsecutiveUsageCount()
+                        return undefined
+                    }
+                },
+            
+                createAbilityTeamVote(game){
+                    const v = new Vote(game, this.teamVoteData)
+                    v.isTeamVote = true
+                    return v
+                },
+            
+                generateTeamNightAction(executor, target){
+                    if(executor && target){
+                        return {name:this.name, type:this.type, origin:executor, target}
+                    }
+                    return undefined
+                },
+            },
+            "Attack": {
+                type: "Attack",
+                verify(game, userIndex, targetIndex, previousTargetIndex) {
                     const userIsAlive = game.playerList[userIndex].isAlive
                     const targetIsAlive = game.playerList[targetIndex].isAlive
                     const targetIsNotPreviousTarget = targetIndex !== previousTargetIndex
-            
                     return userIsAlive && targetIsAlive && targetIsNotPreviousTarget
                 },
-                teamVoteData:{
-                    name:`AttackVote`,
-                    verify(game, voterIndex, targetIndex, previousTargetIndex){
+                teamVoteData: {
+                    name: "AttackVote",
+                    verify(game, voterIndex, targetIndex, previousTargetIndex) {
                         const voterIsAlive = game.playerList[voterIndex].isAlive
                         const targetIsAlive = game.playerList[targetIndex].isAlive
                         const targetIsNotPreviousTarget = targetIndex !== previousTargetIndex
-                        // 为什么要限制黑手党在晚上投票呢？白天也可以投啊
-                        // const gameStatusIsNighdataiscussion = (this.status === 'night/discussion')
-                        // 为什么要限制黑手党给自己人投票呢？我觉得他可以啊
-                        // const targetIsNotMafia = (this.queryAlivePlayersByRoleTag('Mafia').map(p => p.index).includes(targetIndex) === false)
                         return voterIsAlive && targetIsAlive && targetIsNotPreviousTarget
                     },
-                    getResultIndexArray(game, count){
-                        const voteMax = count.reduce((a, b) => Math.max(a, b), -Infinity);
-
-                        if(voteMax > 0){
-                            const voteMaxIndexArray = count.map((vc, idx) => {return  vc === voteMax ? idx:undefined}).filter(vidx => vidx !== undefined)
+                    getResultIndexArray(game, count) {
+                        const voteMax = count.reduce((a, b) => Math.max(a, b), -Infinity)
+                        if (voteMax > 0) {
+                            const voteMaxIndexArray = count
+                                .map((vc, idx) => (vc === voteMax ? idx : undefined))
+                                .filter((vidx) => vidx !== undefined)
                             return voteMaxIndexArray
                         }
                         return undefined
-                    },
-                },
+                    }
+                }
             },
-            {
-                name:"Heal",
-                type:"Protect",
-                verify(game, userIndex, targetIndex, previousTargetIndex){
+            "Heal": {
+                type: "Protect",
+                verify(game, userIndex, targetIndex, previousTargetIndex) {
                     const userIsAlive = game.playerList[userIndex].isAlive
-                    const userIsNotTarget = (userIndex !== targetIndex)
+                    const userIsNotTarget = userIndex !== targetIndex
                     const targetIsNotPreviousTarget = targetIndex !== previousTargetIndex
                     const targetIsNotDead_yet = game.playerList[targetIndex].isAlive
                     return userIsAlive && userIsNotTarget && targetIsNotPreviousTarget && targetIsNotDead_yet
-                },
+                }
             },
-            {
-                name:"RoleBlock",
-                verify(game, userIndex, targetIndex, previousTargetIndex){
+            "RoleBlock": {
+                verify(game, userIndex, targetIndex, previousTargetIndex) {
                     const userIsAlive = game.playerList[userIndex].isAlive
-                    const userIsNotTarget = (userIndex !== targetIndex)
+                    const userIsNotTarget = userIndex !== targetIndex
                     const targetIsNotPreviousTarget = targetIndex !== previousTargetIndex
                     const targetIsAlive = game.playerList[targetIndex].isAlive
-                    const targetIsNotUserTeamMember = (game.playerList[userIndex].team?.playerList.map(p => p.index).includes(targetIndex) !== true)
+                    const targetIsNotUserTeamMember =
+                        game.playerList[userIndex].team?.playerList.map((p) => p.index).includes(targetIndex) !== true
                     return userIsAlive && userIsNotTarget && targetIsNotPreviousTarget && targetIsAlive && targetIsNotUserTeamMember
-                },
+                }
             },
-            {
-                name:"Silence",
-                verify(game, userIndex, targetIndex, previousTargetIndex){
+            "Silence": {
+                verify(game, userIndex, targetIndex, previousTargetIndex) {
                     const userIsAlive = game.playerList[userIndex].isAlive
-                    const userIsNotTarget = (userIndex !== targetIndex)
+                    const userIsNotTarget = userIndex !== targetIndex
                     const targetIsNotPreviousTarget = targetIndex !== previousTargetIndex
                     const targetIsAlive = game.playerList[targetIndex].isAlive
-                    // const targetIsNotUserTeamMember = (game.playerList[userIndex].team?.playerList.map(p => p.index).includes(targetIndex) !== true)
                     return userIsAlive && userIsNotTarget && targetIsNotPreviousTarget && targetIsAlive
-                },
+                }
             },
-            {
-                name:"Detect",
-                verify(game, userIndex, targetIndex, previousTargetIndex){
+            "Detect": {
+                verify(game, userIndex, targetIndex, previousTargetIndex) {
                     const userIsAlive = game.playerList[userIndex].isAlive
-                    const userIsNotTarget = (userIndex !== targetIndex)
+                    const userIsNotTarget = userIndex !== targetIndex
                     const targetIsNotPreviousTarget = targetIndex !== previousTargetIndex
                     const targetIsAlive = game.playerList[targetIndex].isAlive
                     return userIsAlive && userIsNotTarget && targetIsNotPreviousTarget && targetIsAlive
                 },
-                teamVoteData:{
-                    name:`DetectVote`,
-                    verify(game, voterIndex, targetIndex, previousTargetIndex){
+                teamVoteData: {
+                    name: "DetectVote",
+                    verify(game, voterIndex, targetIndex, previousTargetIndex) {
                         const voterIsAlive = game.playerList[voterIndex].isAlive
                         const targetIsAlive = game.playerList[targetIndex].isAlive
                         const targetIsNotPreviousTarget = targetIndex !== previousTargetIndex
-                        const targetIsNotAuxiliaryOfficer = (game.playerList[voterIndex].team.playerList.map(p => p.index).includes(targetIndex) === false)
+                        const targetIsNotAuxiliaryOfficer =
+                            game.playerList[voterIndex].team.playerList.map((p) => p.index).includes(targetIndex) === false
                         return voterIsAlive && targetIsAlive && targetIsNotPreviousTarget && targetIsNotAuxiliaryOfficer
                     },
-                    getResultIndexArray(game, count){
-                        const voteMax = count.reduce((a, b) => Math.max(a, b), -Infinity);
-
-                        if(voteMax > 0){
-                            const voteMaxIndexArray = count.map((vc, idx) => {return  vc === voteMax ? idx:undefined}).filter(vidx => vidx !== undefined)
+                    getResultIndexArray(game, count) {
+                        const voteMax = count.reduce((a, b) => Math.max(a, b), -Infinity)
+                        if (voteMax > 0) {
+                            const voteMaxIndexArray = count
+                                .map((vc, idx) => (vc === voteMax ? idx : undefined))
+                                .filter((vidx) => vidx !== undefined)
                             return voteMaxIndexArray
                         }
                         return undefined
-                    },
-                },
+                    }
+                }
             }
-        ]
+        },
+
+        enabledAbilities: {
+            default:{
+                use(game, data){
+                    const enableAbility = data.enableAbility
+                    if(this.verify(game, this.player.index, target.index) && this.state.unableToUse === false){
+                        this.enable = enableAbility
+                        this.player.sendEvent('UseAblitySuccess', data)
+                    }else{
+                        this.player.sendEvent('UseAblityFailed', data)
+                    }
+                },
+
+                verify(game, userIndex, targetIndex, previousTargetIndex){
+                    const userIsAlive = game.playerList[userIndex].isAlive
+                    return userIsAlive
+                },
+            
+                cancel(game, data){
+                    this.enable = false
+                    this.player.sendEvent('UseAblityCancelSuccess', data)
+                },
+            
+                generateNightAction(){
+                    if(this.enable === true){
+                        this.enable = undefined
+                        this.addUsageCount()
+                        return {name:this.name, type:this.type, origin:this.player}
+                    }else{
+                        this.resetConsecutiveUsageCount()
+                        return undefined
+                    }
+                },
+            },
+
+            "BulletProof":{
+                type: "Protect",
+            }
+        }
     },
     // 在阵营内的角色现在是自动生成的，详见faction中的roleVariationList
     // 下方只有中立角色
@@ -379,7 +481,7 @@ export class Faction{
 }
 
 class AbilityBase{
-    constructor(game, player, roleModifyObject){
+    constructor(game, player, abilityName, roleModifyObject){
         this.game = game
         this.player = player // owner
 
@@ -398,6 +500,7 @@ class AbilityBase{
         }
 
         if(roleModifyObject){
+            // consecutiveAbilityUses_2_Cause_1_NightCooldown
             // note: 注意这里想要造成多于1晚的冷却是不合理的，因为只要有1晚冷却了，就不能算是连续使用了呀...
             if(roleModifyObject['consecutiveAbilityUses_2_Cause_1_NightCooldown']){
                 const consecutiveAbilityUsesLimit = 2
@@ -413,6 +516,7 @@ class AbilityBase{
                 )
             }
 
+            // hasAbilityUsesLimit_*_Times
             // note: 基于下面的代码，同名的modify选项只有第一个为true的会生效
             const roleModifyObjectKeyNames = Object.keys(roleModifyObject)
             if(roleModifyObjectKeyNames.filter(keyName => keyName.startsWith('hasAbilityUsesLimit_')).length > 0){
@@ -431,6 +535,7 @@ class AbilityBase{
                 }
             }
 
+            // hasAbilityForceDisableTurn_*_AtStart
             if(roleModifyObjectKeyNames.filter(keyName => keyName.startsWith('hasAbilityForceDisableTurn_')).length > 0){
                 const options = roleModifyObjectKeyNames.filter(keyName => keyName.startsWith('hasAbilityForceDisableTurn_'))
                 for(const oName of options){
@@ -442,7 +547,33 @@ class AbilityBase{
                     }
                 }
             }
+
+            // hasAbility_*_UsesLimit_*_Times
+            for(const keyName in roleModifyObject ){
+                if(keyName.startsWith('hasAbility_')){
+                    const extraAbilityName = keyName.split('_')[1]
+                    if(keyName.split('_').includes('UsesLimit')){
+                        const usesLimit = extractNumbers(keyName)[0]
+                        if(abilityName === extraAbilityName){
+                            this.state.unableToUseCheckFunctions.push(
+                                function(){
+                                    return this.usageCount >= usesLimit
+                                }
+                            )
+                        }
+                    }
+                }
+            }
         }
+    }
+
+    addUsageCount(){
+        this.state.consecutiveUsageCount ++
+        this.state.usageCount ++
+    }
+
+    resetConsecutiveUsageCount(){
+        this.state.consecutiveUsageCount = 0
     }
 
     reduceForceDisableTurns(){
@@ -451,69 +582,32 @@ class AbilityBase{
     }
 }
 
-// 指向性技能类
-// 注意在这个类中代理对象会优先调用data里面的同名数据
-// 也就是说，除非data里面的存在相应的函数，否则的话，
-// TargetedAbility将会遵循类中定义的默认行为
-class TargetedAbility extends AbilityBase{
+// 技能类
+// 注意在这个类中类会合并default对象的行为和各个ability对象的特殊行为，且后者会对前者进行覆盖
+// 且代理对象会优先调用data里面的同名数据
+// 也就是说，调用优先顺序是这样的: (各个ability里的内容) -> default对象里的内容 -> class Ability里的内容(如果有的话)
+class Ability extends AbilityBase{
     constructor(game, player, abilityName, roleModifyObject){
-        super(game, player, roleModifyObject)
+        super(game, player, abilityName, roleModifyObject)
 
-        this.data = originalGameData.abilities.targetedAbilities.find(a => a.name === abilityName)
+        this.name = abilityName
+        for(const abilityTypeName in originalGameData.abilities){
+            this.data = originalGameData.abilities[abilityTypeName].find(a => a.name === abilityName)
+            if(this.data !== undefined){
+                this.data = {...this.data, ...originalGameData.abilities[abilityTypeName].default}
+                break
+            }
+        }
+
         if(this.data === undefined) console.error(`Unknow Ability: ${abilityName}`);
         if(this.data.verify === undefined) console.error(`Ability: ${abilityName} has no 'verify' Function`);
 
         return new Proxy(this, {
             get(target, prop) {
-                return prop in target.data ? target.data[prop] : target[prop]
+                return prop in target.data ? target.data[prop].call(this) : target[prop]
             }
         })
     }
-
-    use(game, data){
-        const target = game.playerList[data.targetIndex]
-        if(this.verify(game, this.player.index, target.index) && this.state.unableToUse === false){
-            this.target = target
-            this.player.sendEvent('UseAblitySuccess', data)
-        }else{
-            this.player.sendEvent('UseAblityFailed', data)
-        }
-    }
-
-    cancel(game, data){
-        this.target = undefined
-        this.player.sendEvent('UseAblityCancelSuccess', data)
-    }
-
-    generateNightAction(){
-        if(this.target !== undefined){
-            const abilityTarget = this.target
-            this.target = undefined
-            this.state.usageCount ++
-            this.state.consecutiveUsageCount ++
-            return {name:this.name, type:this.type, origin:this.player, target:abilityTarget}
-        }else{
-            this.state.consecutiveUsageCount = 0
-            return undefined
-        }
-    }
-
-    createAbilityTeamVote(game){
-        const v = new Vote(game, this.teamVoteData)
-        v.isTeamVote = true
-        return v
-    }
-
-    generateTeamNightAction(executor, target){
-        if(executor && target){
-            return {name:this.name, type:this.type, origin:executor, target}
-        }
-        return undefined
-    }
-}
-
-class EnabledAbility  extends AbilityBase{
-
 }
 
 // 仁慈的父，我已坠入，看不见罪的国度，请原谅我的自负~
@@ -533,12 +627,6 @@ export class Role{
         this.teamName = roleData.teamName ?? defaultRoleData.defaultTeamName ?? factionMemberDefaultTeamName ?? undefined
 
         const abilityNames = defaultRoleData.abilityNames
-        if(abilityNames !== undefined){
-            this.abilities = []
-            for(const aName of abilityNames){
-                this.abilities.push(new TargetedAbility(this.game, this.player, aName, this.modifyObject))
-            }
-        }
 
         if(this.modifyObject){
             for(const keyName in this.modifyObject ){
@@ -547,6 +635,18 @@ export class Role{
                     if(this.modifyObject[keyName])
                         this.addEffect(effectName)
                 }
+                else if(keyName.startsWith('hasAbility_')){
+                    const extraAbilityName = keyName.split('_')[1]
+                    if(this.modifyObject[keyName])
+                        this.abilityNames.push(extraAbilityName)
+                }
+            }
+        }
+
+        if(abilityNames !== undefined){
+            this.abilities = []
+            for(const aName of abilityNames){
+                this.abilities.push(new Ability(this.game, this.player, aName, this.modifyObject))
             }
         }
     }
@@ -743,7 +843,7 @@ export class Team{
             this.abilities = []
             this.abilityVotes = []
             for(const aName of data.abilityNames){
-                const ability = new TargetedAbility(this.game, undefined, aName)
+                const ability = new Ability(this.game, undefined, aName)
                 this.abilities.push(ability)
                 this.abilityVotes.push(ability.createAbilityTeamVote(game))
             }
@@ -899,7 +999,17 @@ export function getRoleTags(roleName){
 }
 
 export function abilityUseVerify(game, abilityName, userIndex, targetIndex, previousTargetIndex){
-    const ability = originalGameData.abilities.targetedAbilities.find(a => a.name === abilityName)
+    for(const abilityTypeName in originalGameData.abilities){
+        var ability = originalGameData.abilities[abilityTypeName].find(a => a.name === abilityName)
+        if(ability !== undefined){
+            ability = {...ability, ...originalGameData.abilities[abilityTypeName].default}
+            break
+        }
+    }
+
+    if(ability === undefined) console.error(`Unknow Ability: ${abilityName}`);
+    if(ability.verify === undefined) console.error(`Ability: ${abilityName} has no 'verify' Function`);
+
     return ability?.verify(game, userIndex, targetIndex, previousTargetIndex)
 }
 

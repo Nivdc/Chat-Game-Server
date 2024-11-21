@@ -147,14 +147,14 @@ export const originalGameData = {
     // 我们应该特别注意到，下面这种继承方式，与JS的原型链设计、Proxy类有着密不可分的关系
 
     // 也许我使上浑身解数弄出来的这个抽象玩意，只是为了少写几个class 和 extend 和 constructor ？
-    // 值了！......吗？代价是什么呢？
+    // 值了！......吗？代价是什么呢...
     
     abilities:{
         targetedAbilities: {
             default:{
                 use(game, data){
                     const target = game.playerList[data.targetIndex]
-                    if(this.verify(game, this.player.index, target.index) && this.state.unableToUse === false){
+                    if(target !== undefined && this.verify(game, this.player.index, target.index) && this.state.unableToUse === false){
                         this.target = target
                         this.player.sendEvent('UseAblitySuccess', data)
                     }else{

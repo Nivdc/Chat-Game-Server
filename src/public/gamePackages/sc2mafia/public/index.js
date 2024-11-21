@@ -820,20 +820,18 @@ document.addEventListener('alpine:init', () => {
                 break
 
                 case 'use':
-                case 'useAbility':
-                    console.log(commandString)
+                case 'useAbility':{
                     const usedAbilityName = args.shift()
+                    const targetIndex = Number(args.shift())-1
+
                     if(this.myAbilities?.map(a => a.name).includes(usedAbilityName)){
-                        if(args.shift() !== undefined){
-                            const targetIndex = Number(args.shift())-1
-                            if(Number.isNaN(targetIndex) === false){
-                                sendEvent('UseAbility', {name:usedAbilityName, targetIndex})
-                            }
+                        if(Number.isNaN(targetIndex) === false){
+                            sendEvent('UseAbility', {name:usedAbilityName, targetIndex})
                         }else{
                             sendEvent('UseAbility', {name:usedAbilityName})
                         }
                     }
-                break
+                break}
                 case 'useAbilityCancel':
                     const cancelAbilityName = args.shift()
                     if(this.myAbilities?.map(a => a.name).includes(cancelAbilityName)){
@@ -1040,15 +1038,8 @@ document.addEventListener('alpine:init', () => {
                 // action animations
                 // 行动动画和普通动画的区别就是它会返回一个promise，在动画结束时resolve
                 case 'youTakeAction':{
-                    const abilityName = data.actionName
-                    const abilityActionWord =  frontendData.abilities.targetedAbilities[abilityName].actionWord
-                    const abilityColor = frontendData.abilities.targetedAbilities[abilityName].color
-
-                    const message = new MagicString()
-                    message.addText(`你前去${abilityActionWord} `, abilityColor ?? this.myRole.color)
-                    message.append(this.playerList[data.targetIndex].getNameMagicString())
-                    message.addText("。")
-                    this.addMessage(message)
+                    const relatedAbilityName = data.actionName
+                    Ability.generateActionNotice(this, relatedAbilityName, data)
 
                     return new Promise((resolve) => {
                         setTimeout(()=>{
@@ -1135,7 +1126,7 @@ document.addEventListener('alpine:init', () => {
                 break}
 
                 case 'yourRoleIsBlocked':{
-                    this.addSystemHintText("一个迷人的身躯占据了你的夜晚，今晚你什么都做不了", 'Fuchsia')
+                    this.addSystemHintText("一个迷人的身躯占据了你的夜晚，今夜你无暇顾及其他...", 'Fuchsia')
 
                     const gamePageElement = document.getElementById('gamePage')
                     return new Promise((resolve) => {
@@ -2046,7 +2037,7 @@ const frontendData = {
         targetedAbilities:{
             default:{
                 use(targetIndex){
-                    this.game.commandHandler(`useAbility ${this.name} ${targetIndex+1}`)
+                    this.game.commandHandler(`useAbility ${this.name} ${targetIndex + 1}`)
                 },
 
                 useSuccess(data){
@@ -2069,10 +2060,10 @@ const frontendData = {
 
                 generateButtons(player){
                     const userIndex = this.game.myIndex
-                    const newUseButton = this.useButton
-                    newUseButton.click = ()=>{this.use(player.index)}
-                    const newCancelButton = this.cancelButton
-                    newCancelButton.click = ()=>{this.cancel()}
+                    const newUseButton = this.createUseButton(()=>{
+                        this.use(player.index)
+                    })
+                    const newCancelButton = this.createCancelButton(()=>{this.cancel()})
                     const buttons = []
                     if(player === this.target)
                         buttons.push(newCancelButton)
@@ -2081,8 +2072,15 @@ const frontendData = {
                     else if(abilityUseVerify(this.game, this.name, userIndex, player.index, this.target?.index))
                         buttons.push(newUseButton)
                     return buttons
-                }
+                },
 
+                actionNotice(game, data){
+                    const message = new MagicString()
+                    message.addText(`你前去${this.actionWord} `, this.color ?? game.myRole.color)
+                    message.append(game.playerList[data.targetIndex].getNameMagicString())
+                    message.addText("。")
+                    game.addMessage(message)
+                }
             },
             "Attack":{
                 actionWord:"袭击",
@@ -2128,13 +2126,18 @@ const frontendData = {
                 generateButtons(player){
                     const buttons = []
                     if(player.index === this.game.myIndex){
-                        const newUseButton = this.useButton
-                        newUseButton.click = ()=>{this.use()}
-                        const newCancelButton = this.cancelButton
-                        newCancelButton.click = ()=>{this.cancel()}
+                        const newUseButton = this.createUseButton(()=>{this.use()})
+                        const newCancelButton = this.createCancelButton(()=>{this.cancel()})
                         buttons.push((this.enabled ? newCancelButton : newUseButton))
                     }
                     return buttons
+                },
+
+                ationNotice(game, data){
+                    const message = new MagicString()
+                    message.addText(`你${this.actionWord}`, this.color ?? game.myRole.color)
+                    message.addText("。")
+                    game.addMessage(message)
                 }
 
             },
@@ -2400,12 +2403,32 @@ class Ability{
         })
     }
 
-    get useButton(){
-        return {style:`padding: 0.1em 1.5em;background-color:${this.game.myRole?.color};`,}
+    createUseButton(clickFunction){
+        return {
+            style:`padding: 0.1em 1.5em;background-color:${this.game.myRole?.color};`,
+            click:clickFunction,
+        }
     }
 
-    cancelButton = {
-        style:'padding: 0.1em 1.5em;background-color: LightGrey;',
+    createCancelButton(clickFunction){
+        return {
+            style:'padding: 0.1em 1.5em;background-color: LightGrey;',
+            click:clickFunction,
+        }
+    }
+
+    static generateActionNotice(game, relatedAbilityName, data){
+        for(const abilityTypeName in frontendData.abilities){
+            var ability = frontendData.abilities[abilityTypeName][relatedAbilityName]
+            if(ability !== undefined){
+                ability = {...ability, ...frontendData.abilities[abilityTypeName].default}
+                break
+            }
+        }
+
+        if(ability === undefined) console.error(`Unknow Ability: ${abilityName}`);
+
+        ability.actionNotice(game, data)
     }
 
     cancel(){

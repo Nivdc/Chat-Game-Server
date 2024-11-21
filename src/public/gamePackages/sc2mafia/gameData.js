@@ -147,7 +147,7 @@ export const originalGameData = {
     // 我们应该特别注意到，下面这种继承方式，与JS的原型链设计、Proxy类有着密不可分的关系
 
     // 也许我使上浑身解数弄出来的这个抽象玩意，只是为了少写几个class 和 extend 和 constructor ？
-    // 值了！
+    // 值了！......吗？代价是什么呢？
     
     abilities:{
         targetedAbilities: {
@@ -285,9 +285,8 @@ export const originalGameData = {
         enabledAbilities: {
             default:{
                 use(game, data){
-                    const enableAbility = data.enableAbility
-                    if(this.verify(game, this.player.index, target.index) && this.state.unableToUse === false){
-                        this.enable = enableAbility
+                    if(this.verify(game, this.player.index) && this.state.unableToUse === false){
+                        this.enabled = true
                         this.player.sendEvent('UseAblitySuccess', data)
                     }else{
                         this.player.sendEvent('UseAblityFailed', data)
@@ -300,8 +299,10 @@ export const originalGameData = {
                 },
             
                 cancel(game, data){
-                    this.enable = false
-                    this.player.sendEvent('UseAblityCancelSuccess', data)
+                    if(this.enabled){
+                        this.enabled = false
+                        this.player.sendEvent('UseAblityCancelSuccess', data)
+                    }
                 },
             
                 generateNightAction(){
@@ -317,7 +318,6 @@ export const originalGameData = {
             },
 
             "BulletProof":{
-                type: "Protect",
             }
         }
     },
@@ -592,7 +592,7 @@ class Ability extends AbilityBase{
 
         this.name = abilityName
         for(const abilityTypeName in originalGameData.abilities){
-            this.data = originalGameData.abilities[abilityTypeName].find(a => a.name === abilityName)
+            this.data = originalGameData.abilities[abilityTypeName][abilityName]
             if(this.data !== undefined){
                 this.data = {...this.data, ...originalGameData.abilities[abilityTypeName].default}
                 break
@@ -603,8 +603,9 @@ class Ability extends AbilityBase{
         if(this.data.verify === undefined) console.error(`Ability: ${abilityName} has no 'verify' Function`);
 
         return new Proxy(this, {
-            get(target, prop) {
-                return prop in target.data ? target.data[prop].call(this) : target[prop]
+            get(target, prop, receiver) {
+                return prop in target.data  === false ? target[prop] : 
+                    typeof target.data[prop] === 'function' ? target.data[prop].bind(receiver) : target.data[prop]
             }
         })
     }
@@ -626,7 +627,7 @@ export class Role{
         const factionMemberDefaultTeamName = originalGameData.factions.find(f => f.name === this.affiliationName)?.allMembersAreOnDefaultTeam
         this.teamName = roleData.teamName ?? defaultRoleData.defaultTeamName ?? factionMemberDefaultTeamName ?? undefined
 
-        const abilityNames = defaultRoleData.abilityNames
+        const abilityNames = defaultRoleData.abilityNames ?? []
 
         if(this.modifyObject){
             for(const keyName in this.modifyObject ){
@@ -638,7 +639,7 @@ export class Role{
                 else if(keyName.startsWith('hasAbility_')){
                     const extraAbilityName = keyName.split('_')[1]
                     if(this.modifyObject[keyName])
-                        this.abilityNames.push(extraAbilityName)
+                        abilityNames.push(extraAbilityName)
                 }
             }
         }
@@ -1000,7 +1001,7 @@ export function getRoleTags(roleName){
 
 export function abilityUseVerify(game, abilityName, userIndex, targetIndex, previousTargetIndex){
     for(const abilityTypeName in originalGameData.abilities){
-        var ability = originalGameData.abilities[abilityTypeName].find(a => a.name === abilityName)
+        var ability = originalGameData.abilities[abilityTypeName][abilityName]
         if(ability !== undefined){
             ability = {...ability, ...originalGameData.abilities[abilityTypeName].default}
             break

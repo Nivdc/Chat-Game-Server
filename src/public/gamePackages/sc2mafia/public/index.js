@@ -323,7 +323,7 @@ document.addEventListener('alpine:init', () => {
                 }
                 else if(this.status === 'animation/nightToAction'){
                     this.playAnimation('nightToAction')
-                    this.myAbilityTargetIndex = undefined
+                    this.myAbilities?.forEach(a => a.target = undefined)
                 }
                 // else if(this.status === 'action'){
                 //     // nothing to do...
@@ -367,6 +367,7 @@ document.addEventListener('alpine:init', () => {
 
             'SetRole':function(data){
                 this.myRole = this.roleSet.find(r=>r.name === data.name)
+                this.myAbilities = data.abilityNames?.map(aName => new Ability(this, aName))
             },
 
             'SetTeam':function(data){
@@ -458,13 +459,13 @@ document.addEventListener('alpine:init', () => {
                 const factionFrontendDatas = frontendData.factions
                 const factionBackendDatas = data
 
-                this.factionSet = factionFrontendDatas.map(ffd => new Faction(ffd, factionBackendDatas.find(fbd => fbd.name === ffd.name)))
+                this.factionSet = factionFrontendDatas.map(ffd => new Faction({...ffd, ...factionBackendDatas.find(fbd => fbd.name === ffd.name)}))
             },
             'SetTagSet':function(data){
                 const tagFrontendDatas = frontendData.tags
                 const tagBackendDatas = data
 
-                this.tagSet = tagFrontendDatas.map(tfd => new Tag(tfd, tagBackendDatas.find(tbd => tbd.name === tfd.name)))
+                this.tagSet = tagFrontendDatas.map(tfd => new Tag({...tfd, ...tagBackendDatas.find(tbd => tbd.name === tfd.name)}))
                 this.categoryList = this.factionSet
             },
             'SetRoleSet':function(data){
@@ -472,7 +473,7 @@ document.addEventListener('alpine:init', () => {
                 const roleBackendDatas = data.filter(rd => roleFrontendDatas.find(rfd => rfd.name === rd.name) !== undefined)
                 roleBackendDatas.filter(rbd => rbd.defaultAffiliationName === undefined).forEach(rbd => rbd.defaultAffiliationName = 'Neutral')
 
-                this.roleSet = roleFrontendDatas.map(rfd => new Role(rfd, roleBackendDatas.find(rbd => rbd.name === rfd.name), this.tagSet, this.factionSet, this.setting))
+                this.roleSet = roleFrontendDatas.map(rfd => new Role({...rfd, ...roleBackendDatas.find(rbd => rbd.name === rfd.name)}, this.tagSet, this.factionSet, this.setting))
                 this.factionSet.forEach(f => f.addExtraRoleName(this.roleSet))
                 this.addRandomRoles()
             },
@@ -551,7 +552,7 @@ document.addEventListener('alpine:init', () => {
                 const voter = this.playerList[data.voterIndex]
                 const target = this.playerList[data.targetIndex]
                 const message = new MagicString()
-                const abilityActionWord =  frontendData.abilities[data.teamAbilityName].actionWord
+                const abilityActionWord =  frontendData.abilities.targetedAbilities[data.teamAbilityName].actionWord
                 message.append(voter.getNameMagicString())
                 if(data.previousTargetIndex === undefined)
                     message.addText(` 投票${abilityActionWord} `)
@@ -581,7 +582,7 @@ document.addEventListener('alpine:init', () => {
                 if(data){
                     const message = new  MagicString()
                     const targets = data.targets?.map(pidx => this.playerList[pidx])
-                    const abilityActionWord =  frontendData.abilities[data.teamAbilityName].actionWord
+                    const abilityActionWord =  frontendData.abilities.targetedAbilities[data.teamAbilityName].actionWord
                     if(targets === undefined || targets.length === 0){
                         message.addText(`你们决定今晚不${abilityActionWord}任何人。`)
                         message.style = `background-color: rgba(0, 0, 0, 0.5);`
@@ -609,7 +610,7 @@ document.addEventListener('alpine:init', () => {
                 const message = new MagicString()
                 message.addText('你们决定派出 ')
                 message.append(this.playerList[action.originIndex].getNameMagicString())
-                message.addText(` 去${frontendData.abilities[action.name].actionWord} `)
+                message.addText(` 去${frontendData.abilities.targetedAbilities[action.name].actionWord} `)
                 message.append(this.playerList[action.targetIndex].getNameMagicString())
                 this.addMessage(message)
             },
@@ -686,27 +687,11 @@ document.addEventListener('alpine:init', () => {
 
             'UseAblitySuccess':function(data){
                 const abilityName = data.name
-                const abilityActionWord =  frontendData.abilities[abilityName].actionWord
-                const abilityColor = frontendData.abilities[abilityName].color
-
-                const message = new MagicString()
-                message.addText(`你决定在今晚${abilityActionWord} `, abilityColor ?? this.myRole.color)
-                message.append(this.playerList[data.targetIndex].getNameMagicString())
-                this.addMessage(message)
-
-                this.myAbilityTargetIndex = data.targetIndex
+                this.myAbilities.find(a => a.name === abilityName).useSuccess(data)
             },
             'UseAblityCancelSuccess':function(data){
                 const abilityName = data.name
-                const abilityActionWord =  frontendData.abilities[abilityName].actionWord
-                const abilityColor = frontendData.abilities[abilityName].color
-
-                const message = new MagicString()
-                message.addText(`你放弃在今晚${abilityActionWord} `, 'yellow')
-                message.append(this.playerList[this.myAbilityTargetIndex].getNameMagicString())
-                this.addMessage(message)
-
-                this.myAbilityTargetIndex = undefined
+                this.myAbilities.find(a => a.name === abilityName).cancelSuccess()
             },
             'UseAblityFailed':function(data){
                 this.addSystemHintText('技能使用失败，可能是因为在冷却、没次数了。(更多提示以后再做吧。)')
@@ -838,15 +823,20 @@ document.addEventListener('alpine:init', () => {
                 case 'useAbility':
                     console.log(commandString)
                     const usedAbilityName = args.shift()
-                    if(this.myRole.abilityNames?.includes(usedAbilityName)){
-                        const targetIndex = Number(args.shift())-1
-                        if(Number.isNaN(targetIndex) === false)
-                            sendEvent('UseAbility', {name:usedAbilityName, targetIndex})
+                    if(this.myAbilities?.map(a => a.name).includes(usedAbilityName)){
+                        if(args.shift() !== undefined){
+                            const targetIndex = Number(args.shift())-1
+                            if(Number.isNaN(targetIndex) === false){
+                                sendEvent('UseAbility', {name:usedAbilityName, targetIndex})
+                            }
+                        }else{
+                            sendEvent('UseAbility', {name:usedAbilityName})
+                        }
                     }
                 break
                 case 'useAbilityCancel':
                     const cancelAbilityName = args.shift()
-                    if(this.myRole.abilityNames?.includes(cancelAbilityName)){
+                    if(this.myAbilities?.map(a => a.name).includes(cancelAbilityName)){
                         sendEvent('UseAbilityCancel', {name:cancelAbilityName})
                     }
                 break
@@ -1051,8 +1041,8 @@ document.addEventListener('alpine:init', () => {
                 // 行动动画和普通动画的区别就是它会返回一个promise，在动画结束时resolve
                 case 'youTakeAction':{
                     const abilityName = data.actionName
-                    const abilityActionWord =  frontendData.abilities[abilityName].actionWord
-                    const abilityColor = frontendData.abilities[abilityName].color
+                    const abilityActionWord =  frontendData.abilities.targetedAbilities[abilityName].actionWord
+                    const abilityColor = frontendData.abilities.targetedAbilities[abilityName].color
 
                     const message = new MagicString()
                     message.addText(`你前去${abilityActionWord} `, abilityColor ?? this.myRole.color)
@@ -1187,7 +1177,7 @@ document.addEventListener('alpine:init', () => {
                 break}
 
                 case 'someoneIsTryingToDoSomethingToYou':{
-                    const actionWord = frontendData.abilities[data.actionName].actionWord
+                    const actionWord = frontendData.abilities.targetedAbilities[data.actionName].actionWord
                     const source = this.factionSet.find(f => f.name === data.source) ?? this.roleSet.find(r => r.name === data.source)
                     this.addSystemHintText(`今晚${source?.nameTranslate ?? '有人'}试图 ${actionWord} 你！`)
 
@@ -1265,6 +1255,9 @@ document.addEventListener('alpine:init', () => {
 
                     roleModifyOptions: {
                         // Town
+                        citizen:{
+                            hasAbility_BulletProof_UsesLimit_1_Times:true,
+                        },
                         doctor:{
                             knowsIfTargetIsAttacked:true,
                         },
@@ -1288,7 +1281,7 @@ document.addEventListener('alpine:init', () => {
                             canBeTurnedIntoTeamExecutor:true,
                             hasAbilityForceDisableTurn_1_AtStart:false,
                         },
-                        //
+                        // Neutral
                         serialKiller:{
                             hasEffect_ImmuneToAttack:true,
                             fightBackAgainstRoleBlocker:false,
@@ -1721,7 +1714,10 @@ document.addEventListener('alpine:init', () => {
 
         myLynchVoteTargetIndex : undefined,
         myTeamAbilityVoteTargetIndex:undefined,
-        myAbilityTargetIndex: undefined,
+        // 注意，因为commandHandler是为了可见的UI设计的，所以在输入target的Index要+1才符合逻辑
+        // 我们不区分玩家究竟是输入了指令还是按下了按钮，那么这里就要解决一个index差一问题
+        // 玩家输入指令的时候肯定是按照他看见的索引值输入的，所以我们模拟玩家这一行为的时候也得要参照他能看见的索引值
+        // 所以这里要加一
         getPlayerListButtons(player){
             let buttons = []
             const game = this
@@ -1749,17 +1745,6 @@ document.addEventListener('alpine:init', () => {
                 click(){game.commandHandler(`teamVoteCancel`)}
             }
 
-            const useAbilityName = this.myRole?.abilityNames?.at(0)
-            const abilityTarget = targetIndex + 1
-            const useAbilityButton = {
-                style:`padding: 0.1em 1.5em;background-color:${this.myRole?.color};`,
-                click(){game.commandHandler(`useAbility ${useAbilityName} ${abilityTarget}`)}
-            }
-            const useAbilityCancelButton = {
-                style:'padding: 0.1em 1.5em;background-color: LightGrey;',
-                click(){game.commandHandler(`useAbilityCancel ${useAbilityName}`)}
-            }
-
             if(this.status?.split('/').includes('lynchVote')){
                 if(publicVoteVerify(this ,'LynchVote', {voterIndex:this.myIndex, targetIndex, previousTargetIndex:this.myLynchVoteTargetIndex}))
                     buttons.push(lynchVoteButton)
@@ -1780,16 +1765,8 @@ document.addEventListener('alpine:init', () => {
                     else if(targetIndex === this.myTeamAbilityVoteTargetIndex)
                         buttons.push(teamVoteCancelButton)
                 }
-                else if(this.myRole.abilityNames?.length > 0){
-                    const roleAbilityName = this.myRole.abilityNames[0]
-                    const userIndex = this.myIndex
-
-                    if(targetIndex === this.myAbilityTargetIndex)
-                        buttons.push(useAbilityCancelButton)
-                    else if(targetIndex === this.myIndex && this.myRole.affiliation.name === 'Town' && roleAbilityName === 'Attack'){
-                    }
-                    else if(abilityUseVerify(this, roleAbilityName, userIndex, targetIndex, this.myAbilityTargetIndex))
-                        buttons.push(useAbilityButton)
+                else if(this.myAbilities?.length > 0){
+                    this.myAbilities.forEach(a => buttons = buttons.concat(a.generateButtons(player)))
                 }
             }
 
@@ -2066,23 +2043,105 @@ const frontendData = {
         },
     ],
     abilities:{
-        "Attack":{
-            actionWord:"袭击",
-            color:"red",
+        targetedAbilities:{
+            default:{
+                use(targetIndex){
+                    this.game.commandHandler(`useAbility ${this.name} ${targetIndex+1}`)
+                },
+
+                useSuccess(data){
+                    this.target = this.game.playerList[data.targetIndex]
+
+                    const message = new MagicString()
+                    message.addText(`你决定在今晚${this.actionWord} `, this.color ?? this.game.myRole.color)
+                    message.append(this.target.getNameMagicString())
+                    this.game.addMessage(message)
+                },
+
+                cancelSuccess(){
+                    const message = new MagicString()
+                    message.addText(`你放弃在今晚${this.actionWord} `, 'yellow')
+                    message.append(this.target.getNameMagicString())
+                    this.game.addMessage(message)
+
+                    this.target = undefined
+                },
+
+                generateButtons(player){
+                    const userIndex = this.game.myIndex
+                    const newUseButton = this.useButton
+                    newUseButton.click = ()=>{this.use(player.index)}
+                    const newCancelButton = this.cancelButton
+                    newCancelButton.click = ()=>{this.cancel()}
+                    const buttons = []
+                    if(player === this.target)
+                        buttons.push(newCancelButton)
+                    else if(player.index === userIndex && this.game.myRole.affiliation.name === 'Town' && this.name === 'Attack'){
+                    }
+                    else if(abilityUseVerify(this.game, this.name, userIndex, player.index, this.target?.index))
+                        buttons.push(newUseButton)
+                    return buttons
+                }
+
+            },
+            "Attack":{
+                actionWord:"袭击",
+                color:"red",
+            },
+            "Heal":{
+                actionWord:"治疗",
+                color:"limegreen",
+            },            
+            "RoleBlock":{
+                actionWord:"限制"
+            },
+            "Detect":{
+                actionWord:"调查"
+            },
+            "Silence":{
+                actionWord:"恐吓"
+            },
         },
-        "Heal":{
-            actionWord:"治疗",
-            color:"limegreen",
-        },            
-        "RoleBlock":{
-            actionWord:"限制"
-        },
-        "Detect":{
-            actionWord:"调查"
-        },
-        "Silence":{
-            actionWord:"恐吓"
-        },
+
+        enabledAbilities:{
+            default:{
+                use(targetIndex){
+                    this.game.commandHandler(`useAbility ${this.name}`)
+                },
+
+                useSuccess(data){
+                    const message = new MagicString()
+                    message.addText(`你决定在今晚${this.actionWord}`, this.color ?? this.game.myRole.color)
+                    this.game.addMessage(message)
+
+                    this.enabled = true
+                },
+
+                cancelSuccess(){
+                    const message = new MagicString()
+                    message.addText(`你放弃在今晚${this.actionWord}`, 'yellow')
+                    this.game.addMessage(message)
+
+                    this.enabled = false
+                },
+
+                generateButtons(player){
+                    const buttons = []
+                    if(player.index === this.game.myIndex){
+                        const newUseButton = this.useButton
+                        newUseButton.click = ()=>{this.use()}
+                        const newCancelButton = this.cancelButton
+                        newCancelButton.click = ()=>{this.cancel()}
+                        buttons.push((this.enabled ? newCancelButton : newUseButton))
+                    }
+                    return buttons
+                }
+
+            },
+            "BulletProof":{
+                actionWord:"穿上防弹衣"
+            }
+        }
     },
     roles:[
         {
@@ -2168,8 +2227,9 @@ const frontendData = {
             descriptionTranslate:"一个疯狂的罪犯，一个憎恨世界的人。",
             abilityDescriptionTranslate:"这个角色有每晚杀死一人的能力",
             otherDescriptionTranslate:"连环杀手在成为最后活着的人时胜利",
+            goalDescriptionTranslate:"成为最后一个活着的人",
+            abilityDetails:["每晚杀死一人。"],
 
-            goalDescriptionTranslate:"成为最后一个活着的人"
         }
     ],
     randomRoles:[
@@ -2190,6 +2250,11 @@ const frontendData = {
         'hasEffect_ImmuneToDetect':{
             description:"免疫调查",
             featureDescription:"你在调查角色眼里像是不活跃的市民。",
+        },
+
+        'hasAbility_BulletProof_UsesLimit_1_Times':{
+            description:"有可用一晚的防弹背心",
+            featureDescription:"你可穿上防弹背心一次，防弹背心视作夜间无敌。",
         },
 
         'hasAbilityUsesLimit_2_Times':{
@@ -2266,9 +2331,11 @@ const frontendData = {
     // }
 }
 
+// 注意，尽管前端与后端采用了相同名称的数据结构，但是它们的作用完全不同，所以，不要搞混了！
+
 class Faction{
-    constructor(factionFrontendData, factionBackendData){
-        this.data = {...factionFrontendData, ...factionBackendData}
+    constructor(data){
+        this.data = data
         this.includeRoleNames = []
         if(this.data.roleVariationList !== undefined)
             this.includeRoleNames = this.data.roleVariationList.map(rv => rv.name)
@@ -2295,9 +2362,8 @@ class Faction{
 }
 
 class Tag{
-    constructor(tagFrontendData, tagBackendData){
-        this.data = tagFrontendData
-        this.data = {...this.data, ...tagBackendData}
+    constructor(data){
+        this.data = data
 
         return new Proxy(this, {
             get(target, prop) {
@@ -2312,10 +2378,44 @@ class Tag{
     }
 }
 
+class Ability{
+    constructor(game, abilityName){
+        this.game = game
+        this.name = abilityName
+        for(const abilityTypeName in frontendData.abilities){
+            this.data = frontendData.abilities[abilityTypeName][abilityName]
+            if(this.data !== undefined){
+                this.data = {...this.data, ...frontendData.abilities[abilityTypeName].default}
+                break
+            }
+        }
+
+        if(this.data === undefined) console.error(`Unknow Ability: ${abilityName}`);
+
+        return new Proxy(this, {
+            get(target, prop, receiver) {
+                return prop in target.data  === false ? target[prop] : 
+                    typeof target.data[prop] === 'function' ? target.data[prop].bind(receiver) : target.data[prop]
+            }
+        })
+    }
+
+    get useButton(){
+        return {style:`padding: 0.1em 1.5em;background-color:${this.game.myRole?.color};`,}
+    }
+
+    cancelButton = {
+        style:'padding: 0.1em 1.5em;background-color: LightGrey;',
+    }
+
+    cancel(){
+        this.game.commandHandler(`useAbilityCancel ${this.name}`)
+    }
+}
+
 class Role{
-    constructor(roleFrontendData, roleBackendData, tagSet, factionSet, gameSetting){
-        this.data = roleFrontendData
-        this.data = {...this.data, ...roleBackendData}
+    constructor(data, tagSet, factionSet, gameSetting){
+        this.data = data
 
         this.defaultAffiliation = factionSet.find(f => f.name === this.data.defaultAffiliationName)
         this.affiliation = this.defaultAffiliation

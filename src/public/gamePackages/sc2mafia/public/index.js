@@ -1075,7 +1075,7 @@ document.addEventListener('alpine:init', () => {
                     })
                 break}
 
-                case 'youAreHealed':{
+                case 'youAreProtected':{
                     this.addSystemHintText("但是有个陌生人救了你一命", 'limegreen')
 
                     const gamePageElement = document.getElementById('gamePage')
@@ -1190,7 +1190,6 @@ document.addEventListener('alpine:init', () => {
             while(this.actionSequence.length > 0){
                 const action = this.actionSequence.shift()
                 const animationName = action.name.charAt(0).toLowerCase() + action.name.slice(1)
-                console.log(animationName)
                 await this.playAnimation(animationName, action)
             }
             sendEvent('AnimationsFinished')
@@ -1226,9 +1225,10 @@ document.addEventListener('alpine:init', () => {
                     
                     nightType: "Classic",
                     nightLength: 0.3,
+                    showMoreAttackDetailsAtNight:true,
                     
                     revealPlayerRoleOnDeath: true,
-                    protectCitizensMode:false,
+                    revealAttackAndProtectSource:true,
                     enableCustomName: true,
                     enableKillerMessage: true,
                     enableLastWill: true,
@@ -2133,7 +2133,7 @@ const frontendData = {
                     return buttons
                 },
 
-                ationNotice(game, data){
+                actionNotice(game, data){
                     const message = new MagicString()
                     message.addText(`你${this.actionWord}`, this.color ?? game.myRole.color)
                     message.addText("。")

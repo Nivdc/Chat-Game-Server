@@ -172,7 +172,7 @@ export const originalGameData = {
                         const abilityTarget = this.target
                         this.target = undefined
                         this.addUsageCount()
-                        return {name:this.name, type:this.type, origin:this.player, target:abilityTarget}
+                        return {name:this.name, origin:this.player, target:abilityTarget}
                     }else{
                         this.resetConsecutiveUsageCount()
                         return undefined
@@ -187,13 +187,12 @@ export const originalGameData = {
             
                 generateTeamNightAction(executor, target){
                     if(executor && target){
-                        return {name:this.name, type:this.type, origin:executor, target}
+                        return {name:this.name, origin:executor, target}
                     }
                     return undefined
                 },
             },
             "Attack": {
-                type: "Attack",
                 verify(game, userIndex, targetIndex, previousTargetIndex) {
                     const userIsAlive = game.playerList[userIndex].isAlive
                     const targetIsAlive = game.playerList[targetIndex].isAlive
@@ -221,7 +220,6 @@ export const originalGameData = {
                 }
             },
             "Heal": {
-                type: "Protect",
                 verify(game, userIndex, targetIndex, previousTargetIndex) {
                     const userIsAlive = game.playerList[userIndex].isAlive
                     const userIsNotTarget = userIndex !== targetIndex
@@ -286,7 +284,7 @@ export const originalGameData = {
             default:{
                 use(game, data){
                     if(this.verify(game, this.player.index) && this.state.unableToUse === false){
-                        this.enabled = true
+                        this.enable = true
                         this.player.sendEvent('UseAblitySuccess', data)
                     }else{
                         this.player.sendEvent('UseAblityFailed', data)
@@ -299,8 +297,8 @@ export const originalGameData = {
                 },
             
                 cancel(game, data){
-                    if(this.enabled){
-                        this.enabled = false
+                    if(this.enable){
+                        this.enable = false
                         this.player.sendEvent('UseAblityCancelSuccess', data)
                     }
                 },
@@ -309,7 +307,7 @@ export const originalGameData = {
                     if(this.enable === true){
                         this.enable = undefined
                         this.addUsageCount()
-                        return {name:this.name, type:this.type, origin:this.player}
+                        return {name:this.name, origin:this.player}
                     }else{
                         this.resetConsecutiveUsageCount()
                         return undefined

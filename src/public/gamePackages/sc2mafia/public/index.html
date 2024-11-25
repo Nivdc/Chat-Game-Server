@@ -32,6 +32,10 @@
                         <!-- <div>
                             <label>死亡后揭示玩家角色</label>
                             <input type="checkbox" x-model="setting.revealPlayerRoleOnDeath" />
+                        </div>
+                        <div>
+                            <label>死亡后揭示攻击和保护来源</label>
+                            <input type="checkbox" x-model="setting.revealAttackAndProtectSource" />
                         </div> -->
                         <div>
                             <label>启用自设名字</label>
@@ -49,10 +53,6 @@
                             <label>启用私信</label>
                             <input type="checkbox" x-model="setting.enablePrivateMessage" />
                         </div>
-                        <!-- <div>
-                            <label>保护市民模式</label>
-                            <input type="checkbox" x-model="setting.protectCitizensMode" />
-                        </div> -->
                     </div>
                     <div>
                         <h4>白天设置</h4>
@@ -114,7 +114,7 @@
                     <div>
                         <h4>夜晚设置</h4>
                         <div>
-                            <span>夜晚信息类型</span>
+                            <span>夜晚类型</span>
                             <select x-model="setting.nightType">
                                 <template x-for="nighType in [{name:'经典', value:'Classic'}]" :key="nighType.name">
                                     <option x-text="nighType.name" :value="nighType.value" :selected="nighType.value === setting.nightType"></option>
@@ -128,6 +128,10 @@
                             <span>分钟</span> -->
                             <span x-text="`${Number(setting?.nightLength).toFixed(1)} 分钟`"></span>
                         </div>
+                        <!-- <div>
+                            <label>在夜间显示更多攻击细节</label>
+                            <input type="checkbox" x-model="setting.showMoreAttackDetailsAtNight" />
+                        </div> -->
                     </div>
                 </div>
             </div>

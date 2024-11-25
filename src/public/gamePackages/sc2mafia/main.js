@@ -681,20 +681,22 @@ class Game{
         }
     }
 
-    // 每个action都至少包含三个数据: origin/行动者, target/对象, name/名称
-    // 有些action还会包含type/类型，目前用到的只有两个类Attack和Protect
+    // 每个action都至少包含两个数据: origin/行动者, name/名称
+    // 由指向性技能生成的action还会包含: target/行动对象
+
+    // 下面的代码重复度似乎有一点高...先不管了吧，相信后人的智慧。
     nightActionAndEffectProcess(){
-        this.nightActionSequence.forEach(a => sendActionEvent(a.origin, 'YouTakeAction', {actionName:a.name, targetIndex:a.target.index}))
 
         // RoleBlock
-        const blockActions = filterAndRemove(this.nightActionSequence, a => a.name === 'RoleBlock')
+        // 限制按照生成顺序生效...理应是按照楼层高低排序的
+        const blockActions = this.nightActionSequence.filter(a => a.name === 'RoleBlock')
+        blockActions.forEach(a => sendActionEvent(a.origin, 'YouTakeAction', {actionName:a.name, targetIndex:a.target?.index}))
         blockActions.forEach(a => {
+            // 在这里，如果舞娘被限制了，那么她的限制无效
             if(a.origin.hasEffect('RoleBlocked') === false){
                 if(a.target.role.modifyObject?.['fightBackAgainstRoleBlocker']){
-                    console.log(this.nightActionSequence)
                     this.nightActionSequence = this.nightActionSequence.filter(na => na.origin !== a.target)
                     this.nightActionSequence.push({name:'Attack', type:'Attack', origin:a.target, target:a.origin})
-                    console.log(this.nightActionSequence)
 
                     sendActionEvent(a.target, 'SomeoneIsTryingToDoSomethingToYou', {actionName:a.name})
                 }
@@ -713,34 +715,50 @@ class Game{
         this.nightActionSequence = this.nightActionSequence.filter(a => a.origin.hasEffect('RoleBlocked') === false)
 
         // Silence
-        const silenceActions = filterAndRemove(this.nightActionSequence, a => a.name === 'Silence')
+        const silenceActions = this.nightActionSequence.filter(a => a.name === 'Silence')
+        silenceActions.forEach(a => sendActionEvent(a.origin, 'YouTakeAction', {actionName:a.name, targetIndex:a.target?.index}))
         silenceActions.forEach(a => {
             a.target.addEffect_skipThisTurn('Silenced', 1)
             sendActionEvent(a.target, 'YouWereSilenced')
         })
 
-        // Attack and Protect Processing
-        let attackSequence  = filterAndRemove(this.nightActionSequence, a => a.type === 'Attack')
-        let protectSequence = filterAndRemove(this.nightActionSequence, a => a.type === 'Protect')
+
+        // BulletProof
+        const bulletProofActions = this.nightActionSequence.filter(a => a.name === 'BulletProof')
+        bulletProofActions.forEach(a => sendActionEvent(a.origin, 'YouTakeAction', {actionName:a.name}))
+        bulletProofActions.forEach(a => {
+            a.origin.addEffect('ImmuneToAttack', 1)
+        })
+
+        // Attack and Protects
+        // 攻击和保护的机制是为每个玩家设置两个数组暂存攻击和保护效果，
+        // 然后比对二者的长度来决定玩家的死活。
+        // 类似治疗这类的保护技能并不是直接生效的，而是生成一个类似action的，名称为Protect的对象来参与计算。
+        const attackActions = this.nightActionSequence.filter(a => a.name === 'Attack')
+        const protectActions = this.nightActionSequence.filter(a => a.name === 'Heal').map(a => {return {...a, ...{name:"Protect", originalActionName:a.name}}})
+
+        attackActions.forEach(a => sendActionEvent(a.origin, 'YouTakeAction', {actionName:a.originalActionName ?? a.name, targetIndex:a.target?.index}))
+        protectActions.forEach(a => sendActionEvent(a.origin, 'YouTakeAction', {actionName:a.originalActionName ?? a.name, targetIndex:a.target?.index}))
 
         for(const p of this.alivePlayerList){
-            let asf  = attackSequence .filter(a => a.target === p)
-            let psf  = protectSequence.filter(a => a.target === p)
-            let anps = interleaveArrays(asf, psf)
-            let tempDeathReason = []
+            const attacksOnCurrentPlayer   = attackActions .filter(a => a.target === p)
+            const protectsOnCurrentPlayer  = protectActions.filter(a => a.target === p)
+            const ANP_OnCurrentPlayer = interleaveArrays(attacksOnCurrentPlayer, protectsOnCurrentPlayer)
+            const attackAttempts = []
+            const protectAttempts = []
 
-            while(anps.length > 0){
-                let action = anps.shift()
-                switch(action.type){
+            while(ANP_OnCurrentPlayer.length > 0){
+                const action = ANP_OnCurrentPlayer.shift()
+                switch(action.name){
                     case 'Attack':
                         const attackSource = action.isTeamAction ? action.origin.team.affiliationName : action.origin.role.name
-                        tempDeathReason.push(`${attackSource}Attack`)
+                        attackAttempts.push(`${attackSource}Attack`)
 
                         if(action.target.hasEffect('ImmuneToAttack') === false){
                             sendActionEvent(action.target, 'YouUnderAttack', {source:attackSource})
                             action.target.isAlive = false
                         }else{
-                            sendActionEvent(action.target, 'SomeoneIsTryingToDoSomethingToYou', {actionName:action.name, source:attackSource})
+                            sendActionEvent(action.target, 'SomeoneIsTryingToDoSomethingToYou', {actionName:action.originalActionName ?? action.name, source:attackSource})
                             sendActionEvent(action.origin, 'YourTargetHasEffect', {effectName:'ImmuneToAttack'})
                         }
 
@@ -751,18 +769,18 @@ class Game{
                     break
 
                     case 'Protect':
-                        if(tempDeathReason.length !== 0){
-                            if(action.origin.role.modifyObject?.['knowsIfTargetIsAttacked'])
+                        if(attackAttempts.length !== 0){
+                            if(action.origin.role.modifyObject?.['knowsIfTargetIsAttacked']){
                                 sendActionEvent(action.origin, 'YourTargetIsAttacked')
-                        }
-                        // fixme?: 如果医生已经死了，他还是能救下他要救的人
-                        if(action.name === 'Heal' && tempDeathReason.length !== 0 && p.deathReason === undefined){
+                            }
+
                             action.target.isAlive = true
 
+                            const protectSource = action.isTeamAction ? action.origin.team.affiliationName : action.origin.role.name
                             if(action.target.hasEffect('ImmuneToAttack')){
-                                sendActionEvent(action.target, 'SomeoneIsTryingToDoSomethingToYou', {actionName:action.name})
+                                sendActionEvent(action.target, 'SomeoneIsTryingToDoSomethingToYou', {actionName:action.originalActionName ?? action.name})
                             }else{
-                                sendActionEvent(action.target, 'YouAreHealed')
+                                sendActionEvent(action.target, 'YouAreProtected', {source:protectSource})
                             }
                         }
                     break
@@ -770,46 +788,37 @@ class Game{
             }
 
             if(p.isAlive === false){
-                p.deathReason = tempDeathReason
+                p.deathReason = interleaveArrays(attackAttempts, protectAttempts ?? [])
                 this.recentlyDeadPlayers.push(p)
             }
         }
 
-
-        while(this.nightActionSequence.length > 0){
-            let a = this.nightActionSequence.shift()
-            switch(a.name){
-                case 'Detect':
-                    if(a.origin.isAlive === true){
-                        const detectionReport = {
-                            targetIndex: a.target.index,
-                            targetAffiliationName: a.target.faction?.name ?? 'Neutral',
-                        }
-
-                        if(detectionReport.targetAffiliationName === 'Neutral'){
-                            if(a.target.role.tags.includes('Evil')){
-                                detectionReport.targetRoleName = a.target.role.name
-                            }
-                        }
-
-                        if(a.target.hasEffect('ImmuneToDetect')){
-                            delete detectionReport.targetRoleName
-                            delete detectionReport.targetAffiliationName
-                        }
-
-                        if(a.isTeamAction){
-                            sendActionEvent(a.origin.team, 'ReceiveDetectionReport', detectionReport)
-                        }else{
-                            sendActionEvent(a.origin, 'ReceiveDetectionReport', detectionReport)
-                        }
-                    }
-                break
-
-                default:
-                    console.error('Unknow action: ', a)
-                break
+        // Detect
+        const detectActions = this.nightActionSequence.filter(a => a.name === 'Detect').filter(a => a.origin.isAlive)
+        detectActions.forEach(a => sendActionEvent(a.origin, 'YouTakeAction', {actionName:a.name, targetIndex:a.target?.index}))
+        detectActions.forEach(a => {
+            const detectionReport = {
+                targetIndex: a.target.index,
+                targetAffiliationName: a.target.faction?.name ?? 'Neutral',
             }
-        }
+
+            if(detectionReport.targetAffiliationName === 'Neutral'){
+                if(a.target.role.tags.includes('Evil')){
+                    detectionReport.targetRoleName = a.target.role.name
+                }
+            }
+
+            if(a.target.hasEffect('ImmuneToDetect')){
+                delete detectionReport.targetRoleName
+                delete detectionReport.targetAffiliationName
+            }
+
+            if(a.isTeamAction){
+                sendActionEvent(a.origin.team, 'ReceiveDetectionReport', detectionReport)
+            }else{
+                sendActionEvent(a.origin, 'ReceiveDetectionReport', detectionReport)
+            }
+        })
 
         // effectsProcess_afterAction
         for(const p of this.alivePlayerList){

@@ -1,5 +1,5 @@
 import { originalGameData, Vote, Faction, Team, Role, getRoleTags } from "./gameData.js"
-import { getRandomElement } from "./utils.js"
+import { getRandomElement, log } from "./utils.js"
 
 const gameDataPath = import.meta.dir + '/public/gameData/'
 let defaultSetting = await readJsonFile(gameDataPath+"defaultSetting.json")
@@ -96,7 +96,7 @@ class Game{
         const player = this.playerList.find(player => {return player.uuid === ws.data.uuid})
 
         if (player !== undefined){
-            console.log(`recive pidx: ${player.index}  <-`, event)
+            log(`recive pidx: ${player.index}  <-`, event)
             switch(event.type){
                 case "FrontendReady":
                     if(player.isReady !== true)
@@ -299,17 +299,19 @@ class Game{
     // 但是有些角色会有默认的团队，如果没有特别配置，那这个角色的玩家就会处于默认的团队
     // 这是未来的计划，目前还没实现
     async setup(setting){
-        await this.newGameStage("setup", 0.025)
+        const setupWaitTime = (process.env?.NODE_ENV !== 'production') ? 0.025 : 0.25
+        await this.newGameStage("setup", setupWaitTime)
         this.setting = {...defaultSetting, ...setting}
-        await this.newGameStage("begin", 0.05)
-        let {realRoleNameList, possibleRoleSet} = this.processRandomRole(this.setting.roleList)
+        const beginWaitTime = (process.env?.NODE_ENV !== 'production') ? 0.05 : 0.5
+        await this.newGameStage("begin", beginWaitTime)
+        const {realRoleNameList, possibleRoleSet} = this.processRandomRole(this.setting.roleList)
         this.sendEventToAll("SetPossibleRoleSet", possibleRoleSet)
         // todo:检查玩家人数是否与角色列表匹配
         // todo:为没有自定义名字的玩家随机分配名字
         shuffleArray(realRoleNameList)
         shuffleArray(this.playerList)
         this.sendEventToAll("SetPlayerList", this.playerList)
-        for(let [index, p] of this.playerList.entries()){
+        for(const [index, p] of this.playerList.entries()){
             const playerRoleName = realRoleNameList[index]
             const playerRoleData = {name:playerRoleName}
             p.setRole(playerRoleData)
@@ -553,12 +555,12 @@ class Game{
     // 到底来没来？如来~
 
     setStatus(status){
-        // console.log("Befor->",this.status)
+        // log("Befor->",this.status)
 
         this.status = status
         this.sendEventToAll("SetStatus", this.status)
 
-        console.log("SetStatus->",this.status)
+        log("SetStatus->",this.status)
     }
 
     newGameStage(name, durationMin){
@@ -937,7 +939,7 @@ class Game{
         for(const p of checkPlayers){
             if(p[`${voteType}TargetIndex`] !== undefined){
                 voteCount[p[`${voteType}TargetIndex`]] += `${voteType}Weight` in p ? p[`${voteType}Weight`] : 1
-                // console.log('voteType:', voteType, `->${p.index} voteTo`, p[`${voteType}TargetIndex`])
+                // log('voteType:', voteType, `->${p.index} voteTo`, p[`${voteType}TargetIndex`])
             }
         }
 

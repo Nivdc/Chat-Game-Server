@@ -54,6 +54,10 @@ export const originalGameData = {
                     name: "Mafioso",
                 },
                 {
+                    abilityNames:undefined,
+                    name: "Godfather",
+                },
+                {
                     abilityNames:['RoleBlock'],
                     name:'Consort'
                 },
@@ -127,20 +131,20 @@ export const originalGameData = {
     // 我们仔细考虑一下这个结构，它实际上是添加了一个类型系统
     //
     // 传统的对象模型可能是这样的:
-    //                                   ┌───► Attack      
-    //                                   │                 
-    //   AbilityBase ┬─► TargetedAbility ┴───► Heal        
-    //               │                                     
-    //               └─► EnabledAbility  ────► BulletProof 
+    //                                                ┌───► Attack      
+    //                                                │                 
+    //   AbilityBase ────► Ability┬─► TargetedAbility ┴───► Heal        
+    //                            │                                     
+    //                            └─► EnabledAbility  ────► BulletProof 
     //
     //
     // 而在我们的实现中，基于JS强大的灵活性，它是这样的: 
-    //                                                            ┌───► Attack         
+    //                                                            ┌───► "Attack"       
     //                                                            │                    
-    //                             ┌──► targetedAbilities.default ┴───► Heal           
+    //                             ┌──► targetedAbilities.default ┴───► "Heal"         
     //                             │                                                   
     //                             │                                                   
-    //   AbilityBase ────► Ability ┴──► enabledAbilities.default  ────► BulletProof    
+    //   AbilityBase ────► Ability ┴──► enabledAbilities.default  ────► "BulletProof"  
     //
     // 我现在还判断不出两种模式的优劣，也许它们实际上殊途同归，但是我愿意尝试下面这条路子
     // 尽管当前的实现方式在语法上可能看不出来它的继承，但是它在事实（接口）上确实是继承的
@@ -181,7 +185,6 @@ export const originalGameData = {
             
                 createAbilityTeamVote(game){
                     const v = new Vote(game, this.teamVoteData)
-                    v.isTeamVote = true
                     return v
                 },
             
@@ -773,12 +776,12 @@ export class Vote{
     }
 
     getCount(){
-        let count = new Array(this.record.length).fill(0)
+        const count = new Array(this.record.length).fill(0)
         for(const [voterIndex, targetIndex] of this.record.entries()){
             const p = this.game.playerList[voterIndex]
             if(targetIndex !== undefined){
                 let voteWeight = `${this.type}Weight` in p.role ? p.role[`${this.type}Weight`] : 1
-                if(this.isTeamVote && p.role.hasEffect('TeamLeader')){
+                if(this.team && p.role.name === this.team.defaultLeaderRoleName){
                     voteWeight = (p.team.playerList.length + 1)
                 }
 
@@ -844,7 +847,9 @@ export class Team{
             for(const aName of data.abilityNames){
                 const ability = new Ability(this.game, undefined, aName)
                 this.abilities.push(ability)
-                this.abilityVotes.push(ability.createAbilityTeamVote(game))
+                const vote = ability.createAbilityTeamVote(game)
+                vote.team = this
+                this.abilityVotes.push(vote)
             }
         }
     }
@@ -857,6 +862,20 @@ export class Team{
         return this.playerList.filter(p => p.isAlive)
     }
 
+    get defaultLeaderRoleName(){
+        const defaultLeaderRoleNameList = {
+            'Mafia':{
+                default:"Godfather"
+            },
+        }
+
+        return defaultLeaderRoleNameList[this.affiliationName]?.[this.name] ?? defaultLeaderRoleNameList[this.affiliationName]?.default
+    }
+
+    get leaders(){
+        return this.alivePlayerList.filter(p => p.role.name === this.defaultLeaderRoleName)
+    }
+
     get defaultExecutionRoleName(){
         const defaultExecutionRoleNameList = {
             'Town':{
@@ -867,7 +886,7 @@ export class Team{
             },
         }
 
-        return defaultExecutionRoleNameList[this.affiliationName][this.name]
+        return defaultExecutionRoleNameList[this.affiliationName]?.[this.name]
     }
 
     get defaultExecutionMembers(){
@@ -1013,7 +1032,7 @@ export function abilityUseVerify(game, abilityName, userIndex, targetIndex, prev
 }
 
 export function teamVoteVerify(game, team, teamAbilityName, {voterIndex, targetIndex, previousTargetIndex}){
-    const voteVerify = originalGameData.abilities.targetedAbilities.find(a => a.name === teamAbilityName).teamVoteData.verify
+    const voteVerify = originalGameData.abilities.targetedAbilities[teamAbilityName].teamVoteData.verify
     return voteVerify(game, voterIndex, targetIndex, previousTargetIndex)
 }
 

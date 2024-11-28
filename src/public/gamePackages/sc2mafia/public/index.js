@@ -471,6 +471,7 @@ document.addEventListener('alpine:init', () => {
             'SetRoleSet':function(data){
                 const roleFrontendDatas = frontendData.roles
                 const roleBackendDatas = data.filter(rd => roleFrontendDatas.find(rfd => rfd.name === rd.name) !== undefined)
+                getComplement(roleFrontendDatas.map(r => r.name), roleBackendDatas.map(r => r.name)).forEach(roleName => console.error(`Role: ${roleName} has no frontend data!`))
                 roleBackendDatas.filter(rbd => rbd.defaultAffiliationName === undefined).forEach(rbd => rbd.defaultAffiliationName = 'Neutral')
 
                 this.roleSet = roleFrontendDatas.map(rfd => new Role({...rfd, ...roleBackendDatas.find(rbd => rbd.name === rfd.name)}, this.tagSet, this.factionSet, this.setting))
@@ -1267,6 +1268,13 @@ document.addEventListener('alpine:init', () => {
                             canBeTurnedIntoTeamExecutor:true,
                             hasEffect_ImmuneToRoleBlock:false,
                             knowsIfTargetHasEffect_ImmuneToRoleBlock:false,
+                        },
+                        godfather:{
+                            hasEffect_ImmuneToAttack:true,
+                            hasEffect_ImmuneToRoleBlock:false,
+                            hasEffect_ImmuneToDetect:true,
+                            canBeTeamActionExecutor:true,
+                            canBeTurnedIntoTeamExecutor:false,
                         },
                         blackmailer:{
                             canBeTurnedIntoTeamExecutor:true,
@@ -2147,6 +2155,7 @@ const frontendData = {
         }
     },
     roles:[
+        // Town
         {
             name:"Citizen",
             nameTranslate:"市民",
@@ -2196,6 +2205,7 @@ const frontendData = {
             abilityDescriptionTranslate:"这个角色有每晚杀死某人的能力。",
             abilityDetails:["在夜晚杀死一人。"],
         },
+        // Mafia
         {
             name:"Mafioso",
             nameTranslate:"党徒",
@@ -2206,6 +2216,17 @@ const frontendData = {
                 "在晚上你可以与其他黑手党成员交谈",
             ]
         },
+        {
+            name:"Godfather",
+            nameTranslate:"教父",
+            descriptionTranslate:"犯罪组织的领袖。",
+            abilityDescriptionTranslate:"这个角色有在夜晚投票杀死一人的能力，能推翻其它黑手党成员的投票。",
+            abilityDetails:["每晚命令黑手党去杀死某人。"],
+            featureDetails:[
+                "在晚上你可以与其他黑手党成员交谈",
+            ]
+        },
+        
         {
             name:"Consort",
             nameTranslate:"陪侍",
@@ -2223,6 +2244,7 @@ const frontendData = {
                 "被沉默的玩家被审判时全体玩家会收到提示。"
             ],
         },
+        // Neutral
         {
             name:"SerialKiller",
             nameTranslate:"连环杀手",
@@ -2295,6 +2317,10 @@ const frontendData = {
         'canBeTurnedIntoTeamExecutor':{
             description:"团队无可执行角色时转变为可执行角色（党徒）",
             featureDescription:"团队无可执行角色时转变为可执行角色（党徒）",
+        },
+        'canBeTeamActionExecutor':{
+            description:"可作为团队执行角色行动",
+            featureDescription:"可作为团队执行角色行动",
         },
 
         'fightBackAgainstRoleBlocker':{

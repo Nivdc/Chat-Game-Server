@@ -124,6 +124,9 @@ document.addEventListener('alpine:init', () => {
                 const message = new MagicString()
                 if(sender !== undefined)
                     message.append(sender.getNameMagicStringWithExtras({text:': ', style:`font-weight:bold;`}))
+                else if(data.isRadioMessage){
+                    message.append(new MagicString({text:'广播消息: ', style:`font-weight:bold;color:MediumSpringGreen;`}))
+                }
                 else{
                     message.append(new MagicString({text:'匿名者: ', style:`font-weight:bold;`}))
                 }
@@ -131,7 +134,7 @@ document.addEventListener('alpine:init', () => {
 
                 if(senderIsDead)
                     message.style = `background-color:${hexToRgba(html5ColorHexMap['darkred'], 0.7)};`
-                if(sender === this.executionTarget || sender === this.trialTarget)
+                if(sender === this.executionTarget || sender === this.trialTarget || data.isRadioMessage)
                     message.style = `background-color:${hexToRgba(html5ColorHexMap['dodgerblue'], 0.3)};`
 
                 this.addMessage(message)
@@ -826,10 +829,11 @@ document.addEventListener('alpine:init', () => {
                     const targetIndex = Number(args.shift())-1
 
                     if(this.myAbilities?.map(a => a.name).includes(usedAbilityName)){
+                        const extraData = args.length > 0 ? args : undefined
                         if(Number.isNaN(targetIndex) === false){
-                            sendEvent('UseAbility', {name:usedAbilityName, targetIndex})
+                            sendEvent('UseAbility', {name:usedAbilityName, targetIndex, extraData})
                         }else{
-                            sendEvent('UseAbility', {name:usedAbilityName})
+                            sendEvent('UseAbility', {name:usedAbilityName, extraData})
                         }
                     }
                 break}
@@ -2015,7 +2019,11 @@ const frontendData = {
         {
             name:"Evil",
             nameTranslate:'邪恶',
-        }
+        },
+        {
+            name: "Protective",
+            nameTranslate:'保护',
+        },
     ],
     factions:[
         {
@@ -2204,6 +2212,16 @@ const frontendData = {
             descriptionTranslate:"一个污点警察，无视法律规定而制定公正。",
             abilityDescriptionTranslate:"这个角色有每晚杀死某人的能力。",
             abilityDetails:["在夜晚杀死一人。"],
+        },
+        {
+            name:"Crier",
+            nameTranslate:"公告员",
+            descriptionTranslate:"一个高嗓的传报人，为帮助城镇而做事。",
+            abilityDescriptionTranslate:"这个角色有在晚上保持匿名的同时，让所有玩家听到其所说内容的能力。",
+            abilityDetails:["可以在夜间发送广播消息。"],
+            featureDetails:["你在夜间所说的话会被所有玩家听到。",
+                            "你在夜间匿名交谈。"]
+
         },
         // Mafia
         {

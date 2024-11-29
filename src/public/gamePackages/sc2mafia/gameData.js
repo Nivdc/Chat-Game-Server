@@ -10,6 +10,10 @@ export const originalGameData = {
                     name: "Citizen",
                 },
                 {
+                    effectNames:['Radio'],
+                    name: "Crier",
+                },
+                {
                     abilityNames:['Detect'],
                     name: "Sheriff",
                 },
@@ -413,12 +417,9 @@ function gameDataInit(){
         for(const f of originalGameData.factions){
             if('roleVariationList' in f){
                 for(const rv of f.roleVariationList){
-                    let role = {
-                        name:rv.name,
+                    let role = {...{
                         defaultAffiliationName:f.name,
-                        abilityNames:rv.abilityNames,
-                        defaultTeamName:rv.defaultTeamName,
-                    }
+                    }, ...rv}
 
                     for (const keyName in role) {
                         if (role[keyName] === undefined) {
@@ -654,6 +655,11 @@ export class Role{
                         abilityNames.push(extraAbilityName)
                 }
             }
+        }
+        console.log(this.data)
+
+        if('effectNames' in this.data){
+            this.data.effectNames.forEach(effectName => this.addEffect(effectName))
         }
 
         if(abilityNames !== undefined){

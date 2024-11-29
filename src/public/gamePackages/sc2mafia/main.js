@@ -289,7 +289,7 @@ class Game{
 
         p.isReady = true
         // 如果我们将下面这个消息发送给没有准备好的玩家，就会因为ws协议保证消息收发的顺序性
-        // 它会先于上面所有事件接收到，于是因为没有准备好的玩家没有接收到SetPlayerList事件，导致前端错误
+        // 它会先于上面所有事件接收到，于是没有准备好的玩家就会因为提前接收到SetPlayerList事件，导致前端错误
         this.sendEventToGroup(this.playerList.filter(p => p.isReady),"SetReadyPlayerIndexList", this.playerList.filter(p => p.isReady).map(p => p.index))
     }
 
@@ -873,6 +873,10 @@ class Game{
         }
     }
 
+    // setChatAndVoteMode(modeName){
+    //     const availableModeName = ["Identified", "Anonymous"]
+    // }
+
     sendChatMessage(sender, data){
         let targetGroup = undefined
 
@@ -887,7 +891,11 @@ class Game{
                 }
                 // fixme?:夜间...可以让被沉默的人说话吗？
                 else if(this.status.startsWith("night") && this.status.split('/').includes("discussion")){
-                    if(sender.team){
+                    if(sender.hasEffect('Radio')){
+                        var isRadioMessage = true
+                        targetGroup = this.onlinePlayerList
+                    }
+                    else if(sender.team){
                         targetGroup = sender.team.alivePlayerList
                     }
                 }
@@ -904,8 +912,21 @@ class Game{
                 targetGroup = this.onlinePlayerList
         }
 
-        if(targetGroup !== undefined)
-            this.sendEventToGroup(targetGroup, "ChatMessage", {senderIndex:sender.index, message:data, senderIsDead})
+        let messageObject = {
+            senderIndex:sender.index, 
+            message:data, 
+
+            senderIsDead, 
+            isRadioMessage
+        }
+
+        if(messageObject.isRadioMessage){
+            delete messageObject.senderIndex
+        }
+
+        if(targetGroup !== undefined){
+            this.sendEventToGroup(targetGroup, "ChatMessage", messageObject)
+        }
     }
 
     // 首先检查是否有一半的玩家投票重选主机，如果有，随机选择一个主机
@@ -1009,7 +1030,7 @@ class Game{
     }
 
     async execution(player){
-        let executionLenghtMin = 0.4 // 0.4 * 60 = 24s
+        const executionLenghtMin = 0.4 // 0.4 * 60 = 24s
 
         // "day" stage end
         this.gameStage.end()
@@ -1238,7 +1259,7 @@ class Player{
     }
 
     get hasCustomName(){
-        return 'nickname' in this
+        return 'customName' in this
     }
 
     get index(){

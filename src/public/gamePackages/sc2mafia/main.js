@@ -839,6 +839,24 @@ class Game{
             }
         })
 
+        // Track
+        const trackActions = this.nightActionSequence.filter(a => a.name === 'Track').filter(a => a.origin.isAlive)
+        trackActions.forEach(a => sendActionEvent(a.origin, 'YouTakeAction', {actionName:a.name, targetIndex:a.target?.index}))
+        trackActions.forEach(a => {
+            const targetActions = this.nightActionSequence.filter(nightAction => (nightAction.origin === a.target) && (nightAction.origin !== nightAction.target))
+            const trackReport = {
+                targetIndex: a.target.index,
+                targetHasNightAction: (targetActions.length > 0),
+                visitedTargetIndices: targetActions.filter(ta => ta.target !== undefined).map(ta => ta.target.index)
+            }
+
+            if(a.target.hasEffect('ImmuneToDetect')){
+                delete trackReport.visitedTargetIndices
+            }
+
+            sendActionEvent(a.origin, 'ReceiveTrackReport', trackReport)
+        })
+
         // effectsProcess_afterAction
         for(const p of this.alivePlayerList){
             if(p.hasEffect('Suicide')){

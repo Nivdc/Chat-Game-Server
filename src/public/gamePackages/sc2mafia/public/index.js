@@ -1118,6 +1118,33 @@ document.addEventListener('alpine:init', () => {
                     })
                 break}
 
+                case 'receiveTrackReport':{
+                    const target = this.playerList[data.targetIndex]
+                    const visitedTargets = data.visitedTargetIndices?.map(index => this.playerList[index])
+                    const message = new MagicString()
+                    message.append(target.getNameMagicString())
+                    if(visitedTargets !== undefined && visitedTargets.length > 0){
+                        message.addText(' 今晚访问了 ')
+                        visitedTargets.forEach((p, index) =>{
+                            if(index > 0) message.addText(', ');
+                            message.append(p.getNameMagicString())
+                        })
+                    }
+                    else{
+                        message.addText(' 今晚没有访问任何人。')
+                        if(data.targetHasNightAction === true){
+                            message.addText('但是你很确定他今晚有所行动。')
+                        }
+                    }
+                    this.addMessage(message)
+
+                    return new Promise((resolve) => {
+                        setTimeout(()=>{
+                            resolve()
+                        }, 2 * 1000)
+                    })
+                break}
+
                 case 'youCommittedSuicide':{
                     this.addSystemHintText("你自杀了", 'red')
 
@@ -2115,6 +2142,9 @@ const frontendData = {
             "Silence":{
                 actionWord:"恐吓"
             },
+            "Track":{
+                actionWord:"追踪"
+            }
         },
 
         enabledAbilities:{
@@ -2178,6 +2208,14 @@ const frontendData = {
             abilityDescriptionTranslate:"这个角色有每晚侦查一人有无犯罪活动的能力。",
             abilityDetails:["每晚调查一人的阵营。"],
             featureDetails:["警长可以查出所有邪恶角色"]
+        },
+        {
+            name:"Detective",
+            nameTranslate:"侦探",
+            descriptionTranslate:"一个熟练的追踪者，为城镇的利益而获取重要信息。",
+            abilityDescriptionTranslate:"这个角色有每晚对一人的活动进行跟踪的能力",
+            abilityDetails:["每晚对一人进行跟踪，获知他的目标是谁。"],
+            featureDetails:["即便行动没有访问目标，侦探仍会收到有活动的提示。"]
         },
         {
             name:"AuxiliaryOfficer",

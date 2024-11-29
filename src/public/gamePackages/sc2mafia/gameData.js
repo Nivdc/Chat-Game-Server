@@ -10,12 +10,12 @@ export const originalGameData = {
                     name: "Citizen",
                 },
                 {
-                    effectNames:['Radio'],
-                    name: "Crier",
-                },
-                {
                     abilityNames:['Detect'],
                     name: "Sheriff",
+                },
+                {
+                    abilityNames:['Track'],
+                    name: "Detective",
                 },
                 {
                     abilityNames:['Heal'],
@@ -32,6 +32,10 @@ export const originalGameData = {
                 {
                     abilityNames:['Attack'],
                     name: "Vigilante",
+                },
+                {
+                    effectNames:['Radio'],
+                    name: "Crier",
                 },
             ],
             victoryCheck(game){
@@ -180,6 +184,14 @@ export const originalGameData = {
                         this.player.sendEvent('UseAblityFailed', data)
                     }
                 },
+
+                verify(game, userIndex, targetIndex, previousTargetIndex) {
+                    const userIsAlive = game.playerList[userIndex].isAlive
+                    const userIsNotTarget = userIndex !== targetIndex
+                    const targetIsNotPreviousTarget = targetIndex !== previousTargetIndex
+                    const targetIsAlive = game.playerList[targetIndex].isAlive
+                    return userIsAlive && userIsNotTarget && targetIsNotPreviousTarget && targetIsAlive
+                },
             
                 cancel(game, data){
                     this.target = undefined
@@ -258,22 +270,8 @@ export const originalGameData = {
                 }
             },
             "Silence": {
-                verify(game, userIndex, targetIndex, previousTargetIndex) {
-                    const userIsAlive = game.playerList[userIndex].isAlive
-                    const userIsNotTarget = userIndex !== targetIndex
-                    const targetIsNotPreviousTarget = targetIndex !== previousTargetIndex
-                    const targetIsAlive = game.playerList[targetIndex].isAlive
-                    return userIsAlive && userIsNotTarget && targetIsNotPreviousTarget && targetIsAlive
-                }
             },
             "Detect": {
-                verify(game, userIndex, targetIndex, previousTargetIndex) {
-                    const userIsAlive = game.playerList[userIndex].isAlive
-                    const userIsNotTarget = userIndex !== targetIndex
-                    const targetIsNotPreviousTarget = targetIndex !== previousTargetIndex
-                    const targetIsAlive = game.playerList[targetIndex].isAlive
-                    return userIsAlive && userIsNotTarget && targetIsNotPreviousTarget && targetIsAlive
-                },
                 teamVoteData: {
                     name: "DetectVote",
                     verify(game, voterIndex, targetIndex, previousTargetIndex) {
@@ -295,7 +293,9 @@ export const originalGameData = {
                         return undefined
                     }
                 }
-            }
+            },
+            "Track": {
+            },
         },
 
         enabledAbilities: {
@@ -656,7 +656,6 @@ export class Role{
                 }
             }
         }
-        console.log(this.data)
 
         if('effectNames' in this.data){
             this.data.effectNames.forEach(effectName => this.addEffect(effectName))

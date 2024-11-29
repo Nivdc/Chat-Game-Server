@@ -321,7 +321,7 @@ class Game{
         const namelessPlayers = this.playerList.filter(p => p.hasCustomName === false)
         const randomRandomNames = getRandomSubArray(randomNames, namelessPlayers.length)
         for(const [index, p] of namelessPlayers.entries()){
-            this.sendEventToAll("PlayerRename", {p, newName:randomRandomNames[index]})
+            this.sendEventToAll("PlayerRename", {player:p, newName:randomRandomNames[index]})
             p.name = randomRandomNames[index]
         }
 
@@ -754,11 +754,42 @@ class Game{
         // 然后比对二者的长度来决定玩家的死活。
         // 类似治疗这类的保护技能并不是直接生效的，而是生成一个类似action的，名称为Protect的对象来参与计算。
         const attackActions = this.nightActionSequence.filter(a => a.name === 'Attack')
-        const protectActions = this.nightActionSequence.filter(a => a.name === 'Heal').map(a => {return {...a, ...{name:"Protect", originalActionName:a.name}}})
-
         attackActions.forEach(a => sendActionEvent(a.origin, 'YouTakeAction', {actionName:a.originalActionName ?? a.name, targetIndex:a.target?.index}))
+        const protectActions = this.nightActionSequence.filter(a => a.name === 'Heal').map(a => {return {...a, ...{name:"Protect", originalActionName:a.name}}})
         protectActions.forEach(a => sendActionEvent(a.origin, 'YouTakeAction', {actionName:a.originalActionName ?? a.name, targetIndex:a.target?.index}))
 
+        // CloseProtection
+        const closeProtectionActions = this.nightActionSequence.filter(a => a.name === 'CloseProtection')
+        closeProtectionActions.forEach(a => sendActionEvent(a.origin, 'YouTakeAction', {actionName:a.name, targetIndex:a.target?.index}))
+        closeProtectionActions.forEach(a => {
+            const attack = attackActions.find(aa => aa.target === a.target)
+            if(attack !== undefined){
+                sendActionEvent(a.origin, 'YourTargetIsAttacked')
+
+                attackActions.push({
+                    name:"Attack",
+                    origin:a.origin,
+                    target:attack.origin,
+                    originalActionName:"CloseProtection"
+                })
+
+                attackActions.push({
+                    name:"Attack",
+                    origin:attack.origin,
+                    target:a.origin,
+                    originalActionName:"CloseProtection"
+                })
+
+                protectActions.push({
+                    name:"Protect",
+                    origin:a.origin,
+                    target:attack.target,
+                    originalActionName:"CloseProtection"
+                })
+            }
+        })
+
+        // Attack and Protects Process
         for(const p of this.alivePlayerList){
             const attacksOnCurrentPlayer   = attackActions .filter(a => a.target === p)
             const protectsOnCurrentPlayer  = protectActions.filter(a => a.target === p)
@@ -773,11 +804,12 @@ class Game{
                         const attackSource = action.isTeamAction ? action.origin.team.affiliationName : action.origin.role.name
                         attackAttempts.push(`${attackSource}Attack`)
 
-                        if(action.target.hasEffect('ImmuneToAttack') === false){
+                        if(action.target.hasEffect('ImmuneToAttack') === false || action.origin.role.modifyObject?.['IgnoreEffect_ImmuneToAttack']){
                             sendActionEvent(action.target, 'YouUnderAttack', {source:attackSource})
                             action.target.isAlive = false
                         }else{
-                            sendActionEvent(action.target, 'SomeoneIsTryingToDoSomethingToYou', {actionName:action.originalActionName ?? action.name, source:attackSource})
+                            const actionName = action.originalActionName === "CloseProtection" ? "Attack" : (action.originalActionName ?? action.name)
+                            sendActionEvent(action.target, 'SomeoneIsTryingToDoSomethingToYou', {actionName, source:attackSource})
                             sendActionEvent(action.origin, 'YourTargetHasEffect', {effectName:'ImmuneToAttack'})
                         }
 
@@ -793,7 +825,10 @@ class Game{
                                 sendActionEvent(action.origin, 'YourTargetIsAttacked')
                             }
 
-                            action.target.isAlive = true
+                            if(action.originalActionName === 'Heal' && action.target.role.modifyObject?.['canNotBeHeal']){}
+                            else{
+                                action.target.isAlive = true
+                            }
 
                             const protectSource = action.isTeamAction ? action.origin.team.affiliationName : action.origin.role.name
                             if(action.target.hasEffect('ImmuneToAttack')){
@@ -1277,7 +1312,7 @@ class Player{
     }
 
     get hasCustomName(){
-        return 'customName' in this
+        return this.customName !== undefined
     }
 
     get index(){

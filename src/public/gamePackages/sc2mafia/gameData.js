@@ -37,6 +37,10 @@ export const originalGameData = {
                     effectNames:['Radio'],
                     name: "Crier",
                 },
+                {
+                    abilityNames:['CloseProtection'],
+                    name: "Bodyguard",
+                },
             ],
             victoryCheck(game){
                 const hasMemberRemaining = game.queryAlivePlayersByRoleFaction(this.name).length > 0
@@ -94,6 +98,7 @@ export const originalGameData = {
             name: "Killing",
             includeRoleNames: [
                 "Vigilante",
+                "Bodyguard",
 
                 "Mafioso",
                 "Godfather",
@@ -106,6 +111,7 @@ export const originalGameData = {
             includeRoleNames: [
                 "Doctor",
                 "Escort",
+                "Bodyguard"
             ]
         },
         {
@@ -269,8 +275,7 @@ export const originalGameData = {
                     return userIsAlive && userIsNotTarget && targetIsNotPreviousTarget && targetIsAlive && targetIsNotUserTeamMember
                 }
             },
-            "Silence": {
-            },
+            "Silence": {},
             "Detect": {
                 teamVoteData: {
                     name: "DetectVote",
@@ -294,8 +299,8 @@ export const originalGameData = {
                     }
                 }
             },
-            "Track": {
-            },
+            "Track": {},
+            "CloseProtection":{},
         },
 
         enabledAbilities: {
@@ -607,7 +612,7 @@ class Ability extends AbilityBase{
         for(const abilityTypeName in originalGameData.abilities){
             this.data = originalGameData.abilities[abilityTypeName][abilityName]
             if(this.data !== undefined){
-                this.data = {...this.data, ...originalGameData.abilities[abilityTypeName].default}
+                this.data = {...originalGameData.abilities[abilityTypeName].default, ...this.data}
                 break
             }
         }
@@ -1036,7 +1041,7 @@ export function abilityUseVerify(game, abilityName, userIndex, targetIndex, prev
     for(const abilityTypeName in originalGameData.abilities){
         var ability = originalGameData.abilities[abilityTypeName][abilityName]
         if(ability !== undefined){
-            ability = {...ability, ...originalGameData.abilities[abilityTypeName].default}
+            ability = {...originalGameData.abilities[abilityTypeName].default, ...ability}
             break
         }
     }

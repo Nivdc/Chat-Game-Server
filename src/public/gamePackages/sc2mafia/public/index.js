@@ -1054,7 +1054,7 @@ document.addEventListener('alpine:init', () => {
                 break}
 
                 case 'yourTargetIsAttacked':{
-                    this.addSystemHintText("你医治的对象今晚被攻击了", 'red')
+                    this.addSystemHintText("你行动的对象今晚被攻击了", 'red')
 
                     return new Promise((resolve) => {
                         setTimeout(()=>{
@@ -2124,7 +2124,6 @@ const frontendData = {
                     const message = new MagicString()
                     message.addText(`你前去${this.actionWord} `, this.color ?? game.myRole.color)
                     message.append(game.playerList[data.targetIndex].getNameMagicString())
-                    message.addText("。")
                     game.addMessage(message)
                 }
             },
@@ -2147,6 +2146,9 @@ const frontendData = {
             },
             "Track":{
                 actionWord:"追踪"
+            },
+            "CloseProtection":{
+                actionWord:"保护"
             }
         },
 
@@ -2262,6 +2264,15 @@ const frontendData = {
             abilityDetails:["可以在夜间发送广播消息。"],
             featureDetails:["你在夜间所说的话会被所有玩家听到。",
                             "你在夜间匿名交谈。"]
+
+        },
+        {
+            name:"Bodyguard",
+            nameTranslate:"保镖",
+            descriptionTranslate:"",
+            abilityDescriptionTranslate:"",
+            abilityDetails:["每晚保护一人，使其免受一次死亡。"],
+            featureDetails:["如果你的目标受到攻击，你将会反击攻击者。（同时你也会被攻击）"]
 
         },
         // Mafia
@@ -2380,6 +2391,11 @@ const frontendData = {
         'consecutiveAbilityUses_2_Cause_1_NightCooldown':{
             description:"连续使用技能2次将产生1晚间隔",
             featureDescription:"连续使用技能2次将产生1晚间隔。",
+        },
+
+        'canNotBeHeal':{
+            description:"无法被医治",
+            featureDescription:"你无法被医治。",
         },
 
         'canBeTurnedIntoTeamExecutor':{

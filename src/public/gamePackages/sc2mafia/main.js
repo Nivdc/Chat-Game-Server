@@ -14,7 +14,7 @@ export function start(room){
 
 class Game{
     constructor(room){
-        this.playerList = room.user_list.map(user => new Player(user, this))
+        this.playerList = room.user_list.map(user => new Player(this, user))
         this.host = this.playerList.find(p => p.user === room.host)
         this.room = room
         this.status = "init"
@@ -302,12 +302,29 @@ class Game{
         const setupWaitTime = (process.env?.NODE_ENV !== 'production') ? 0.025 : 0.25
         await this.newGameStage("setup", setupWaitTime)
         this.setting = {...defaultSetting, ...setting}
+
         const beginWaitTime = (process.env?.NODE_ENV !== 'production') ? 0.05 : 0.5
         await this.newGameStage("begin", beginWaitTime)
+
         const {realRoleNameList, possibleRoleSet} = this.processRandomRole(this.setting.roleList)
         this.sendEventToAll("SetPossibleRoleSet", possibleRoleSet)
+
         // todo:检查玩家人数是否与角色列表匹配
-        // todo:为没有自定义名字的玩家随机分配名字
+
+        const randomNames = [
+            "Evelyn Carter", "Mason Blake", "Lila Harper",
+            "Grayson Pierce", "Isla Bennett", "Rowan Drake",
+            "Aurora Wells","Sawyer Grant","Emery Quinn",
+            "Landon Hayes","Sienna Monroe","Easton Reid",
+            "Adeline Foster","Finnley Knox","Tessa Vaughn"
+        ]
+        const namelessPlayers = this.playerList.filter(p => p.hasCustomName === false)
+        const randomRandomNames = getRandomSubArray(randomNames, namelessPlayers.length)
+        for(const [index, p] of namelessPlayers.entries()){
+            this.sendEventToAll("PlayerRename", {p, newName:randomRandomNames[index]})
+            p.name = randomRandomNames[index]
+        }
+
         shuffleArray(realRoleNameList)
         shuffleArray(this.playerList)
         this.sendEventToAll("SetPlayerList", this.playerList)
@@ -1148,6 +1165,16 @@ function filterAndRemove(array, condition) {
     return newArray
 }
 
+function getRandomSubArray(arr, length) {
+    if (!Array.isArray(arr) || length <= 0 || length > arr.length) {
+        throw new Error('Invalid input')
+    }
+
+    const startIndex = Math.floor(Math.random() * (arr.length - length + 1))
+
+    return arr.slice(startIndex, startIndex + length)
+}
+
 function interleaveArrays(arr1, arr2) {
     let result = [];
     let maxLength = Math.max(arr1.length, arr2.length);
@@ -1191,7 +1218,7 @@ function calculateProbability(roleName, possibleRoles) {
 }
 
 class Player{
-    constructor(user, game){
+    constructor(game, user){
         this.user = user
         this.playedRoleNameRecord = []
         this.game = game
@@ -1202,12 +1229,12 @@ class Player{
     }
 
     get name(){
-        return this.nickname !== undefined ? this.nickname : 
+        return this.customName !== undefined ? this.customName : 
             this.user !== undefined ? this.user.name : "OfflinePlayer"
     }
 
     set name(name){
-        this.nickname = name
+        this.customName = name
     }
 
     get hasCustomName(){

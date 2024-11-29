@@ -85,8 +85,19 @@ export const originalGameData = {
         {
             name: "Killing",
             includeRoleNames: [
+                "Vigilante",
+
                 "Mafioso",
-                "SerialKiller"
+                "Godfather",
+
+                "SerialKiller",
+            ]
+        },
+        {
+            name: "Protective",
+            includeRoleNames: [
+                "Doctor",
+                "Escort",
             ]
         },
         {

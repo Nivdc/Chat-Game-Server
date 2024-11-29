@@ -1133,7 +1133,7 @@ document.addEventListener('alpine:init', () => {
                     else{
                         message.addText(' 今晚没有访问任何人。')
                         if(data.targetHasNightAction === true){
-                            message.addText('但是你很确定他今晚有所行动。')
+                            message.addText('但是你察觉他今晚有所行动！')
                         }
                     }
                     this.addMessage(message)
@@ -1293,6 +1293,9 @@ document.addEventListener('alpine:init', () => {
                             hasAbilityUsesLimit_2_Times: true,
                             hasAbilityUsesLimit_3_Times: false,
                             hasAbilityUsesLimit_4_Times: false,
+                        },
+                        detective:{
+                            IgnoreEffect_ImmuneToDetect:false,
                         },
                         // Mafia
                         consort:{
@@ -2331,6 +2334,15 @@ const frontendData = {
         'hasEffect_ImmuneToDetect':{
             description:"免疫调查",
             featureDescription:"你在调查角色眼里像是不活跃的市民。",
+        },
+
+        'IgnoreEffect_ImmuneToAttack':{
+            description:"无视夜间无敌",
+            featureDescription:"对夜间无敌角色，你的攻击依然生效。",
+        },
+        'IgnoreEffect_ImmuneToDetect':{
+            description:"无视调查免疫",
+            featureDescription:"对免疫调查的角色，你的调查依然生效。",
         },
 
         'hasAbility_BulletProof_UsesLimit_1_Times':{

@@ -827,7 +827,7 @@ class Game{
                 }
             }
 
-            if(a.target.hasEffect('ImmuneToDetect')){
+            if(a.target.hasEffect('ImmuneToDetect') && a.origin.role.modifyObject?.['IgnoreEffect_ImmuneToDetect'] === false){
                 delete detectionReport.targetRoleName
                 delete detectionReport.targetAffiliationName
             }
@@ -843,14 +843,14 @@ class Game{
         const trackActions = this.nightActionSequence.filter(a => a.name === 'Track').filter(a => a.origin.isAlive)
         trackActions.forEach(a => sendActionEvent(a.origin, 'YouTakeAction', {actionName:a.name, targetIndex:a.target?.index}))
         trackActions.forEach(a => {
-            const targetActions = this.nightActionSequence.filter(nightAction => (nightAction.origin === a.target) && (nightAction.origin !== nightAction.target))
+            const targetActions = this.nightActionSequence.filter(nightAction => nightAction.origin === a.target)
             const trackReport = {
                 targetIndex: a.target.index,
                 targetHasNightAction: (targetActions.length > 0),
-                visitedTargetIndices: targetActions.filter(ta => ta.target !== undefined).map(ta => ta.target.index)
+                visitedTargetIndices: targetActions.filter(ta => (ta.target !== undefined) && (ta.origin !== ta.target)).map(ta => ta.target.index)
             }
 
-            if(a.target.hasEffect('ImmuneToDetect')){
+            if(a.target.hasEffect('ImmuneToDetect') && a.origin.role.modifyObject?.['IgnoreEffect_ImmuneToDetect'] === false){
                 delete trackReport.visitedTargetIndices
             }
 

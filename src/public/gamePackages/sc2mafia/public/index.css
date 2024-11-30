@@ -486,7 +486,7 @@ ul{
 .animation-underAttack-6s {
     animation: underAttack 6s forwards;
 }
-.animation-doctorHealProtect-2s {
+.animation-protect-2s {
     animation: protect 2s forwards;
 }
 .animation-suicide-2s {

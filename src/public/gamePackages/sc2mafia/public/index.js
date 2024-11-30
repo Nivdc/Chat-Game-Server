@@ -1065,7 +1065,14 @@ document.addEventListener('alpine:init', () => {
 
                 case 'youUnderAttack':{
                     const source = this.factionSet.find(f => f.name === data.source) ?? this.roleSet.find(r => r.name === data.source)
-                    if(source !== undefined)
+                    if(data.originalActionName === 'CloseProtection' && source){
+                        if(source.name === 'Bodyguard'){
+                            this.addSystemHintText(`你的目标被保护着，你与保镖交火。`, 'red')
+                        }else{
+                            this.addSystemHintText(`你的目标被攻击了，你与入侵者交火。`, 'red')
+                        }
+                    }
+                    else if(source !== undefined)
                         this.addSystemHintText(`你被${source.nameTranslate}袭击了`, 'red')
                     else
                         this.addSystemHintText("你被人袭击了", 'red')
@@ -1081,11 +1088,14 @@ document.addEventListener('alpine:init', () => {
                 break}
 
                 case 'youAreProtected':{
-                    this.addSystemHintText("但是有个陌生人救了你一命", 'limegreen')
+                    if(data.originalActionName === 'Heal')
+                        this.addSystemHintText("但是有个陌生人救了你一命", 'limegreen')
+                    else if(data.originalActionName === 'CloseProtection')
+                        this.addSystemHintText("但是有个陌生人击退了入侵者", 'limegreen')
 
                     const gamePageElement = document.getElementById('gamePage')
                     return new Promise((resolve) => {
-                        gamePageElement.classList.add('animation-doctorHealProtect-2s')
+                        gamePageElement.classList.add('animation-protect-2s')
                         gamePageElement.addEventListener('animationend', () => {
                             resolve()
                         }, { once: true })
@@ -1200,7 +1210,9 @@ document.addEventListener('alpine:init', () => {
                 break}
 
                 case 'someoneIsTryingToDoSomethingToYou':{
-                    const actionWord = frontendData.abilities.targetedAbilities[data.actionName].actionWord
+                    let actionName = data.originalActionName ?? data.actionName
+                    if(data.originalActionName === 'CloseProtection' && data.actionName === 'Attack') actionName = 'Attack';
+                    const actionWord = frontendData.abilities.targetedAbilities[actionName].actionWord
                     const source = this.factionSet.find(f => f.name === data.source) ?? this.roleSet.find(r => r.name === data.source)
                     this.addSystemHintText(`今晚${source?.nameTranslate ?? '有人'}试图 ${actionWord} 你！`)
 

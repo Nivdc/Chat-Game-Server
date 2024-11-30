@@ -711,7 +711,7 @@ class Game{
         const blockActions = this.nightActionSequence.filter(a => a.name === 'RoleBlock')
         blockActions.forEach(a => sendActionEvent(a.origin, 'YouTakeAction', {actionName:a.name, targetIndex:a.target?.index}))
         blockActions.forEach(a => {
-            // 在这里，如果舞娘被限制了，那么她的限制无效
+            // note: 在这里，如果舞娘被限制了，那么她的限制无效
             if(a.origin.hasEffect('RoleBlocked') === false){
                 if(a.target.role.modifyObject?.['fightBackAgainstRoleBlocker']){
                     this.nightActionSequence = this.nightActionSequence.filter(na => na.origin !== a.target)
@@ -805,11 +805,10 @@ class Game{
                         attackAttempts.push(`${attackSource}Attack`)
 
                         if(action.target.hasEffect('ImmuneToAttack') === false || action.origin.role.modifyObject?.['IgnoreEffect_ImmuneToAttack']){
-                            sendActionEvent(action.target, 'YouUnderAttack', {source:attackSource})
+                            sendActionEvent(action.target, 'YouUnderAttack', {actionName:action.originalActionName ?? action.name, source:attackSource, originalActionName:action.originalActionName})
                             action.target.isAlive = false
                         }else{
-                            const actionName = action.originalActionName === "CloseProtection" ? "Attack" : (action.originalActionName ?? action.name)
-                            sendActionEvent(action.target, 'SomeoneIsTryingToDoSomethingToYou', {actionName, source:attackSource})
+                            sendActionEvent(action.target, 'SomeoneIsTryingToDoSomethingToYou', {actionName:action.name, source:attackSource, originalActionName:action.originalActionName})
                             sendActionEvent(action.origin, 'YourTargetHasEffect', {effectName:'ImmuneToAttack'})
                         }
 
@@ -832,7 +831,7 @@ class Game{
 
                             const protectSource = action.isTeamAction ? action.origin.team.affiliationName : action.origin.role.name
                             if(action.target.hasEffect('ImmuneToAttack')){
-                                sendActionEvent(action.target, 'SomeoneIsTryingToDoSomethingToYou', {actionName:action.originalActionName ?? action.name})
+                                sendActionEvent(action.target, 'SomeoneIsTryingToDoSomethingToYou', {actionName:action.name, source:protectSource, originalActionName:action.originalActionName})
                             }else{
                                 sendActionEvent(action.target, 'YouAreProtected', {source:protectSource})
                             }

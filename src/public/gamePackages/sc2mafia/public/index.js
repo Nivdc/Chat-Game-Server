@@ -703,6 +703,16 @@ document.addEventListener('alpine:init', () => {
 
             'TrialTargetIsSilenced':function(data){
                 this.addSystemHintText('系统提示：当前审判的玩家被沉默了')
+            },
+
+            'PlayerRevealAsMayor':function(data){
+                const player = this.playerList[data.playerIndex]
+                const role = this.roleSet.find(r => r.name === 'Mayor')
+                const ms = new MagicString()
+                ms.append(player.getNameMagicString())
+                ms.addText(' 揭示了他的身份，他是 ')
+                ms.append(role.getNameMagicString())
+                this.addMessage(ms)
             }
         },
         commandHandler(commandString){
@@ -1265,7 +1275,7 @@ document.addEventListener('alpine:init', () => {
                     trialTime: 0.2,
                     pauseDayTimerDuringTrial: false,
                     
-                    startAt: "night",
+                    startAt: "day",
                     
                     nightType: "Classic",
                     nightLength: 0.3,
@@ -1283,7 +1293,7 @@ document.addEventListener('alpine:init', () => {
                         // "Escort",
                         // "Doctor",
                         "SerialKiller",
-                        "Sheriff",
+                        "Mayor",
                         // "Consort",
                         // "AllRandom",
                     ],
@@ -1790,13 +1800,6 @@ document.addEventListener('alpine:init', () => {
                 click(){game.commandHandler(`teamVoteCancel`)}
             }
 
-            if(this.status?.split('/').includes('lynchVote')){
-                if(publicVoteVerify(this ,'LynchVote', {voterIndex:this.myIndex, targetIndex, previousTargetIndex:this.myLynchVoteTargetIndex}))
-                    buttons.push(lynchVoteButton)
-                else if(targetIndex === this.myLynchVoteTargetIndex)
-                    buttons.push(lynchVoteCancelButton)
-            }
-
             // 团队投票和技能随时都可以使用，只是这些个按钮只会在夜间显示罢了
             if(this.status === 'night/discussion'){
                 // 只有角色没技能且团队有技能的时候，会显示团队投票按钮
@@ -1813,6 +1816,21 @@ document.addEventListener('alpine:init', () => {
                 else if(this.myAbilities?.length > 0){
                     this.myAbilities.forEach(a => buttons = buttons.concat(a.generateButtons(player)))
                 }
+            }
+
+            if(this.myAbilities?.length > 0){
+                this.myAbilities.forEach(a => {
+                    const immediatelyAbilityNames = ['RevealAsMayor']
+                    if(immediatelyAbilityNames.includes(a.name))
+                        buttons = buttons.concat(a.generateButtons(player))
+                })
+            }
+
+            if(this.status?.split('/').includes('lynchVote')){
+                if(publicVoteVerify(this ,'LynchVote', {voterIndex:this.myIndex, targetIndex, previousTargetIndex:this.myLynchVoteTargetIndex}))
+                    buttons.push(lynchVoteButton)
+                else if(targetIndex === this.myLynchVoteTargetIndex)
+                    buttons.push(lynchVoteCancelButton)
             }
 
             return buttons
@@ -2117,7 +2135,6 @@ const frontendData = {
                 },
 
                 generateButtons(player){
-                    const userIndex = this.game.myIndex
                     const newUseButton = this.createUseButton(()=>{
                         this.use(player.index)
                     })
@@ -2127,7 +2144,7 @@ const frontendData = {
                         buttons.push(newCancelButton)
                     else if(player.index === userIndex && this.game.myRole.affiliation.name === 'Town' && this.name === 'Attack'){
                     }
-                    else if(abilityUseVerify(this.game, this.name, userIndex, player.index, this.target?.index))
+                    else if(abilityUseVerify(this.game, this.name, this.game.myIndex, player.index, this.target?.index))
                         buttons.push(newUseButton)
                     return buttons
                 },
@@ -2188,7 +2205,7 @@ const frontendData = {
 
                 generateButtons(player){
                     const buttons = []
-                    if(player.index === this.game.myIndex){
+                    if(player.index === this.game.myIndex && abilityUseVerify(this.game, this.name, this.game.myIndex, player.index, this.target?.index)){
                         const newUseButton = this.createUseButton(()=>{this.use()})
                         const newCancelButton = this.createCancelButton(()=>{this.cancel()})
                         buttons.push((this.enabled ? newCancelButton : newUseButton))
@@ -2204,8 +2221,24 @@ const frontendData = {
                 }
 
             },
+
             "BulletProof":{
                 actionWord:"穿上防弹衣"
+            },
+
+            "RevealAsMayor":{
+                useSuccess(data){
+                    this.used = true
+                },
+                generateButtons(player){
+                    const buttons = []
+                    if(player.index === this.game.myIndex && this.game.playerList[this.game.myIndex].isAlive === true){
+                        const newUseButton = this.createUseButton(()=>{this.use()})
+                        if(this.used !== true)
+                            buttons.push(newUseButton)
+                    }
+                    return buttons
+                },
             }
         }
     },
@@ -2285,6 +2318,15 @@ const frontendData = {
             abilityDescriptionTranslate:"",
             abilityDetails:["每晚保护一人，使其免受一次死亡。"],
             featureDetails:["如果你的目标受到攻击，你将会反击攻击者。（同时你也会被攻击）"]
+
+        },
+        {
+            name:"Mayor",
+            nameTranslate:"市长",
+            descriptionTranslate:"",
+            abilityDescriptionTranslate:"",
+            abilityDetails:["你可以在白天揭示你自己的身份。"],
+            featureDetails:["如果你启用了你的能力，你在白天投下的票等同于 3 人"]
 
         },
         // Mafia
@@ -2510,7 +2552,7 @@ class Ability{
         for(const abilityTypeName in frontendData.abilities){
             this.data = frontendData.abilities[abilityTypeName][abilityName]
             if(this.data !== undefined){
-                this.data = {...this.data, ...frontendData.abilities[abilityTypeName].default}
+                this.data = {...frontendData.abilities[abilityTypeName].default, ...this.data}
                 break
             }
         }

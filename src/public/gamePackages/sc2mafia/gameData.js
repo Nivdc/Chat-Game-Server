@@ -10,6 +10,10 @@ export const originalGameData = {
                     name: "Citizen",
                 },
                 {
+                    abilityNames:['RevealAsMayor'],
+                    name: "Mayor",
+                },
+                {
                     abilityNames:['Detect'],
                     name: "Sheriff",
                 },
@@ -178,6 +182,9 @@ export const originalGameData = {
     // 也许我使上浑身解数弄出来的这个抽象玩意，只是为了少写几个class 和 extend 和 constructor ？
     // 值了！......吗？代价是什么呢...
     
+    // 如前所述，游戏中存在着两类的技能：能够及时造成效果的 和 延迟到夜晚造成效果的。
+    // 但是现有的技能又分成两类：指向型 和 启用型
+    // 这是一个分类方法的问题，我暂时决定以现有的技能分类为主，先观察一下会出现什么情况
     abilities:{
         targetedAbilities: {
             default:{
@@ -275,7 +282,8 @@ export const originalGameData = {
                     return userIsAlive && userIsNotTarget && targetIsNotPreviousTarget && targetIsAlive && targetIsNotUserTeamMember
                 }
             },
-            "Silence": {},
+            "Silence": {
+            },
             "Detect": {
                 teamVoteData: {
                     name: "DetectVote",
@@ -299,8 +307,10 @@ export const originalGameData = {
                     }
                 }
             },
-            "Track": {},
-            "CloseProtection":{},
+            "Track": {
+            },
+            "CloseProtection":{
+            },
         },
 
         enabledAbilities: {
@@ -339,6 +349,30 @@ export const originalGameData = {
             },
 
             "BulletProof":{
+            },
+
+            "RevealAsMayor":{
+                use(game, data){
+                    if(this.verify(game, this.player.index) && this.state.unableToUse === false){
+                        game.gameDirector.immediatelyUseAbility(this.player, data)
+                        this.player.sendEvent('UseAblitySuccess', data)
+                    }else{
+                        this.player.sendEvent('UseAblityFailed', data)
+                    }
+                },
+
+                verify(game, userIndex, targetIndex, previousTargetIndex){
+                    const userIsAlive = game.playerList[userIndex].isAlive
+                    const atDayStage = game.status.split('/').includes('day')
+                    const userHasNotBeenSilenced = game.playerList[userIndex].hasEffect('Silenced') === false
+                    return userIsAlive && atDayStage && userHasNotBeenSilenced
+                },
+
+                cancel(game, data){
+                    this.player.sendEvent('UseAblityCancelFailed', data)
+                },
+
+                generateNightAction:undefined,
             }
         }
     },
@@ -704,7 +738,7 @@ export class Role{
     generateNightActions(){
         const actions = []
         if(this.abilities !== undefined)
-        for(const a of this.abilities){
+        for(const a of this.abilities.filter(ability => ability.generateNightAction !== undefined)){
             const action = a.generateNightAction()
             if(action !== undefined)
                 actions.push(action)
@@ -730,6 +764,9 @@ export class Role{
     }
     hasEffect(eName){
         return this.#effetcs.map(e => e.name).includes(eName)
+    }
+    searchEffect(searchFunction){
+        return this.#effetcs.find(searchFunction)
     }
     reduceEffectsDurationTurns(){
         this.#effetcs.forEach(e => e.durationTurns -= 1)
@@ -801,9 +838,13 @@ export class Vote{
         for(const [voterIndex, targetIndex] of this.record.entries()){
             const p = this.game.playerList[voterIndex]
             if(targetIndex !== undefined){
-                let voteWeight = `${this.type}Weight` in p.role ? p.role[`${this.type}Weight`] : 1
+                let voteWeight = 1
                 if(this.team && p.role.name === this.team.defaultLeaderRoleName){
                     voteWeight = (p.team.playerList.length + 1)
+                }
+                else if(this.team === undefined){
+                    const voteWeightEffectName = p.searchEffect(e => e.name.startsWith(`hasPublicVoteWeight_`)).name
+                    voteWeight = extractNumbers(voteWeightEffectName)[0] ?? 1
                 }
 
                 count[targetIndex] += voteWeight
@@ -1015,7 +1056,7 @@ export class Team{
 // }
 
 function extractNumbers(str) {
-    return str.match(/\d+/g).map(Number) ?? []
+    return str?.match(/\d+/g).map(Number) ?? []
 }
 
 function getDefaultAffiliationTable(){

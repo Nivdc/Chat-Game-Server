@@ -540,6 +540,15 @@ class Game{
             //     game.voteSet.forEach(v => v.resetRecord())
             // }
 
+            immediatelyUseAbility(player, ability){
+                switch(ability.name){
+                    case'RevealAsMayor':{
+                        game.sendEventToAll('PlayerRevealAsMayor', {playerIndex:player.index})
+                        player.role.addEffect('hasPublicVoteWeight_3')
+                    break}
+                }
+            },
+
             CheckAllPlayersAnimationsFinished(){
                 const allPlayersAnimationsFinished = game.onlinePlayerList.map(p => p.animationsFinished).every(value => value)
                 if(allPlayersAnimationsFinished && game.status === 'animation/actions'){
@@ -943,7 +952,7 @@ class Game{
                 }
                 // fixme?:夜间...可以让被沉默的人说话吗？
                 else if(this.status.startsWith("night") && this.status.split('/').includes("discussion")){
-                    if(sender.hasEffect('Radio')){
+                    if(sender.hasEffect('Radio') && sender.hasEffect('Silenced') === false){
                         var isRadioMessage = true
                         targetGroup = this.onlinePlayerList
                     }
@@ -1388,6 +1397,9 @@ class Player{
     }
     hasEffect(eName){
         return (this.#effetcs.map(e => e.name).includes(eName) || this.role.hasEffect(eName))
+    }
+    searchEffect(searchFunction){
+        return this.#effetcs.find(searchFunction) ?? this.role.searchEffect(searchFunction)
     }
     reduceEffectsDurationTurns(){
         this.#effetcs.forEach(e => e.durationTurns -= 1)

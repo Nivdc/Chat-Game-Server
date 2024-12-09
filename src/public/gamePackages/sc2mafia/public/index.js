@@ -1165,6 +1165,31 @@ document.addEventListener('alpine:init', () => {
                     })
                 break}
 
+                case 'receiveMonitorReport':{
+                    const target = this.playerList[data.targetIndex]
+                    const visitors = data.visitorIndices?.map(index => this.playerList[index])
+                    const message = new MagicString()
+                    if(visitors !== undefined && visitors.length > 0){
+                        message.addText(' 今晚, ')
+                        visitors.forEach((p, index) =>{
+                            if(index > 0) message.addText(', ');
+                            message.append(p.getNameMagicString())
+                        })
+                        message.addText(' 访问了你的目标。')
+
+                    }
+                    else{
+                        message.addText('今晚没有任何人访问你的目标。')
+                    }
+                    this.addMessage(message)
+
+                    return new Promise((resolve) => {
+                        setTimeout(()=>{
+                            resolve()
+                        }, 2 * 1000)
+                    })
+                break}
+
                 case 'youCommittedSuicide':{
                     this.addSystemHintText("你自杀了", 'red')
 
@@ -2142,7 +2167,7 @@ const frontendData = {
                     const buttons = []
                     if(player === this.target)
                         buttons.push(newCancelButton)
-                    else if(player.index === userIndex && this.game.myRole.affiliation.name === 'Town' && this.name === 'Attack'){
+                    else if(player.index === this.game.myIndex && this.game.myRole.affiliation.name === 'Town' && this.name === 'Attack'){
                     }
                     else if(abilityUseVerify(this.game, this.name, this.game.myIndex, player.index, this.target?.index))
                         buttons.push(newUseButton)
@@ -2178,6 +2203,9 @@ const frontendData = {
             },
             "CloseProtection":{
                 actionWord:"保护"
+            },
+            "Monitor":{
+                actionWord:"监视"
             }
         },
 
@@ -2232,9 +2260,12 @@ const frontendData = {
                 },
                 generateButtons(player){
                     const buttons = []
-                    if(player.index === this.game.myIndex && this.game.playerList[this.game.myIndex].isAlive === true){
+                    if(player.index === this.game.myIndex){
                         const newUseButton = this.createUseButton(()=>{this.use()})
-                        if(this.used !== true)
+
+                        const userIsAlive = game.playerList[this.game.myIndex].isAlive
+                        const atDayStage = game.status.split('/').includes('day')
+                        if(this.used !== true && userIsAlive && atDayStage)
                             buttons.push(newUseButton)
                     }
                     return buttons
@@ -2266,6 +2297,14 @@ const frontendData = {
             abilityDescriptionTranslate:"这个角色有每晚对一人的活动进行跟踪的能力",
             abilityDetails:["每晚对一人进行跟踪，获知他的目标是谁。"],
             featureDetails:["即便行动没有访问目标，侦探仍会收到有活动的提示。"]
+        },
+        {
+            name:"Lookout",
+            nameTranslate:"监视者",
+            descriptionTranslate:"",
+            abilityDescriptionTranslate:"",
+            abilityDetails:["每晚观察一人，并获知有谁访问了他/她。"],
+            featureDetails:[""]
         },
         {
             name:"AuxiliaryOfficer",
@@ -2309,7 +2348,6 @@ const frontendData = {
             abilityDetails:["可以在夜间发送广播消息。"],
             featureDetails:["你在夜间所说的话会被所有玩家听到。",
                             "你在夜间匿名交谈。"]
-
         },
         {
             name:"Bodyguard",
@@ -2318,7 +2356,6 @@ const frontendData = {
             abilityDescriptionTranslate:"",
             abilityDetails:["每晚保护一人，使其免受一次死亡。"],
             featureDetails:["如果你的目标受到攻击，你将会反击攻击者。（同时你也会被攻击）"]
-
         },
         {
             name:"Mayor",
@@ -2327,7 +2364,6 @@ const frontendData = {
             abilityDescriptionTranslate:"",
             abilityDetails:["你可以在白天揭示你自己的身份。"],
             featureDetails:["如果你启用了你的能力，你在白天投下的票等同于 3 人"]
-
         },
         // Mafia
         {
@@ -2399,6 +2435,10 @@ const frontendData = {
         'hasEffect_ImmuneToDetect':{
             description:"免疫调查",
             featureDescription:"你在调查角色眼里像是不活跃的市民。",
+        },
+        'hasEffect_RadioBroadcast':{
+            description:"拥有广播电台",
+            featureDescription:"你可以在夜间说话。",
         },
 
         'IgnoreEffect_ImmuneToAttack':{

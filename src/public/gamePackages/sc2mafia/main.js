@@ -833,7 +833,9 @@ class Game{
                                 sendActionEvent(action.origin, 'YourTargetIsAttacked')
                             }
 
-                            if(action.originalActionName === 'Heal' && action.target.role.modifyObject?.['canNotBeHeal']){}
+                            if(action.target.role.modifyObject?.['canNotBeHeal'] && action.originalActionName === 'Heal'){
+                                // skip
+                            }
                             else{
                                 action.target.isAlive = true
                             }
@@ -900,6 +902,23 @@ class Game{
             sendActionEvent(a.origin, 'ReceiveTrackReport', trackReport)
         })
 
+        // Monitor
+        const monitorActions = this.nightActionSequence.filter(a => a.name === 'Monitor').filter(a => a.origin.isAlive)
+        monitorActions.forEach(a => sendActionEvent(a.origin, 'YouTakeAction', {actionName:a.name, targetIndex:a.target?.index}))
+        monitorActions.forEach(a => {
+            const targetedActions = this.nightActionSequence.filter(nightAction => nightAction?.target === a.target)
+            
+            const monitorReport = {
+                targetIndex: a.target.index,
+                visitorIndices: targetedActions
+                                .filter(ta => (ta.origin !== ta.target) && (ta.origin !== a.origin))
+                                .filter(ta => ta.origin.hasEffect('ImmuneToDetect') === false)
+                                .map(ta => ta.origin.index)
+            }
+
+            sendActionEvent(a.origin, 'ReceiveMonitorReport', monitorReport)
+        })
+
         // effectsProcess_afterAction
         for(const p of this.alivePlayerList){
             if(p.hasEffect('Suicide')){
@@ -952,7 +971,7 @@ class Game{
                 }
                 // fixme?:夜间...可以让被沉默的人说话吗？
                 else if(this.status.startsWith("night") && this.status.split('/').includes("discussion")){
-                    if(sender.hasEffect('Radio') && sender.hasEffect('Silenced') === false){
+                    if(sender.hasEffect('RadioBroadcast') && sender.hasEffect('Silenced') === false){
                         var isRadioMessage = true
                         targetGroup = this.onlinePlayerList
                     }
@@ -1443,7 +1462,7 @@ class Timer{
     }
 
     start(){
-        if(!this.id){
+        if(!this.id && this.delay !== Infinity){
             this.startTime = Date.now()
             this.id = setTimeout(()=>{this.tick()}, this.delay)
         }

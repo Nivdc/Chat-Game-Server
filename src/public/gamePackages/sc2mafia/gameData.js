@@ -22,6 +22,10 @@ export const originalGameData = {
                     name: "Detective",
                 },
                 {
+                    abilityNames:['Monitor'],
+                    name: "Lookout",
+                },
+                {
                     abilityNames:['Heal'],
                     name: "Doctor",
                 },
@@ -38,7 +42,7 @@ export const originalGameData = {
                     name: "Vigilante",
                 },
                 {
-                    effectNames:['Radio'],
+                    effectNames:['RadioBroadcast'],
                     name: "Crier",
                 },
                 {
@@ -311,6 +315,14 @@ export const originalGameData = {
             },
             "CloseProtection":{
             },
+            'Monitor':{
+                verify(game, userIndex, targetIndex, previousTargetIndex) {
+                    const userIsAlive = game.playerList[userIndex].isAlive
+                    const targetIsAlive = game.playerList[targetIndex].isAlive
+                    const targetIsNotPreviousTarget = targetIndex !== previousTargetIndex
+                    return userIsAlive && targetIsAlive && targetIsNotPreviousTarget
+                },
+            }
         },
 
         enabledAbilities: {

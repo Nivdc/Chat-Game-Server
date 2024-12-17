@@ -1,8 +1,8 @@
-import { originalGameData, Vote, Faction, Team, Role, getRoleTags } from "./gameData.js"
+import { originalGameData, Vote, Faction, Team, Role, EffectBase, getRoleTags } from "./gameData.js"
 import { getRandomElement, log } from "./utils.js"
 
 const gameDataPath = import.meta.dir + '/public/gameData/'
-let defaultSetting = await readJsonFile(gameDataPath+"defaultSetting.json")
+const defaultSetting = await readJsonFile(gameDataPath+"defaultSetting.json")
 
 async function readJsonFile(path){
     return await Bun.file(path).json()
@@ -12,8 +12,9 @@ export function start(room){
     return new Game(room)
 }
 
-class Game{
+class Game extends EffectBase{
     constructor(room){
+        super()
         this.playerList = room.user_list.map(user => new Player(this, user))
         this.host = this.playerList.find(p => p.user === room.host)
         this.room = room
@@ -25,9 +26,10 @@ class Game{
 
         // 异步函数的执行顺序和性能影响需要更多的观察
         class GameStage{
-            constructor(game, name, durationMin){
+            constructor(game, name, durationMin, extraData = undefined){
                 this.game = game
                 this.name = name
+                this.data = extraData
                 this.controller = new AbortController()
                 this.promise = new Promise((resolve, reject)=>{
                     this.timer = new Timer(resolve, durationMin, true)
@@ -36,7 +38,7 @@ class Game{
                         reject
                     })
                 })
-                this.game.setStatus(this.name)
+                this.game.setStatus(this.name, {durationMillisecond:this.timer.delay, ...this.data})
             }
 
             pause(){
@@ -44,7 +46,7 @@ class Game{
             }
 
             start(){
-                this.game.setStatus(this.name)
+                this.game.setStatus(this.name, {durationMillisecond:this.timer.delay, ...this.data})
                 this.timer.start()
             }
 
@@ -83,7 +85,7 @@ class Game{
         return this.playerList.filter((p) => p.isAlive === false)
     }
 
-    get atTrialOrExecutionStage(){
+    get inTrialOrExecutionStage(){
         return this.status.split('/').includes("trial") || this.status.split('/').includes("execution")
     }
 
@@ -280,11 +282,12 @@ class Game{
         p.sendEvent("SetPlayerList", this.playerList)
         p.sendEvent("SetPlayerSelfIndex", p.index)
         p.sendEvent("SetHost", this.host)
-        p.sendEvent("SetStatus", this.status)
+        p.sendEvent("SetStatus", {status:this.status})
         p.sendEvent("SetDayCount", this.dayCount ?? 1)
         p.sendEvent("SetFactionSet", originalGameData.factions)
         p.sendEvent("SetTagSet", originalGameData.tags)
         p.sendEvent("SetRoleSet", originalGameData.roles)
+        p.sendEvent("SetGlobalEffects", this.effetcs.map(e => e.name))
         p.sendEvent("InitCompleted")
 
         p.isReady = true
@@ -473,38 +476,80 @@ class Game{
                         const resultIndex = vote.getResult()
                         if(resultIndex !== undefined){
                             const lynchTarget = game.playerList[resultIndex]
-                            // game.sendEventToAll("SetLynchTarget", lynchTarget)
-                            if(game.setting.enableTrial){
-                                if(game.setting.pauseDayTimerDuringTrial === true){
-                                    this.tempDayStageCache = game.gameStage
-                                    this.tempDayStageCache.pause()
-                                }
-                                await game.trialCycle(lynchTarget)
-                                const {trialTargetIsGuilty, voteRecord} = this.checkTrialVoteResult()
-                                game.sendEventToAll("SetTrialVoteRecord", voteRecord)
-                                if(trialTargetIsGuilty){
-                                    game.execution(lynchTarget)
+                            if(game.hasEffect('MarshallMassExecution') === false){
+                                // game.sendEventToAll("SetLynchTarget", lynchTarget)
+                                if(game.setting.enableTrial){
+                                    if(game.setting.pauseDayTimerDuringTrial === true){
+                                        this.tempDayStageCache = game.gameStage
+                                        this.tempDayStageCache.pause()
+                                    }
+                                    await game.trialCycle(lynchTarget)
+                                    const {trialTargetIsGuilty, voteRecord} = this.checkTrialVoteResult()
+                                    game.sendEventToAll("SetTrialVoteRecord", voteRecord)
+                                    if(trialTargetIsGuilty){
+                                        game.execution(lynchTarget)
+                                    }
+                                    else{
+                                        if(game.setting.pauseDayTimerDuringTrial === true && this.tempDayStageCache !== undefined ){
+                                            game.gameStage = this.tempDayStageCache
+                                            game.gameStage.start()
+                                            this.tempDayStageCache = undefined
+                                        }
+                                        else if(game.setting.pauseDayTimerDuringTrial === false && game.dayOver === true){
+                                            game.nightCycle()
+                                        }
+                                        else if(game.setting.pauseDayTimerDuringTrial === false && game.dayOver === false){
+                                            const apll = game.alivePlayerList.length
+                                            const voteNeeded = apll % 2 === 0 ? ((apll / 2) + 1) : Math.ceil(apll / 2)
+                                            // 这个时候可以不额外发送剩余的时间，因为前端有足够的数据可以自己计算出来。
+                                            game.setStatus("day/discussion/lynchVote", {voteNeeded})
+                                        }
+                                    }
+                                    game.trialTarget = undefined
                                 }
                                 else{
-                                    if(game.setting.pauseDayTimerDuringTrial === true && this.tempDayStageCache !== undefined ){
+                                    game.execution(lynchTarget)
+                                }
+                            }
+                            else{
+                                if(game.getEffect('MarshallMassExecution').remainingExecutions > 0){
+                                    // 执法长的处决阶段要暂停白天计时器
+                                    this.tempDayStageCache = game.gameStage
+                                    this.tempDayStageCache.pause()
+
+                                    game.sendEventToAll("SetExecutionTarget", lynchTarget)
+                                    await game.newGameStage("day/execution/lastWord", 0.2)
+                                    lynchTarget.isAlive = false
+                                    lynchTarget.deathReason = ["Execution"]
+                            
+                                    game.recentlyDeadPlayers.push(lynchTarget)
+                                    game.getEffect('MarshallMassExecution').remainingExecutions --
+                                    // 等待处刑/遗言阶段结束后，接下来有两种可能：
+                                    // 1. 白天已经结束了 或是 已经用完了处决次数
+                                    // 2. 还没用完处决次数且白天也没结束
+                                    if(game.dayOver === true || game.getEffect('MarshallMassExecution').remainingExecutions === 0){
+                                        // 如果是用完了处决次数
+                                        if(game.getEffect('MarshallMassExecution').remainingExecutions === 0){
+                                            this.tempDayStageCache.end()
+                                        }
+                                        this.tempDayStageCache = undefined
+
+                                        game.sendEventToAll('SetRecentlyDeadPlayers', game.recentlyDeadPlayers.map(p => game.getPlayerDeathDeclearData(p)))
+                                        await game.newGameStage("animation/execution/deathDeclear", game.recentlyDeadPlayers.length * 0.1)
+                                        await game.newGameStage("day/execution/discussion", 0.2)
+                                        game.removeEffect('MarshallMassExecution')
+                                        await game.victoryCheck()
+
+                                        if(game.status !== "end")
+                                            game.nightCycle()
+                                    }else{
                                         game.gameStage = this.tempDayStageCache
                                         game.gameStage.start()
                                         this.tempDayStageCache = undefined
                                     }
-                                    else if(game.setting.pauseDayTimerDuringTrial === false && game.dayOver === true){
-                                        game.nightCycle()
-                                    }
-                                    else if(game.setting.pauseDayTimerDuringTrial === false && game.dayOver === false){
-                                        game.setStatus("day/discussion/lynchVote")
-                                    }
                                 }
-                                game.trialTarget = undefined
                             }
-                            else{
-                                game.execution(lynchTarget)
-                            }
-
-                            // 如果投票有了结果就可以将记录清零了
+                            // 投票有了结果后就可以将记录清零了
                             vote.resetRecord()
                             game.sendEventToAll(`SetLynchVoteCount`, Array(game.playerList.length).fill(0))
                         }
@@ -540,11 +585,71 @@ class Game{
             //     game.voteSet.forEach(v => v.resetRecord())
             // }
 
-            immediatelyUseAbility(player, ability){
+            async dayOver(){
+                this.tempDayStageCache = undefined
+
+                if(!game.inTrialOrExecutionStage){
+                    if(game.hasEffect('MarshallMassExecution') === false){
+                        game.nightCycle()
+                    }else{
+                        game.sendEventToAll('SetRecentlyDeadPlayers', game.recentlyDeadPlayers.map(p => game.getPlayerDeathDeclearData(p)))
+                        await game.newGameStage("animation/execution/deathDeclear", game.recentlyDeadPlayers.length * 0.1)
+                        await game.newGameStage("day/execution/discussion", 0.2)
+                        game.removeEffect('MarshallMassExecution')
+                        await game.victoryCheck()
+
+                        if(game.status !== "end"){
+                            game.nightCycle()
+                        }
+                    }
+                }
+            },
+
+            async immediatelyUseAbility(player, ability){
+                game.sendEventToAll('PlayerUsesImmediateAbility', {abilityName:ability.name, playerIndex:player.index})
                 switch(ability.name){
                     case'RevealAsMayor':{
-                        game.sendEventToAll('PlayerRevealAsMayor', {playerIndex:player.index})
-                        player.role.addEffect('hasPublicVoteWeight_3')
+                        player.role.addEffect('HasPublicVoteWeight', Infinity, {voteWeight:3})
+                    break}
+
+                    case'RevealAsMarshall':{
+                        game.addEffect('MarshallMassExecution', 1, {remainingExecutions:3})
+
+                        // let marshallExecutionNumber = 3
+                        // // 执法长使用技能的时候只有两种情况：
+                        // // 在讨论阶段、在投票阶段、
+                        // // 审判和处刑阶段不允许执法长使用技能
+                        // // 首先，无论在讨论还是在投票，我们都可以安全的中断操作
+                        // game.gameStage.abort()
+                        // game.recentlyDeadPlayers = []
+                        // // 然后，进入无限期的执法长审判阶段
+                        // while(marshallExecutionNumber > 0){
+                        //     // 清空之前的投票纪录
+                        //     const lynchVote = this.voteSet.find(v => v.name === 'LynchVote')
+                        //     lynchVote.resetRecord()
+                        //     game.sendEventToAll(`SetLynchVoteCount`, Array(this.playerList.length).fill(0))
+
+                        //     const apll = game.alivePlayerList.length
+                        //     const voteNeeded = apll % 2 === 0 ? ((apll / 2) + 1) : Math.ceil(apll / 2)
+
+                        //     await game.newGameStage("day/discussion/lynchVote/marshall", Infinity, {voteNeeded})
+                        //     if(this.lynchTarget === undefined) console.error('Unknow lynchTarget while Marshall lynchVote');
+                        //     game.sendEventToAll("SetExecutionTarget", this.lynchTarget)
+                        //     await game.newGameStage("day/execution/lastWord/marshall", 0.2)
+                        //     this.lynchTarget.isAlive = false
+                        //     this.lynchTarget.deathReason = ["Execution"]
+                    
+                        //     game.recentlyDeadPlayers.push(this.lynchTarget)
+                        //     this.lynchTarget = undefined
+                        //     marshallExecutionNumber --
+                        // }
+                        // game.sendEventToAll('SetRecentlyDeadPlayers', game.recentlyDeadPlayers.map(p => game.getPlayerDeathDeclearData(p)))
+                        // await game.newGameStage("animation/execution/deathDeclear", game.recentlyDeadPlayers.length * 0.1)
+                        // await game.newGameStage("day/execution/discussion/marshall", 0.2)
+                        // await game.victoryCheck()
+                
+                        // if(game.status !== "end")
+                        //     game.nightCycle()
                     break}
                 }
             },
@@ -580,20 +685,21 @@ class Game{
     // 我们说30秒后黑夜会到来，它真的会来吗？如来
     // 到底来没来？如来~
 
-    setStatus(status){
+    setStatus(status, extraData = undefined){
         // log("Befor->",this.status)
 
         this.status = status
-        this.sendEventToAll("SetStatus", this.status)
+        if('status' in extraData) console.error("ExtraData should not contain 'status' property.");
+        this.sendEventToAll("SetStatus", {...extraData, status:this.status})
 
-        log("SetStatus->",this.status)
+        log("SetStatus->",{...extraData, status:this.status})
     }
 
-    newGameStage(name, durationMin){
+    newGameStage(name, durationMin, extraData = undefined){
         if(this.onlinePlayerList === 0 || this.status === 'end')
             return
 
-        this.gameStage = new this.GameStage(this, name, durationMin)
+        this.gameStage = new this.GameStage(this, name, durationMin, extraData)
         return this.gameStage
     }
 
@@ -611,6 +717,7 @@ class Game{
     async dayCycle(){
         this.playerList.forEach((p) => p.resetCommonProperties())
         this.dayOver = false
+        this.recentlyDeadPlayers = []
 
         this.teamSet.forEach(t => t.checkTeamHasActionExecutor())
 
@@ -626,22 +733,22 @@ class Game{
         if(this.setting.enableDiscussion)
             await this.newGameStage("day/discussion", this.setting.discussionTime)
 
+
+        // 清空之前的投票纪录
+        const lynchVote = this.voteSet.find(v => v.name === 'LynchVote')
+        lynchVote.resetRecord()
         // 如果是第一天，就判断是否以白天/无处刑开局，如果不是，那就执行...有点绕
         // Except for the first day/No-Lynch...this is a bit counter-intuitive.
         if(this.dayCount !== 1 || this.setting.startAt !== "day/No-Lynch"){
+            const apll = this.alivePlayerList.length
+            const voteNeeded = apll % 2 === 0 ? ((apll / 2) + 1) : Math.ceil(apll / 2)
             this.sendEventToAll(`SetLynchVoteCount`, Array(this.playerList.length).fill(0))
-            await this.newGameStage("day/discussion/lynchVote", this.setting.dayLength)
-
-            // 此处无论审判（处刑）投票是否有结果，都将记录清零
-            const lynchVote = this.voteSet.find(v => v.name === 'LynchVote')
-            lynchVote.resetRecord()
-            this.sendEventToAll(`SetLynchVoteCount`, Array(this.playerList.length).fill(0))
+            await this.newGameStage("day/discussion/lynchVote", this.setting.dayLength, {voteNeeded})
         }
 
 
         this.dayOver = true
-        if(!this.atTrialOrExecutionStage)
-            this.nightCycle()
+        this.gameDirector.dayOver()
     }
 
     async deathDeclare(){
@@ -931,7 +1038,7 @@ class Game{
             }
         }
 
-        this.onlinePlayerList.forEach(p => p.reduceEffectsDurationTurns())
+        this.reduceEffectsDurationTurns()
 
         function sendActionEvent(target, actionName, data){
             if(data && 'name' in data)
@@ -952,10 +1059,6 @@ class Game{
             this.sendEventToAll("HostCancelSetup")
         }
     }
-
-    // setChatAndVoteMode(modeName){
-    //     const availableModeName = ["Identified", "Anonymous"]
-    // }
 
     sendChatMessage(sender, data){
         let targetGroup = undefined
@@ -1120,7 +1223,6 @@ class Game{
         player.isAlive = false
         player.deathReason = ["Execution"]
 
-        this.recentlyDeadPlayers = []
         this.recentlyDeadPlayers.push(player)
 
         this.sendEventToAll('SetRecentlyDeadPlayers', this.recentlyDeadPlayers.map(p => this.getPlayerDeathDeclearData(p)))
@@ -1130,8 +1232,9 @@ class Game{
         await this.newGameStage("day/execution/discussion", executionLenghtMin/2)
         await this.victoryCheck()
 
-        if(this.status !== "end")
+        if(this.status !== "end"){
             this.nightCycle()
+        }
     }
 
     // getDDD, Ha
@@ -1241,6 +1344,33 @@ class Game{
             this.room.endGame()
         }
     }
+
+    addEffect(name, durationTurns = Infinity, extraData = undefined){
+        super.addEffect(name, durationTurns, extraData)
+
+        this.sendEventToAll("SetGlobalEffects", this.effetcs.map(e => e.name))
+    }
+    addEffect_skipThisTurn(name, durationTurns, extraData){
+        super.addEffect_skipThisTurn(name, durationTurns, extraData)
+
+        this.sendEventToAll("SetGlobalEffects", this.effetcs.map(e => e.name))
+    }
+    removeEffect(eName){
+        super.removeEffect(eName)
+
+        this.sendEventToAll("SetGlobalEffects", this.effetcs.map(e => e.name))
+    }
+
+    reduceEffectsDurationTurns(){
+        this.effetcs.forEach(e => e.durationTurns -= 1)
+
+        if(this.effetcs.some(e => e.durationTurns <= 0)){
+            this.effetcs = this.effetcs.filter(e => e.durationTurns > 0)
+            this.sendEventToAll("SetGlobalEffects", this.effetcs.map(e => e.name))
+        }
+
+        this.onlinePlayerList.forEach(p => p.reduceEffectsDurationTurns())
+    }
 }
 
 function shuffleArray(array) {
@@ -1318,8 +1448,9 @@ function calculateProbability(roleName, possibleRoles) {
     return probability
 }
 
-class Player{
+class Player extends EffectBase{
     constructor(game, user){
+        super()
         this.user = user
         this.playedRoleNameRecord = []
         this.game = game
@@ -1404,25 +1535,15 @@ class Player{
         return this.role.generateNightActions()
     }
 
-    #effetcs = []
-    addEffect(name, durationTurns = Infinity){
-        this.#effetcs.push({name, durationTurns})
-    }
-    addEffect_skipThisTurn(name, durationTurns){
-        this.addEffect(name, (durationTurns+1))
-    }
-    removeEffect(eName){
-        this.#effetcs = this.#effetcs.filter(e => e.name !== eName)
-    }
     hasEffect(eName){
-        return (this.#effetcs.map(e => e.name).includes(eName) || this.role.hasEffect(eName))
+        return (this.effetcs.map(e => e.name).includes(eName) || this.role.hasEffect(eName))
     }
     searchEffect(searchFunction){
-        return this.#effetcs.find(searchFunction) ?? this.role.searchEffect(searchFunction)
+        return this.effetcs.find(searchFunction) ?? this.role.searchEffect(searchFunction)
     }
     reduceEffectsDurationTurns(){
-        this.#effetcs.forEach(e => e.durationTurns -= 1)
-        this.#effetcs = this.#effetcs.filter(e => e.durationTurns > 0)
+        super.reduceEffectsDurationTurns()
+
         this.role.reduceEffectsDurationTurns()
     }
 
@@ -1448,6 +1569,7 @@ class Timer{
     constructor(callback, delayMin, go){
         this.callback = callback
         this.delay = 1000 * 60 * delayMin
+        this.createTime = Date.now()
 
         if(go)
             this.start()

@@ -66,7 +66,8 @@ document.addEventListener('alpine:init', () => {
                 // 前端加载完毕，后端有可能仍未加载完毕（特别是在首次启动的时候
                 // 在上面的代码里一旦前端加载完毕就会发送一个FrontendReady
                 // 后端加载完毕后会发送一个BackendReady
-                // 如果收到BackendReady时，页面仍然在loading，说明后端没有收到前面那个FrontendReady
+                // 如果收到BackendReady时，页面仍然在loading，
+                // 就说明本前端没有收到InitCompleted事件，也就说明后端没有收到前面的FrontendReady
                 // 因此此时必须再发送一次FrontendReady
                 if(this.loading === true)
                     sendEvent("FrontendReady")
@@ -210,10 +211,12 @@ document.addEventListener('alpine:init', () => {
             },
 
             'SetStatus':function(data){
-                this.status = data
+                this.status = data.status
+                const durationMillisecond = data.durationMillisecond ?? Infinity
+                const durationSec = Math.ceil(durationMillisecond / 1000)
                 if(this.status === 'begin'){
                     this.clearMssagesList()
-                    this.createTimer('试镜', 0.5)
+                    this.createTimer('试镜', durationSec)
                 }
                 else if(this.status === 'animation/begin'){
                     this.timer?.clear()
@@ -233,17 +236,15 @@ document.addEventListener('alpine:init', () => {
                 else if(this.status === 'day/discussion'){
                     this.clearMssagesList()
                     this.playAnimation('showDayCount')
-                    this.createTimer('讨论', this.setting.discussionTime)
+                    this.createTimer('讨论', durationSec)
                 }
                 else if(this.status === 'day/discussion/lynchVote'){
+                    const voteNeeded = data.voteNeeded
                     this.myLynchVoteTargetIndex = undefined
                     if(this.setting.enableDiscussion === false){
                         this.clearMssagesList()
                         this.playAnimation('showDayCount')
                     }
-
-                    const apll = this.playerList.filter(p => p.isAlive).length
-                    const voteNeeded = apll % 2 === 0 ? ((apll / 2) + 1) : Math.ceil(apll / 2)
 
                     this.gamePageTipMessage = new MagicString()
                     this.gamePageTipMessage.addText(`我们需要 ${voteNeeded} 票来将某人送上${this.setting.enableTrial? '审判台':'绞刑架'}。`)
@@ -251,7 +252,7 @@ document.addEventListener('alpine:init', () => {
 
                     if(this.tempDayTimerCache === undefined){
                         // 如果是正常的投票阶段
-                        this.createTimer('投票', this.setting.dayLength)
+                        this.createTimer('投票', durationSec)
                     }else{
                         // 如果是审判后继续的投票阶段
                         if(this.setting.pauseDayTimerDuringTrial){
@@ -278,7 +279,7 @@ document.addEventListener('alpine:init', () => {
                     this.tempDayTimerCache = this.timer
                     this.tempDayTimerCache.clear()
 
-                    this.createTimer('审判辩护', this.setting.trialTime/2)
+                    this.createTimer('审判辩护', durationSec)
                 }
                 else if(this.status === 'day/discussion/trial/trialVote'){
                     this.gamePageTipMessage = new MagicString()
@@ -286,8 +287,7 @@ document.addEventListener('alpine:init', () => {
                     this.gamePageTipMessage.append(this.trialTarget.getNameMagicString())
                     this.gamePageTipMessage.addText(" 的命运")
 
-                    const trialVoteTime = this.setting.enableTrialDefense? this.setting.trialTime/2 : this.setting.trialTime
-                    this.createTimer('审判投票', trialVoteTime)
+                    this.createTimer('审判投票', durationSec)
                 }
                 else if(this.status === 'day/execution/lastWord'){
                     this.gamePageTipMessage = new MagicString()
@@ -295,20 +295,26 @@ document.addEventListener('alpine:init', () => {
                     this.gamePageTipMessage.addText(" 你还有什么遗言吗？")
                     this.gamePageTipMessage.class = 'animation-fadeIn-1s'
 
-                    this.createTimer('临终遗言', 0.4/2)
+                    this.createTimer('临终遗言', durationSec)
                 }
                 else if(this.status === 'animation/execution/deathDeclear'){
                     this.playAnimation('deathDeclear')
                 }
                 else if(this.status === 'day/execution/discussion'){
-                    this.gamePageTipMessage = new MagicString()
-                    this.gamePageTipMessage.append(this.executionTarget.getNameMagicString())
-                    this.gamePageTipMessage.addText(" 愿你安息")
+                    if(this.effects.includes('MarshallMassExecution') === false){
+                        this.gamePageTipMessage = new MagicString()
+                        this.gamePageTipMessage.append(this.executionTarget.getNameMagicString())
+                        this.gamePageTipMessage.addText(" 愿你安息")
+                    }
+                    else{
+                        this.gamePageTipMessage = new MagicString()
+                        this.gamePageTipMessage.addText("愿你们安息")
+                    }
                     this.executionTarget = undefined
                     setTimeout(()=>{
                         this.gamePageTipMessage.class = 'animation-fadeOut-2s'
                     }, 3000)
-                    this.createTimer('行刑追悼', 0.4/2)
+                    this.createTimer('行刑追悼', durationSec)
                 }
                 else if(this.status === 'animation/dayToNight'){
                     this.timer = undefined
@@ -322,7 +328,7 @@ document.addEventListener('alpine:init', () => {
                     document.getElementById('music').play()
                     this.executionTarget = undefined
                     this.clearMssagesList()
-                    this.createTimer('夜晚', this.setting.nightLength, ()=>{this.timer = undefined})
+                    this.createTimer('夜晚', durationSec, ()=>{this.timer = undefined})
                 }
                 else if(this.status === 'animation/nightToAction'){
                     this.playAnimation('nightToAction')
@@ -335,11 +341,11 @@ document.addEventListener('alpine:init', () => {
                     this.playActionAnimations()
                 }
                 else if(this.status === 'animation/actions/last12Sec'){
-                    this.createTimer('行动', 0.2, ()=>{this.timer = undefined})
+                    this.createTimer('行动', durationSec, ()=>{this.timer = undefined})
                 }
                 else if(this.status === 'end'){
-                    this.createTimer('谢幕', 0.2)
-                    this.addSystemHintText("本局游戏已结束，将在12秒后返回大厅。")
+                    this.createTimer('谢幕', durationSec)
+                    this.addSystemHintText(`本局游戏已结束，将在${durationSec}秒后返回大厅。`)
                 }
             },
 
@@ -474,7 +480,7 @@ document.addEventListener('alpine:init', () => {
             'SetRoleSet':function(data){
                 const roleFrontendDatas = frontendData.roles
                 const roleBackendDatas = data.filter(rd => roleFrontendDatas.find(rfd => rfd.name === rd.name) !== undefined)
-                getComplement(roleFrontendDatas.map(r => r.name), roleBackendDatas.map(r => r.name)).forEach(roleName => console.error(`Role: ${roleName} has no frontend data!`))
+                getComplement(roleFrontendDatas.map(r => r.name), roleBackendDatas.map(r => r.name)).forEach(roleName => console.error(`Role: ${roleName} has no data!`))
                 roleBackendDatas.filter(rbd => rbd.defaultAffiliationName === undefined).forEach(rbd => rbd.defaultAffiliationName = 'Neutral')
 
                 this.roleSet = roleFrontendDatas.map(rfd => new Role({...rfd, ...roleBackendDatas.find(rbd => rbd.name === rfd.name)}, this.tagSet, this.factionSet, this.setting))
@@ -705,14 +711,36 @@ document.addEventListener('alpine:init', () => {
                 this.addSystemHintText('系统提示：当前审判的玩家被沉默了')
             },
 
-            'PlayerRevealAsMayor':function(data){
-                const player = this.playerList[data.playerIndex]
-                const role = this.roleSet.find(r => r.name === 'Mayor')
-                const ms = new MagicString()
-                ms.append(player.getNameMagicString())
-                ms.addText(' 揭示了他的身份，他是 ')
-                ms.append(role.getNameMagicString())
-                this.addMessage(ms)
+            'PlayerUsesImmediateAbility':function(data){
+                switch(data.abilityName){
+                    case 'RevealAsMayor':{
+                        const player = this.playerList[data.playerIndex]
+                        const role = this.roleSet.find(r => r.name === 'Mayor')
+                        const ms = new MagicString()
+                        ms.append(player.getNameMagicString())
+                        ms.addText(' ')
+                        ms.append(role.getNameMagicString())
+                        ms.addText(' 揭示了他自己')
+                        this.addMessage(ms)
+                    break}
+
+                    case 'RevealAsMarshall':{
+                        const player = this.playerList[data.playerIndex]
+                        const role = this.roleSet.find(r => r.name === 'Marshall')
+                        const ms = new MagicString()
+                        ms.append(player.getNameMagicString())
+                        ms.addText(' ')
+                        ms.append(role.getNameMagicString())
+                        ms.addText(' 揭示了他自己')
+                        this.addMessage(ms)
+
+                        this.addSystemHintText('你们今天可处决三人。')
+                    break}
+                }
+            },
+
+            'SetGlobalEffects':function(data){
+                this.effects = data
             }
         },
         commandHandler(commandString){
@@ -1318,7 +1346,7 @@ document.addEventListener('alpine:init', () => {
                         // "Escort",
                         // "Doctor",
                         "SerialKiller",
-                        "Mayor",
+                        "Marshall",
                         // "Consort",
                         // "AllRandom",
                     ],
@@ -1548,12 +1576,12 @@ document.addEventListener('alpine:init', () => {
 
         //计时器组件
         timer:undefined,
-        createTimer(name, durationMin, callback){
+        createTimer(name, durationSec, callback){
             this.timer?.clear()
             this.timer = undefined
             this.timer = {
                 name,
-                durationSec: 60 * durationMin,
+                durationSec,
                 update(){
                     if(this.durationSec <= 0){
                         clearTimeout(this.timerId)
@@ -1571,7 +1599,8 @@ document.addEventListener('alpine:init', () => {
                     }
                 },
                 clear(){
-                    clearTimeout(this.timerId)
+                    if(this.timerId)
+                        clearTimeout(this.timerId)
                 },
             }
 
@@ -1845,7 +1874,7 @@ document.addEventListener('alpine:init', () => {
 
             if(this.myAbilities?.length > 0){
                 this.myAbilities.forEach(a => {
-                    const immediatelyAbilityNames = ['RevealAsMayor']
+                    const immediatelyAbilityNames = ['RevealAsMayor', 'RevealAsMarshall']
                     if(immediatelyAbilityNames.includes(a.name))
                         buttons = buttons.concat(a.generateButtons(player))
                 })
@@ -2263,9 +2292,28 @@ const frontendData = {
                     if(player.index === this.game.myIndex){
                         const newUseButton = this.createUseButton(()=>{this.use()})
 
-                        const userIsAlive = game.playerList[this.game.myIndex].isAlive
-                        const atDayStage = game.status.split('/').includes('day')
+                        const userIsAlive = this.game.playerList[this.game.myIndex].isAlive
+                        const atDayStage = this.game.status.split('/').includes('day')
                         if(this.used !== true && userIsAlive && atDayStage)
+                            buttons.push(newUseButton)
+                    }
+                    return buttons
+                },
+            },
+
+            "RevealAsMarshall":{
+                useSuccess(data){
+                    this.used = true
+                },
+                generateButtons(player){
+                    const buttons = []
+                    if(player.index === this.game.myIndex){
+                        const newUseButton = this.createUseButton(()=>{this.use()})
+
+                        const userIsAlive = this.game.playerList[this.game.myIndex].isAlive
+                        const inDayStage = this.game.status.split('/').includes('day')
+                        const notInTrialOrExecutionStage = !(this.game.status.split('/').includes("trial") || this.game.status.split('/').includes("execution"))
+                        if(this.used !== true && userIsAlive && inDayStage && notInTrialOrExecutionStage)
                             buttons.push(newUseButton)
                     }
                     return buttons
@@ -2363,7 +2411,20 @@ const frontendData = {
             descriptionTranslate:"",
             abilityDescriptionTranslate:"",
             abilityDetails:["你可以在白天揭示你自己的身份。"],
-            featureDetails:["如果你启用了你的能力，你在白天投下的票等同于 3 人"]
+            featureDetails:["如果你启用了你的能力，你在白天投下的票等同于 3 人",
+                "如果你被沉默，你将无法启用你的能力"
+            ]
+        },
+        {
+            name:"Marshall",
+            nameTranslate:"执法长",
+            descriptionTranslate:"",
+            abilityDescriptionTranslate:"",
+            abilityDetails:["你可以在白天揭示你自己的身份。"],
+            featureDetails:["如果你启用了你的能力，城镇可以在白天处决 3 人",
+                "如果你被沉默，你将无法启用你的能力",
+                "你的技能不会延长白天，请在时间充裕时使用"
+            ]
         },
         // Mafia
         {

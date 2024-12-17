@@ -14,6 +14,10 @@ export const originalGameData = {
                     name: "Mayor",
                 },
                 {
+                    abilityNames:['RevealAsMarshall'],
+                    name: "Marshall",
+                },
+                {
                     abilityNames:['Detect'],
                     name: "Sheriff",
                 },
@@ -375,9 +379,34 @@ export const originalGameData = {
 
                 verify(game, userIndex, targetIndex, previousTargetIndex){
                     const userIsAlive = game.playerList[userIndex].isAlive
-                    const atDayStage = game.status.split('/').includes('day')
+                    const inDayStage = game.status.split('/').includes('day')
                     const userHasNotBeenSilenced = game.playerList[userIndex].hasEffect('Silenced') === false
-                    return userIsAlive && atDayStage && userHasNotBeenSilenced
+                    return userIsAlive && inDayStage && userHasNotBeenSilenced
+                },
+
+                cancel(game, data){
+                    this.player.sendEvent('UseAblityCancelFailed', data)
+                },
+
+                generateNightAction:undefined,
+            },
+
+            "RevealAsMarshall":{
+                use(game, data){
+                    if(this.verify(game, this.player.index) && this.state.unableToUse === false){
+                        game.gameDirector.immediatelyUseAbility(this.player, data)
+                        this.player.sendEvent('UseAblitySuccess', data)
+                    }else{
+                        this.player.sendEvent('UseAblityFailed', data)
+                    }
+                },
+
+                verify(game, userIndex, targetIndex, previousTargetIndex){
+                    const userIsAlive = game.playerList[userIndex].isAlive
+                    const inDayStage = game.status.split('/').includes('day')
+                    const notInTrialOrExecutionStage = game.inTrialOrExecutionStage === false
+                    const userHasNotBeenSilenced = game.playerList[userIndex].hasEffect('Silenced') === false
+                    return userIsAlive && inDayStage && userHasNotBeenSilenced && notInTrialOrExecutionStage
                 },
 
                 cancel(game, data){
@@ -675,9 +704,36 @@ class Ability extends AbilityBase{
     }
 }
 
+export class EffectBase{
+    effetcs = []
+    addEffect(name, durationTurns = Infinity, extraData = undefined){
+        this.effetcs.push({...(extraData || {}), name, durationTurns})
+    }
+    addEffect_skipThisTurn(name, durationTurns, extraData){
+        this.addEffect(name, (durationTurns+1), extraData)
+    }
+    removeEffect(eName){
+        this.effetcs = this.effetcs.filter(e => e.name !== eName)
+    }
+    getEffect(eName){
+        return this.searchEffect(e => e.name === eName)
+    }
+    hasEffect(eName){
+        return this.effetcs.map(e => e.name).includes(eName)
+    }
+    searchEffect(searchFunction){
+        return this.effetcs.find(searchFunction)
+    }
+    reduceEffectsDurationTurns(){
+        this.effetcs.forEach(e => e.durationTurns -= 1)
+        this.effetcs = this.effetcs.filter(e => e.durationTurns > 0)
+    }
+}
+
 // 仁慈的父，我已坠入，看不见罪的国度，请原谅我的自负~
-export class Role{
+export class Role extends EffectBase{
     constructor(game, player, roleData){
+        super()
         this.game = game
         this.player = player
         this.name   = roleData.name
@@ -763,30 +819,11 @@ export class Role{
         return this.data.victoryCheck?.(this.game, this.player)
     }
 
-    // ......嗯对，这里有个可以多重继承的东西...但是我更宁愿手动复制一下
-    #effetcs = []
-    addEffect(name, durationTurns = Infinity){
-        this.#effetcs.push({name, durationTurns})
-    }
-    addEffect_skipThisTurn(name, durationTurns){
-        this.addEffect(name, (durationTurns+1))
-    }
-    removeEffect(eName){
-        this.#effetcs = this.#effetcs.filter(e => e.name !== eName)
-    }
-    hasEffect(eName){
-        return this.#effetcs.map(e => e.name).includes(eName)
-    }
-    searchEffect(searchFunction){
-        return this.#effetcs.find(searchFunction)
-    }
     reduceEffectsDurationTurns(){
-        this.#effetcs.forEach(e => e.durationTurns -= 1)
-        this.#effetcs = this.#effetcs.filter(e => e.durationTurns > 0)
+        super.reduceEffectsDurationTurns()
 
         this.abilities?.forEach(a => a.reduceForceDisableTurns())
     }
-
     addAbilityForceDisableTurns(durationTurns = 0){
         this.abilities.forEach(a => a.state.forceDisableTurns += durationTurns)
     }
@@ -855,8 +892,7 @@ export class Vote{
                     voteWeight = (p.team.playerList.length + 1)
                 }
                 else if(this.team === undefined){
-                    const voteWeightEffectName = p.searchEffect(e => e.name.startsWith(`hasPublicVoteWeight_`)).name
-                    voteWeight = extractNumbers(voteWeightEffectName)[0] ?? 1
+                    voteWeight = p.getEffect('HasPublicVoteWeight')?.voteWeight ?? 1
                 }
 
                 count[targetIndex] += voteWeight

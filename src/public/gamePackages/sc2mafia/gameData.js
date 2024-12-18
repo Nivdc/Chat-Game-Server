@@ -42,6 +42,10 @@ export const originalGameData = {
                     name: "AuxiliaryOfficer",
                 },
                 {
+                    abilityNames:['ArmedGuard'],
+                    name: "Veteran",
+                },
+                {
                     abilityNames:['Attack'],
                     name: "Vigilante",
                 },
@@ -414,6 +418,9 @@ export const originalGameData = {
                 },
 
                 generateNightAction:undefined,
+            },
+
+            'ArmedGuard':{
             }
         }
     },

@@ -334,9 +334,6 @@ document.addEventListener('alpine:init', () => {
                     this.playAnimation('nightToAction')
                     this.myAbilities?.forEach(a => a.target = undefined)
                 }
-                // else if(this.status === 'action'){
-                //     // nothing to do...
-                // }
                 else if(this.status === 'animation/actions'){
                     this.playActionAnimations()
                 }
@@ -704,7 +701,8 @@ document.addEventListener('alpine:init', () => {
                 this.myAbilities.find(a => a.name === abilityName).cancelSuccess()
             },
             'UseAblityFailed':function(data){
-                this.addSystemHintText('技能使用失败，可能是因为在冷却、没次数了。(更多提示以后再做吧。)')
+                this.addSystemHintText('技能使用失败，可能是因为在冷却、没次数了、使用时机不正确。')
+                this.addSystemHintText('(更多提示以后再做吧)')
             },
 
             'TrialTargetIsSilenced':function(data){
@@ -1275,6 +1273,7 @@ document.addEventListener('alpine:init', () => {
                 case 'someoneIsTryingToDoSomethingToYou':{
                     let actionName = data.originalActionName ?? data.actionName
                     if(data.originalActionName === 'CloseProtection' && data.actionName === 'Attack') actionName = 'Attack';
+                    if(data.originalActionName === 'ArmedGuard' && data.actionName === 'Attack') actionName = 'Attack';
                     const actionWord = frontendData.abilities.targetedAbilities[actionName].actionWord
                     const source = this.factionSet.find(f => f.name === data.source) ?? this.roleSet.find(r => r.name === data.source)
                     this.addSystemHintText(`今晚${source?.nameTranslate ?? '有人'}试图 ${actionWord} 你！`)
@@ -1346,7 +1345,7 @@ document.addEventListener('alpine:init', () => {
                         // "Escort",
                         // "Doctor",
                         "SerialKiller",
-                        "Marshall",
+                        "Veteran",
                         // "Consort",
                         // "AllRandom",
                     ],
@@ -2318,7 +2317,11 @@ const frontendData = {
                     }
                     return buttons
                 },
-            }
+            },
+
+            "ArmedGuard":{
+                actionWord:"警戒"
+            },
         }
     },
     roles:[
@@ -2404,6 +2407,14 @@ const frontendData = {
             abilityDescriptionTranslate:"",
             abilityDetails:["每晚保护一人，使其免受一次死亡。"],
             featureDetails:["如果你的目标受到攻击，你将会反击攻击者。（同时你也会被攻击）"]
+        },
+        {
+            name:"Veteran",
+            nameTranslate:"退伍军人",
+            descriptionTranslate:"",
+            abilityDescriptionTranslate:"",
+            abilityDetails:["在夜间进行警戒，自动杀死那晚所有访问你的人"],
+            featureDetails:["当你使用警戒时，你会获得一晚的夜间无敌。"]
         },
         {
             name:"Mayor",

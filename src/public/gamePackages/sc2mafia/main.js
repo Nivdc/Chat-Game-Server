@@ -658,7 +658,7 @@ class Game extends EffectBase{
                 const allPlayersAnimationsFinished = game.onlinePlayerList.map(p => p.animationsFinished).every(value => value)
                 if(allPlayersAnimationsFinished && game.status === 'animation/actions'){
                     game.gameStage.abort()
-                    game.setStatus('animation/actions/last12Sec')
+                    game.setStatus('animation/actions/last12Sec', {durationMillisecond:(1000 * 12)})
                     setTimeout(() => {
                         game.dayCycle()
                     }, 1000 * 12)
@@ -689,7 +689,7 @@ class Game extends EffectBase{
         // log("Befor->",this.status)
 
         this.status = status
-        if('status' in extraData) console.error("ExtraData should not contain 'status' property.");
+        if(extraData && 'status' in extraData) console.error("ExtraData should not contain 'status' property.");
         this.sendEventToAll("SetStatus", {...extraData, status:this.status})
 
         log("SetStatus->",{...extraData, status:this.status})
@@ -903,6 +903,22 @@ class Game extends EffectBase{
                     originalActionName:"CloseProtection"
                 })
             }
+        })
+
+        // ArmedGuard
+        const armedGuardActions = this.nightActionSequence.filter(a => a.name === 'ArmedGuard')
+        armedGuardActions.forEach(a => sendActionEvent(a.origin, 'YouTakeAction', {actionName:a.name, targetIndex:a.target?.index}))
+        armedGuardActions.forEach(a => {
+            a.origin.addEffect('ImmuneToAttack', 1)
+            const visitors = this.nightActionSequence.filter(na => na.target === a.origin).map(na => na.origin)
+            visitors.forEach(v =>{
+                attackActions.push({
+                    name:"Attack",
+                    origin:a.origin,
+                    target:v,
+                    originalActionName:"ArmedGuard"
+                })
+            })
         })
 
         // Attack and Protects Process

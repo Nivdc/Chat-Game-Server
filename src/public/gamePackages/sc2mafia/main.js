@@ -858,7 +858,14 @@ class Game extends EffectBase{
 
             const t1_and_t2_targetedActions = target_1_targetedActions.concat(target_2_targetedActions)
             t1_and_t2_targetedActions.forEach(t1t2ta =>{
-                // todo: BusDriverAttack
+                if(t1t2ta.name === 'Attack'){
+                    if(((t1t2ta.origin === a.target_1 && t1t2ta.target === a.target_2) ||
+                    (t1t2ta.origin === a.target_2 && t1t2ta.target === a.target_1))){
+                        // 延迟到后面处理
+                        return
+                    }
+                }
+
                 if(t1t2ta.name !== 'Swap'){
                     t1t2ta.target = t1t2ta.target === a.target_1 ? a.target_2 : a.target_1
                 }else{
@@ -894,9 +901,9 @@ class Game extends EffectBase{
         // 攻击和保护的机制是为每个玩家设置两个数组暂存攻击和保护效果，
         // 然后比对二者的长度来决定玩家的死活。
         // 类似治疗这类的保护技能并不是直接生效的，而是生成一个类似action的，名称为Protect的对象来参与计算。
-        const attackActions = this.nightActionSequence.filter(a => a.name === 'Attack')
+        let attackActions = this.nightActionSequence.filter(a => a.name === 'Attack')
         attackActions.forEach(a => sendActionEvent(a.origin, 'YouTakeAction', {actionName:a.originalActionName ?? a.name}))
-        const protectActions = this.nightActionSequence.filter(a => a.name === 'Heal').map(a => {return {...a, ...{name:"Protect", originalActionName:a.name}}})
+        let protectActions = this.nightActionSequence.filter(a => a.name === 'Heal').map(a => {return {...a, ...{name:"Protect", originalActionName:a.name}}})
         protectActions.forEach(a => sendActionEvent(a.origin, 'YouTakeAction', {actionName:a.originalActionName ?? a.name}))
 
         // ArmedGuard
@@ -942,6 +949,25 @@ class Game extends EffectBase{
                     origin:a.origin,
                     target:attack.target,
                     originalActionName:"CloseProtection"
+                })
+            }
+        })
+
+        // SwapCauseAttack, BusDriverAttack
+        // 这是一个很稀有的情况，我觉得可以适当的奖励司机
+        // fixme?: 如果司机调换了自己和退伍，退伍的攻击会被司机覆盖掉
+        swapActions.forEach(a => {
+            const killer = attackActions.find(aa => ((aa.origin === a.target_1 && aa.target === a.target_2) ||
+                    (aa.origin === a.target_2 && aa.target === a.target_1))
+                )?.origin
+
+            if(killer){
+                attackActions = attackActions.filter(aa => aa.origin !== killer)
+                attackActions.push({
+                    name:"Attack",
+                    origin:a.origin,
+                    target:killer,
+                    originalActionName:"Swap"
                 })
             }
         })

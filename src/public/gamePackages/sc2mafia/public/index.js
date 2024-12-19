@@ -332,7 +332,6 @@ document.addEventListener('alpine:init', () => {
                 }
                 else if(this.status === 'animation/nightToAction'){
                     this.playAnimation('nightToAction')
-                    this.myAbilities?.forEach(a => a.target = undefined)
                 }
                 else if(this.status === 'animation/actions'){
                     this.playActionAnimations()
@@ -613,6 +612,7 @@ document.addEventListener('alpine:init', () => {
                 }
             },
             'TeamNightActionNotice':function(data){
+                // fixme: 目前仅支持targetedAbility
                 const action = data
                 const message = new MagicString()
                 message.addText('你们决定派出 ')
@@ -620,6 +620,10 @@ document.addEventListener('alpine:init', () => {
                 message.addText(` 去${frontendData.abilities.targetedAbilities[action.name].actionWord} `)
                 message.append(this.playerList[action.targetIndex].getNameMagicString())
                 this.addMessage(message)
+
+                if(action.originIndex === this.myIndex){
+                    this.myTeamAction = action
+                }
             },
 
             'SetLynchVoteCount':function(data){
@@ -862,14 +866,22 @@ document.addEventListener('alpine:init', () => {
                 case 'use':
                 case 'useAbility':{
                     const usedAbilityName = args.shift()
-                    const targetIndex = Number(args.shift())-1
 
                     if(this.myAbilities?.map(a => a.name).includes(usedAbilityName)){
-                        const extraData = args.length > 0 ? args : undefined
-                        if(Number.isNaN(targetIndex) === false){
-                            sendEvent('UseAbility', {name:usedAbilityName, targetIndex, extraData})
+                        if(usedAbilityName !== 'Swap'){
+                            const targetIndex = Number(args.shift())-1
+                            if(Number.isNaN(targetIndex) === false){
+                                sendEvent('UseAbility', {name:usedAbilityName, targetIndex})
+                            }else{
+                                sendEvent('UseAbility', {name:usedAbilityName})
+                            }
                         }else{
-                            sendEvent('UseAbility', {name:usedAbilityName, extraData})
+                            const targetIndex_1 = Number(args.shift())-1
+                            const targetIndex_2 = Number(args.shift())-1
+
+                            if(Number.isNaN(targetIndex_1) === false && Number.isNaN(targetIndex_1) === false && targetIndex_1 !== targetIndex_2){
+                                sendEvent('UseAbility', {name:usedAbilityName, targetIndex_1, targetIndex_2})
+                            }
                         }
                     }
                 break}
@@ -1079,8 +1091,17 @@ document.addEventListener('alpine:init', () => {
                 // action animations
                 // 行动动画和普通动画的区别就是它会返回一个promise，在动画结束时resolve
                 case 'youTakeAction':{
-                    const relatedAbilityName = data.actionName
-                    Ability.generateActionNotice(this, relatedAbilityName, data)
+                    this.myAbilities?.find(a => a.name === data.actionName)?.actionNotice()
+
+                    // 注意这里，玩家在执行团队行动的时候，是有可能执行非自有技能的行动的，所以要补充一下提示
+                    // fixme: 我没有考虑玩家拥有与团队技能相同的技能的时候，如果他同时使用技能且作为团队执行人的情况
+                    if(this.myTeamAction && this.myTeamAction.name === data.actionName){
+                        const message = new MagicString()
+                        message.addText('你前去')
+                        message.addText(`${frontendData.abilities.targetedAbilities[this.myTeamAction.name].actionWord} `)
+                        message.append(this.playerList[this.myTeamAction.targetIndex].getNameMagicString())
+                        this.addMessage(message)
+                    }
 
                     return new Promise((resolve) => {
                         setTimeout(()=>{
@@ -1284,6 +1305,18 @@ document.addEventListener('alpine:init', () => {
                         }, 2 * 1000)
                     })
                 break}
+
+                case 'youSwappedWithAnotherPlayer':{
+                    this.addSystemHintText("今晚你正打算回家，但公交车把你带到了一处你不认识的地方。", 'lightgray')
+
+                    const gamePageElement = document.getElementById('gamePage')
+                    return new Promise((resolve) => {
+                        gamePageElement.classList.add('animation-swapped-2s')
+                        gamePageElement.addEventListener('animationend', () => {
+                            resolve()
+                        }, { once: true })
+                    })
+                break}
                 
                 default:
                     console.error(`Unknow animationName: ${animationName}`)
@@ -1327,7 +1360,7 @@ document.addEventListener('alpine:init', () => {
                     trialTime: 0.2,
                     pauseDayTimerDuringTrial: false,
                     
-                    startAt: "day",
+                    startAt: "night",
                     
                     nightType: "Classic",
                     nightLength: 0.3,
@@ -1345,7 +1378,7 @@ document.addEventListener('alpine:init', () => {
                         // "Escort",
                         // "Doctor",
                         "SerialKiller",
-                        "Veteran",
+                        "BusDriver",
                         // "Consort",
                         // "AllRandom",
                     ],
@@ -2165,10 +2198,6 @@ const frontendData = {
     abilities:{
         targetedAbilities:{
             default:{
-                use(targetIndex){
-                    this.game.commandHandler(`useAbility ${this.name} ${targetIndex + 1}`)
-                },
-
                 useSuccess(data){
                     this.target = this.game.playerList[data.targetIndex]
 
@@ -2189,9 +2218,11 @@ const frontendData = {
 
                 generateButtons(player){
                     const newUseButton = this.createUseButton(()=>{
-                        this.use(player.index)
+                        this.game.commandHandler(`useAbility ${this.name} ${player.index + 1}`)
                     })
-                    const newCancelButton = this.createCancelButton(()=>{this.cancel()})
+                    const newCancelButton = this.createCancelButton(()=>{
+                        this.game.commandHandler(`useAbilityCancel ${this.name}`)
+                    })
                     const buttons = []
                     if(player === this.target)
                         buttons.push(newCancelButton)
@@ -2202,11 +2233,13 @@ const frontendData = {
                     return buttons
                 },
 
-                actionNotice(game, data){
+                actionNotice(){
                     const message = new MagicString()
-                    message.addText(`你前去${this.actionWord} `, this.color ?? game.myRole.color)
-                    message.append(game.playerList[data.targetIndex].getNameMagicString())
-                    game.addMessage(message)
+                    message.addText(`你前去${this.actionWord} `, this.color ?? this.game.myRole.color)
+                    message.append(this.target.getNameMagicString())
+                    this.game.addMessage(message)
+
+                    this.target = undefined
                 }
             },
             "Attack":{
@@ -2234,15 +2267,117 @@ const frontendData = {
             },
             "Monitor":{
                 actionWord:"监视"
+            },
+            "Swap":{
+                actionWord:'交换',
+
+                useSuccess(data){
+                    this.target_1 = this.game.playerList[data.targetIndex_1]
+                    this.target_2 = this.game.playerList[data.targetIndex_2]
+
+                    const message = new MagicString()
+                    message.addText(`你决定在今晚${this.actionWord} `, this.color ?? this.game.myRole.color)
+                    message.append(this.target_1.getNameMagicString())
+                    message.addText('和', this.color ?? this.game.myRole.color)
+                    message.append(this.target_2.getNameMagicString())
+                    this.game.addMessage(message)
+                },
+
+                cancelSuccess(){
+                    const message = new MagicString()
+                    message.addText(`你放弃在今晚${this.actionWord} `, 'yellow')
+                    message.append(this.target_1.getNameMagicString())
+                    message.addText('和', 'yellow')
+                    message.append(this.target_2.getNameMagicString())
+                    this.game.addMessage(message)
+
+                    this.target_1 = undefined
+                    this.target_2 = undefined
+                },
+
+                generateButtons(player){
+                    const newUseButton_1 = this.createUseButton(()=>{
+                        if(this.target_1 === undefined){
+                            this.target_1 = player
+                        }
+                        if(this.target_1 && this.target_2){
+                            this.game.commandHandler(`useAbility ${this.name} ${this.target_1.index + 1} ${this.target_2.index + 1}`)
+                        }
+                    })
+
+                    const newUseButton_2 = this.createUseButton(()=>{
+                        if(this.target_2 === undefined){
+                            this.target_2 = player
+                        }
+                        if(this.target_1 && this.target_2){
+                            this.game.commandHandler(`useAbility ${this.name} ${this.target_1.index + 1} ${this.target_2.index + 1}`)
+                        }
+                    })
+
+                    const newCancelButton_1 = this.createCancelButton(()=>{
+                        if(this.target_1 && this.target_2){
+                            this.game.commandHandler(`useAbilityCancel ${this.name}`)
+                        }
+                        else if(this.target_1){
+                            this.target_1 = undefined
+                        }
+                    })
+
+                    const newCancelButton_2 = this.createCancelButton(()=>{
+                        if(this.target_1 && this.target_2){
+                            this.game.commandHandler(`useAbilityCancel ${this.name}`)
+                        }
+                        else if(this.target_2){
+                            this.target_2 = undefined
+                        }
+                    })
+
+                    const buttons = []
+                    if(player !== this.target_2){
+                        if(player !== this.target_1){
+                            buttons.push(newUseButton_1)
+                        }
+                        else{
+                            buttons.push(newCancelButton_1)
+                        }
+                    }else{
+                        buttons.push({            
+                            style:`padding: 0.1em 1.5em;border:none;`,
+                        })
+                    }
+
+                    if(player !== this.target_1){
+                        if(player !== this.target_2){
+                            buttons.push(newUseButton_2)
+                        }
+                        else{
+                            buttons.push(newCancelButton_2)
+                        }
+                    }else{
+                        buttons.push({            
+                            style:`padding: 0.1em 1.5em;border:none;`,
+                        })
+                    }
+
+                    return buttons
+                },
+
+                actionNotice(){
+                    const message = new MagicString()
+                    message.addText(`你前去拉上 `, this.color ?? this.game.myRole.color)
+                    message.append(this.target_1.getNameMagicString())
+                    message.addText('和', this.color ?? this.game.myRole.color)
+                    message.append(this.target_2.getNameMagicString())
+                    this.game.addMessage(message)
+
+                    this.target_1 = undefined
+                    this.target_2 = undefined
+                }
             }
         },
 
         enabledAbilities:{
             default:{
-                use(targetIndex){
-                    this.game.commandHandler(`useAbility ${this.name}`)
-                },
-
                 useSuccess(data){
                     const message = new MagicString()
                     message.addText(`你决定在今晚${this.actionWord}`, this.color ?? this.game.myRole.color)
@@ -2262,18 +2397,24 @@ const frontendData = {
                 generateButtons(player){
                     const buttons = []
                     if(player.index === this.game.myIndex && abilityUseVerify(this.game, this.name, this.game.myIndex, player.index, this.target?.index)){
-                        const newUseButton = this.createUseButton(()=>{this.use()})
-                        const newCancelButton = this.createCancelButton(()=>{this.cancel()})
+                        const newUseButton = this.createUseButton(()=>{
+                            this.game.commandHandler(`useAbility ${this.name}`)
+                        })
+                        const newCancelButton = this.createCancelButton(()=>{
+                            this.game.commandHandler(`useAbilityCancel ${this.name}`)
+                        })
                         buttons.push((this.enabled ? newCancelButton : newUseButton))
                     }
                     return buttons
                 },
 
-                actionNotice(game, data){
+                actionNotice(){
                     const message = new MagicString()
                     message.addText(`你${this.actionWord}`, this.color ?? game.myRole.color)
                     message.addText("。")
                     game.addMessage(message)
+
+                    this.enabled = false
                 }
 
             },
@@ -2289,7 +2430,9 @@ const frontendData = {
                 generateButtons(player){
                     const buttons = []
                     if(player.index === this.game.myIndex){
-                        const newUseButton = this.createUseButton(()=>{this.use()})
+                        const newUseButton = this.createUseButton(()=>{
+                            this.game.commandHandler(`useAbility ${this.name}`)
+                        })
 
                         const userIsAlive = this.game.playerList[this.game.myIndex].isAlive
                         const atDayStage = this.game.status.split('/').includes('day')
@@ -2307,7 +2450,9 @@ const frontendData = {
                 generateButtons(player){
                     const buttons = []
                     if(player.index === this.game.myIndex){
-                        const newUseButton = this.createUseButton(()=>{this.use()})
+                        const newUseButton = this.createUseButton(()=>{
+                            this.game.commandHandler(`useAbility ${this.name}`)
+                        })
 
                         const userIsAlive = this.game.playerList[this.game.myIndex].isAlive
                         const inDayStage = this.game.status.split('/').includes('day')
@@ -2320,7 +2465,12 @@ const frontendData = {
             },
 
             "ArmedGuard":{
-                actionWord:"警戒"
+                actionWord:"警戒",
+                actionNotice(game, data){
+                    const message = new MagicString()
+                    message.addText(`你架好了你的枪，静候着不速之客。`, this.color ?? game.myRole.color)
+                    game.addMessage(message)
+                }
             },
         }
     },
@@ -2390,6 +2540,14 @@ const frontendData = {
             descriptionTranslate:"一个污点警察，无视法律规定而制定公正。",
             abilityDescriptionTranslate:"这个角色有每晚杀死某人的能力。",
             abilityDetails:["在夜晚杀死一人。"],
+        },
+        {
+            name:"BusDriver",
+            nameTranslate:"巴士司机",
+            descriptionTranslate:"",
+            abilityDescriptionTranslate:"",
+            abilityDetails:[""],
+            featureDetails:[""]
         },
         {
             name:"Crier",
@@ -2691,24 +2849,6 @@ class Ability{
             style:'padding: 0.1em 1.5em;background-color: LightGrey;',
             click:clickFunction,
         }
-    }
-
-    static generateActionNotice(game, relatedAbilityName, data){
-        for(const abilityTypeName in frontendData.abilities){
-            var ability = frontendData.abilities[abilityTypeName][relatedAbilityName]
-            if(ability !== undefined){
-                ability = {...ability, ...frontendData.abilities[abilityTypeName].default}
-                break
-            }
-        }
-
-        if(ability === undefined) console.error(`Unknow Ability: ${abilityName}`);
-
-        ability.actionNotice(game, data)
-    }
-
-    cancel(){
-        this.game.commandHandler(`useAbilityCancel ${this.name}`)
     }
 }
 

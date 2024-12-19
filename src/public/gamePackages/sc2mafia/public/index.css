@@ -501,6 +501,10 @@ ul{
     animation: silenced 2s forwards;
 }
 
+.animation-swapped-2s{
+    animation: swapped 2s forwards;
+}
+
 @keyframes dayToNight {
   0% { background-color: var(--background-highlights); }
   50% { background-color: linear-gradient(90deg,#073642 0%,#002B36 100%); }
@@ -556,6 +560,11 @@ ul{
     100% { background-color: black }
 }
 
+@keyframes swapped {
+    0% { background-color: black }
+    50% { background-color: lightgray }
+    100% { background-color: black }
+}
 
 a:link {color:var(--primary-content);text-decoration:underline;}      /* 未访问链接*/
 a:visited {color:var(--primary-content);text-decoration:underline;}  /* 已访问链接 */

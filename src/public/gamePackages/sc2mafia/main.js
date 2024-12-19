@@ -801,7 +801,6 @@ class Game extends EffectBase{
         //     return priorityOfActions[a.type] - priorityOfActions[b.type]
         // }
     }
-
     // generatePlayerAction
     // 它的主要作用是为了防止反复变动造成复杂的修改
     // 试想如果一个党徒决定在晚上杀死1号玩家，但是过了会儿他又改成2号
@@ -825,7 +824,7 @@ class Game extends EffectBase{
         // RoleBlock
         // 限制按照生成顺序生效...理应是按照楼层高低排序的
         const blockActions = this.nightActionSequence.filter(a => a.name === 'RoleBlock')
-        blockActions.forEach(a => sendActionEvent(a.origin, 'YouTakeAction', {actionName:a.name, targetIndex:a.target?.index}))
+        blockActions.forEach(a => sendActionEvent(a.origin, 'YouTakeAction', {actionName:a.name}))
         blockActions.forEach(a => {
             // note: 在这里，如果舞娘被限制了，那么她的限制无效
             if(a.origin.hasEffect('RoleBlocked') === false){
@@ -849,14 +848,40 @@ class Game extends EffectBase{
         })
         this.nightActionSequence = this.nightActionSequence.filter(a => a.origin.hasEffect('RoleBlocked') === false)
 
+        // Swap
+        const swapActions = this.nightActionSequence.filter(a => a.name === 'Swap')
+        swapActions.forEach(a => sendActionEvent(a.origin, 'YouTakeAction', {actionName:a.name}))
+        swapActions.forEach(a => {
+            const otherActions = this.nightActionSequence.filter(na => na !== a)
+            const target_1_targetedActions = otherActions.filter(targetIncludes(a.target_1))
+            const target_2_targetedActions = otherActions.filter(targetIncludes(a.target_2))
+
+            const t1_and_t2_targetedActions = target_1_targetedActions.concat(target_2_targetedActions)
+            t1_and_t2_targetedActions.forEach(t1t2ta =>{
+                // todo: BusDriverAttack
+                if(t1t2ta.name !== 'Swap'){
+                    t1t2ta.target = t1t2ta.target === a.target_1 ? a.target_2 : a.target_1
+                }else{
+                    if(t1t2ta.target_1 === a.target_1 && t1t2ta.target_2 !== a.target_2){
+                        t1ta.target_1 = a.target_2
+                    }
+                    else if(t1t2ta.target_2 === a.target_1 && t1t2ta.target_1 !== a.target_2){
+                        t1ta.target_2 = a.target_2
+                    }
+                }
+            })
+
+            sendActionEvent(a.target_1, 'YouSwappedWithAnotherPlayer')
+            sendActionEvent(a.target_2, 'YouSwappedWithAnotherPlayer')
+        })
+
         // Silence
         const silenceActions = this.nightActionSequence.filter(a => a.name === 'Silence')
-        silenceActions.forEach(a => sendActionEvent(a.origin, 'YouTakeAction', {actionName:a.name, targetIndex:a.target?.index}))
+        silenceActions.forEach(a => sendActionEvent(a.origin, 'YouTakeAction', {actionName:a.name}))
         silenceActions.forEach(a => {
             a.target.addEffect_skipThisTurn('Silenced', 1)
             sendActionEvent(a.target, 'YouWereSilenced')
         })
-
 
         // BulletProof
         const bulletProofActions = this.nightActionSequence.filter(a => a.name === 'BulletProof')
@@ -870,13 +895,29 @@ class Game extends EffectBase{
         // 然后比对二者的长度来决定玩家的死活。
         // 类似治疗这类的保护技能并不是直接生效的，而是生成一个类似action的，名称为Protect的对象来参与计算。
         const attackActions = this.nightActionSequence.filter(a => a.name === 'Attack')
-        attackActions.forEach(a => sendActionEvent(a.origin, 'YouTakeAction', {actionName:a.originalActionName ?? a.name, targetIndex:a.target?.index}))
+        attackActions.forEach(a => sendActionEvent(a.origin, 'YouTakeAction', {actionName:a.originalActionName ?? a.name}))
         const protectActions = this.nightActionSequence.filter(a => a.name === 'Heal').map(a => {return {...a, ...{name:"Protect", originalActionName:a.name}}})
-        protectActions.forEach(a => sendActionEvent(a.origin, 'YouTakeAction', {actionName:a.originalActionName ?? a.name, targetIndex:a.target?.index}))
+        protectActions.forEach(a => sendActionEvent(a.origin, 'YouTakeAction', {actionName:a.originalActionName ?? a.name}))
+
+        // ArmedGuard
+        const armedGuardActions = this.nightActionSequence.filter(a => a.name === 'ArmedGuard')
+        armedGuardActions.forEach(a => sendActionEvent(a.origin, 'YouTakeAction', {actionName:a.name}))
+        armedGuardActions.forEach(a => {
+            a.origin.addEffect('ImmuneToAttack', 1)
+            const visitors = this.nightActionSequence.filter(targetIncludes(a.origin)).map(na => na.origin)
+            visitors.forEach(v =>{
+                attackActions.push({
+                    name:"Attack",
+                    origin:a.origin,
+                    target:v,
+                    originalActionName:"ArmedGuard"
+                })
+            })
+        })
 
         // CloseProtection
         const closeProtectionActions = this.nightActionSequence.filter(a => a.name === 'CloseProtection')
-        closeProtectionActions.forEach(a => sendActionEvent(a.origin, 'YouTakeAction', {actionName:a.name, targetIndex:a.target?.index}))
+        closeProtectionActions.forEach(a => sendActionEvent(a.origin, 'YouTakeAction', {actionName:a.name}))
         closeProtectionActions.forEach(a => {
             const attack = attackActions.find(aa => aa.target === a.target)
             if(attack !== undefined){
@@ -903,22 +944,6 @@ class Game extends EffectBase{
                     originalActionName:"CloseProtection"
                 })
             }
-        })
-
-        // ArmedGuard
-        const armedGuardActions = this.nightActionSequence.filter(a => a.name === 'ArmedGuard')
-        armedGuardActions.forEach(a => sendActionEvent(a.origin, 'YouTakeAction', {actionName:a.name, targetIndex:a.target?.index}))
-        armedGuardActions.forEach(a => {
-            a.origin.addEffect('ImmuneToAttack', 1)
-            const visitors = this.nightActionSequence.filter(na => na.target === a.origin).map(na => na.origin)
-            visitors.forEach(v =>{
-                attackActions.push({
-                    name:"Attack",
-                    origin:a.origin,
-                    target:v,
-                    originalActionName:"ArmedGuard"
-                })
-            })
         })
 
         // Attack and Protects Process
@@ -982,7 +1007,7 @@ class Game extends EffectBase{
 
         // Detect
         const detectActions = this.nightActionSequence.filter(a => a.name === 'Detect').filter(a => a.origin.isAlive)
-        detectActions.forEach(a => sendActionEvent(a.origin, 'YouTakeAction', {actionName:a.name, targetIndex:a.target?.index}))
+        detectActions.forEach(a => sendActionEvent(a.origin, 'YouTakeAction', {actionName:a.name}))
         detectActions.forEach(a => {
             const detectionReport = {
                 targetIndex: a.target.index,
@@ -1009,7 +1034,7 @@ class Game extends EffectBase{
 
         // Track
         const trackActions = this.nightActionSequence.filter(a => a.name === 'Track').filter(a => a.origin.isAlive)
-        trackActions.forEach(a => sendActionEvent(a.origin, 'YouTakeAction', {actionName:a.name, targetIndex:a.target?.index}))
+        trackActions.forEach(a => sendActionEvent(a.origin, 'YouTakeAction', {actionName:a.name}))
         trackActions.forEach(a => {
             const targetActions = this.nightActionSequence.filter(nightAction => nightAction.origin === a.target)
             const trackReport = {
@@ -1017,6 +1042,11 @@ class Game extends EffectBase{
                 targetHasNightAction: (targetActions.length > 0),
                 visitedTargetIndices: targetActions.filter(ta => (ta.target !== undefined) && (ta.origin !== ta.target)).map(ta => ta.target.index)
             }
+
+            targetActions.filter(ta => ta.name === 'Swap').forEach(ta => {
+                trackReport.visitedTargetIndices.push(ta.target_1.index)
+                trackReport.visitedTargetIndices.push(ta.target_2.index)
+            })
 
             if(a.target.hasEffect('ImmuneToDetect') && a.origin.role.modifyObject?.['IgnoreEffect_ImmuneToDetect'] === false){
                 delete trackReport.visitedTargetIndices
@@ -1027,9 +1057,9 @@ class Game extends EffectBase{
 
         // Monitor
         const monitorActions = this.nightActionSequence.filter(a => a.name === 'Monitor').filter(a => a.origin.isAlive)
-        monitorActions.forEach(a => sendActionEvent(a.origin, 'YouTakeAction', {actionName:a.name, targetIndex:a.target?.index}))
+        monitorActions.forEach(a => sendActionEvent(a.origin, 'YouTakeAction', {actionName:a.name}))
         monitorActions.forEach(a => {
-            const targetedActions = this.nightActionSequence.filter(nightAction => nightAction?.target === a.target)
+            const targetedActions = this.nightActionSequence.filter(targetIncludes(a.target))
             
             const monitorReport = {
                 targetIndex: a.target.index,
@@ -1064,6 +1094,16 @@ class Game extends EffectBase{
                 target.sendEvent('ActionHappened', {...{name:actionName}, ...data})
             else if(target.constructor.name === 'Team')
                 target.sendEventToAliveMember('ActionHappened', {...{name:actionName}, ...data})
+        }
+
+        function targetIncludes(player){
+            return function(action, index, array) {
+                if(action.name !== 'Swap'){
+                    return action.target === player
+                }else{
+                    return action.target_1 === player || action.target_2 === player
+                }
+            }
         }
     }
 

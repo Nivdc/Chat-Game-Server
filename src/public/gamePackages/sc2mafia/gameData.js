@@ -38,6 +38,10 @@ export const originalGameData = {
                     name: "Escort",
                 },
                 {
+                    abilityNames:['Swap'],
+                    name: "BusDriver",
+                },
+                {
                     defaultTeamName:"DetectTeam",
                     name: "AuxiliaryOfficer",
                 },
@@ -329,6 +333,53 @@ export const originalGameData = {
                     const targetIsAlive = game.playerList[targetIndex].isAlive
                     const targetIsNotPreviousTarget = targetIndex !== previousTargetIndex
                     return userIsAlive && targetIsAlive && targetIsNotPreviousTarget
+                },
+            },
+
+            'Swap':{
+                use(game, data){
+                    const target_1 = game.playerList[data.targetIndex_1]
+                    const target_2 = game.playerList[data.targetIndex_2]
+                    if(this.verify(game, this.player.index, target_1.index, target_2.index) && this.state.unableToUse === false){
+                        this.target_1 = target_1
+                        this.target_2 = target_2
+                        this.player.sendEvent('UseAblitySuccess', data)
+                    }else{
+                        this.player.sendEvent('UseAblityFailed', data)
+                    }
+                },
+
+                verify(game, userIndex, targetIndex_1, targetIndex_2) {
+                    const userIsAlive = game.playerList[userIndex].isAlive
+                    const target_1_isAlive = game.playerList[targetIndex_1].isAlive
+                    const target_2_isAlive = game.playerList[targetIndex_2].isAlive
+                    const target_1_isNot_target_2 = targetIndex_1 !== targetIndex_2
+                    return userIsAlive && target_1_isAlive && target_2_isAlive && target_1_isNot_target_2
+                },
+            
+                cancel(game, data){
+                    this.target_1 = undefined
+                    this.target_2 = undefined
+                    this.player.sendEvent('UseAblityCancelSuccess', data)
+                },
+            
+                generateNightAction(){
+                    if(this.target_1 && this.target_2){
+                        const action = {
+                            name:this.name, 
+                            origin:this.player, 
+                            target_1:this.target_1, 
+                            target_2:this.target_2
+                        }
+                        
+                        this.target_1 = undefined
+                        this.target_2 = undefined
+                        this.addUsageCount()
+                        return action
+                    }else{
+                        this.resetConsecutiveUsageCount()
+                        return undefined
+                    }
                 },
             }
         },

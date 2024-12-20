@@ -851,7 +851,7 @@ class Game extends EffectBase{
         // Swap
         const swapActions = this.nightActionSequence.filter(a => a.name === 'Swap')
         swapActions.forEach(a => sendActionEvent(a.origin, 'YouTakeAction', {actionName:a.name}))
-        swapActions.forEach(a => {
+        shuffleArray(swapActions).forEach(a => {
             const otherActions = this.nightActionSequence.filter(na => na !== a)
             const target_1_targetedActions = otherActions.filter(targetIncludes(a.target_1))
             const target_2_targetedActions = otherActions.filter(targetIncludes(a.target_2))
@@ -922,6 +922,26 @@ class Game extends EffectBase{
             })
         })
 
+        // SwapCauseAttack, BusDriverAttack
+        // 这是一个很稀有的情况，我觉得可以适当的奖励司机
+        // fixme?: 如果司机调换了自己和退伍，退伍的攻击会被司机覆盖掉
+        // note:   保镖会杀死司机，司机不会杀死保镖
+        swapActions.forEach(a => {
+            const killer = attackActions.find(aa => ((aa.origin === a.target_1 && aa.target === a.target_2) ||
+                    (aa.origin === a.target_2 && aa.target === a.target_1))
+                )?.origin
+
+            if(killer){
+                attackActions = attackActions.filter(aa => aa.origin !== killer)
+                attackActions.push({
+                    name:"Attack",
+                    origin:a.origin,
+                    target:killer,
+                    originalActionName:"Swap"
+                })
+            }
+        })
+
         // CloseProtection
         const closeProtectionActions = this.nightActionSequence.filter(a => a.name === 'CloseProtection')
         closeProtectionActions.forEach(a => sendActionEvent(a.origin, 'YouTakeAction', {actionName:a.name}))
@@ -953,25 +973,6 @@ class Game extends EffectBase{
             }
         })
 
-        // SwapCauseAttack, BusDriverAttack
-        // 这是一个很稀有的情况，我觉得可以适当的奖励司机
-        // fixme?: 如果司机调换了自己和退伍，退伍的攻击会被司机覆盖掉
-        swapActions.forEach(a => {
-            const killer = attackActions.find(aa => ((aa.origin === a.target_1 && aa.target === a.target_2) ||
-                    (aa.origin === a.target_2 && aa.target === a.target_1))
-                )?.origin
-
-            if(killer){
-                attackActions = attackActions.filter(aa => aa.origin !== killer)
-                attackActions.push({
-                    name:"Attack",
-                    origin:a.origin,
-                    target:killer,
-                    originalActionName:"Swap"
-                })
-            }
-        })
-
         // Attack and Protects Process
         for(const p of this.alivePlayerList){
             const attacksOnCurrentPlayer   = attackActions .filter(a => a.target === p)
@@ -987,7 +988,7 @@ class Game extends EffectBase{
                         const attackSource = action.isTeamAction ? action.origin.team.affiliationName : action.origin.role.name
                         attackAttempts.push(`${attackSource}Attack`)
 
-                        if(action.target.hasEffect('ImmuneToAttack') === false || action.origin.role.modifyObject?.['IgnoreEffect_ImmuneToAttack']){
+                        if(action.target.hasEffect('ImmuneToAttack') === false || action.origin.role.modifyObject?.['ignoreEffect_ImmuneToAttack']){
                             sendActionEvent(action.target, 'YouUnderAttack', {actionName:action.originalActionName ?? action.name, source:attackSource, originalActionName:action.originalActionName})
                             action.target.isAlive = false
                         }else{
@@ -1046,7 +1047,7 @@ class Game extends EffectBase{
                 }
             }
 
-            if(a.target.hasEffect('ImmuneToDetect') && a.origin.role.modifyObject?.['IgnoreEffect_ImmuneToDetect'] === false){
+            if(a.target.hasEffect('ImmuneToDetect') && a.origin.role.modifyObject?.['ignoreEffect_ImmuneToDetect'] === false){
                 delete detectionReport.targetRoleName
                 delete detectionReport.targetAffiliationName
             }
@@ -1074,7 +1075,7 @@ class Game extends EffectBase{
                 trackReport.visitedTargetIndices.push(ta.target_2.index)
             })
 
-            if(a.target.hasEffect('ImmuneToDetect') && a.origin.role.modifyObject?.['IgnoreEffect_ImmuneToDetect'] === false){
+            if(a.target.hasEffect('ImmuneToDetect') && a.origin.role.modifyObject?.['ignoreEffect_ImmuneToDetect'] === false){
                 delete trackReport.visitedTargetIndices
             }
 

@@ -1294,7 +1294,9 @@ document.addEventListener('alpine:init', () => {
                 case 'someoneIsTryingToDoSomethingToYou':{
                     let actionName = data.originalActionName ?? data.actionName
                     if(data.originalActionName === 'CloseProtection' && data.actionName === 'Attack') actionName = 'Attack';
-                    if(data.originalActionName === 'ArmedGuard' && data.actionName === 'Attack') actionName = 'Attack';
+                    if(data.originalActionName === 'Swap'            && data.actionName === 'Attack') actionName = 'Attack';
+                    if(data.originalActionName === 'ArmedGuard'      && data.actionName === 'Attack') actionName = 'Attack';
+
                     const actionWord = frontendData.abilities.targetedAbilities[actionName].actionWord
                     const source = this.factionSet.find(f => f.name === data.source) ?? this.roleSet.find(r => r.name === data.source)
                     this.addSystemHintText(`今晚${source?.nameTranslate ?? '有人'}试图 ${actionWord} 你！`)
@@ -1388,6 +1390,10 @@ document.addEventListener('alpine:init', () => {
                         citizen:{
                             hasAbility_BulletProof_UsesLimit_1_Times:true,
                         },
+                        lookout:{
+                            ignoreEffect_ImmuneToDetect:true,
+                            hasAbilityForceDisableTurn_1_AtStart:false,
+                        },
                         doctor:{
                             knowsIfTargetIsAttacked:true,
                         },
@@ -1397,12 +1403,29 @@ document.addEventListener('alpine:init', () => {
                             consecutiveAbilityUses_2_Cause_1_NightCooldown:true,
                         },
                         vigilante:{
+                            ignoreEffect_ImmuneToAttack: false,
                             hasAbilityUsesLimit_2_Times: true,
                             hasAbilityUsesLimit_3_Times: false,
                             hasAbilityUsesLimit_4_Times: false,
                         },
                         detective:{
-                            IgnoreEffect_ImmuneToDetect:false,
+                            ignoreEffect_ImmuneToDetect:false,
+                        },
+                        busDriver:{
+                            ignoreEffect_ImmuneToAttack: true,
+                        },
+                        bodyguard:{
+                            ignoreEffect_ImmuneToAttack: true,
+                            canNotBeHeal:true,
+                        },
+                        veteran:{
+                            ignoreEffect_ImmuneToAttack: true,
+                            hasAbilityUsesLimit_2_Times: true,
+                            hasAbilityUsesLimit_3_Times: false,
+                            hasAbilityUsesLimit_4_Times: false,
+                        },
+                        mayor:{
+                            canNotBeHeal:false,
                         },
                         // Mafia
                         consort:{
@@ -2546,8 +2569,9 @@ const frontendData = {
             nameTranslate:"巴士司机",
             descriptionTranslate:"",
             abilityDescriptionTranslate:"",
-            abilityDetails:[""],
-            featureDetails:[""]
+            abilityDetails:["在夜晚改变两个人的位置，当晚两个人所受的主动能力效果将互相调换。"],
+            featureDetails:["你能够将自己作为目标。",
+                            "当你互换杀手与受害者时，你会中断杀手的所有攻击，并对杀手造成一次攻击。"]
         },
         {
             name:"Crier",
@@ -2564,14 +2588,14 @@ const frontendData = {
             descriptionTranslate:"",
             abilityDescriptionTranslate:"",
             abilityDetails:["每晚保护一人，使其免受一次死亡。"],
-            featureDetails:["如果你的目标受到攻击，你将会反击攻击者。（同时你也会被攻击）"]
+            featureDetails:["如果你的目标受到攻击，你将会反击攻击者，同时你也会被攻击。"]
         },
         {
             name:"Veteran",
             nameTranslate:"退伍军人",
             descriptionTranslate:"",
             abilityDescriptionTranslate:"",
-            abilityDetails:["在夜间进行警戒，自动杀死那晚所有访问你的人"],
+            abilityDetails:["在夜间进行警戒，自动杀死那晚所有访问你的人。"],
             featureDetails:["当你使用警戒时，你会获得一晚的夜间无敌。"]
         },
         {
@@ -2671,11 +2695,11 @@ const frontendData = {
             featureDescription:"你可以在夜间说话。",
         },
 
-        'IgnoreEffect_ImmuneToAttack':{
-            description:"无视夜间无敌",
+        'ignoreEffect_ImmuneToAttack':{
+            description:"攻击无视夜间无敌",
             featureDescription:"对夜间无敌角色，你的攻击依然生效。",
         },
-        'IgnoreEffect_ImmuneToDetect':{
+        'ignoreEffect_ImmuneToDetect':{
             description:"无视调查免疫",
             featureDescription:"对免疫调查的角色，你的调查依然生效。",
         },
@@ -2718,8 +2742,8 @@ const frontendData = {
         },
 
         'canNotBeHeal':{
-            description:"无法被医治",
-            featureDescription:"你无法被医治。",
+            description:"无法被医生救治",
+            featureDescription:"无法被医生救治。",
         },
 
         'canBeTurnedIntoTeamExecutor':{

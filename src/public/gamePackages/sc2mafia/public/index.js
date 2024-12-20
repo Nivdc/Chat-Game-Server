@@ -8,6 +8,7 @@ document.addEventListener('alpine:init', () => {
         loading:true,
         settingWatchIgnore:false,
         setting:{},
+        tempDeadPlayerList:[],
 
         async init() {
             this.setting = cloneDeep(this.presets[0].setting)
@@ -295,6 +296,8 @@ document.addEventListener('alpine:init', () => {
                     this.gamePageTipMessage.addText(" 你还有什么遗言吗？")
                     this.gamePageTipMessage.class = 'animation-fadeIn-1s'
 
+                    this.tempDeadPlayerList.push(this.executionTarget)
+
                     this.createTimer('临终遗言', durationSec)
                 }
                 else if(this.status === 'animation/execution/deathDeclear'){
@@ -311,6 +314,7 @@ document.addEventListener('alpine:init', () => {
                         this.gamePageTipMessage.addText("愿你们安息")
                     }
                     this.executionTarget = undefined
+                    this.tempDeadPlayerList = []
                     setTimeout(()=>{
                         this.gamePageTipMessage.class = 'animation-fadeOut-2s'
                     }, 3000)
@@ -1348,6 +1352,113 @@ document.addEventListener('alpine:init', () => {
         selectedPreset:undefined,
         presets : [
             {
+                name:"正常流程测试",
+                description:"除非医生猜中刀，不然黑手已经赢了",
+                setting:{
+                    dayVoteType: "Majority",
+                    dayLength: 1.2,
+                                        
+                    enableDiscussion: true,
+                    discussionTime: 0.3,
+
+                    enableTrial: true,
+                    enableTrialDefense: true,
+                    trialTime: 0.8,
+                    pauseDayTimerDuringTrial: true,
+                    
+                    startAt: "day/No-Lynch",
+                    
+                    nightType: "Classic",
+                    nightLength: 0.6,
+                    showMoreAttackDetailsAtNight:true,
+                    
+                    revealPlayerRoleOnDeath: true,
+                    revealAttackAndProtectSource:true,
+                    enableCustomName: true,
+                    enableKillerMessage: true,
+                    enableLastWill: true,
+                    enablePrivateMessage: true,
+                    
+                    roleList: [
+                        "Citizen", "Citizen",
+                        "Doctor",
+                        "Mafioso", "Mafioso",
+                        // "Escort",
+                        // "SerialKiller",
+                        // "BusDriver",
+                        // "Consort",
+                        // "AllRandom",
+                    ],
+
+                    roleModifyOptions: {
+                        // Town
+                        citizen:{
+                            hasAbility_BulletProof_UsesLimit_1_Times:true,
+                        },
+                        lookout:{
+                            ignoreEffect_ImmuneToDetect:true,
+                            hasAbilityForceDisableTurn_1_AtStart:false,
+                        },
+                        doctor:{
+                            knowsIfTargetIsAttacked:true,
+                        },
+                        escort:{
+                            hasEffect_ImmuneToRoleBlock:false,
+                            knowsIfTargetHasEffect_ImmuneToRoleBlock:false,
+                            consecutiveAbilityUses_2_Cause_1_NightCooldown:true,
+                        },
+                        vigilante:{
+                            ignoreEffect_ImmuneToAttack: false,
+                            hasAbilityUsesLimit_2_Times: true,
+                            hasAbilityUsesLimit_3_Times: false,
+                            hasAbilityUsesLimit_4_Times: false,
+                        },
+                        detective:{
+                            ignoreEffect_ImmuneToDetect:false,
+                        },
+                        busDriver:{
+                            ignoreEffect_ImmuneToAttack: true,
+                        },
+                        bodyguard:{
+                            ignoreEffect_ImmuneToAttack: true,
+                            canNotBeHeal:true,
+                        },
+                        veteran:{
+                            ignoreEffect_ImmuneToAttack: true,
+                            hasAbilityUsesLimit_2_Times: true,
+                            hasAbilityUsesLimit_3_Times: false,
+                            hasAbilityUsesLimit_4_Times: false,
+                        },
+                        mayor:{
+                            canNotBeHeal:false,
+                        },
+                        // Mafia
+                        consort:{
+                            canBeTurnedIntoTeamExecutor:true,
+                            hasEffect_ImmuneToRoleBlock:false,
+                            knowsIfTargetHasEffect_ImmuneToRoleBlock:false,
+                        },
+                        godfather:{
+                            hasEffect_ImmuneToAttack:true,
+                            hasEffect_ImmuneToRoleBlock:false,
+                            hasEffect_ImmuneToDetect:true,
+                            canBeTeamActionExecutor:true,
+                            canBeTurnedIntoTeamExecutor:false,
+                        },
+                        blackmailer:{
+                            canBeTurnedIntoTeamExecutor:true,
+                            hasAbilityForceDisableTurn_1_AtStart:false,
+                        },
+                        // Neutral
+                        serialKiller:{
+                            hasEffect_ImmuneToAttack:true,
+                            fightBackAgainstRoleBlocker:false,
+                            hasEffect_ImmuneToDetect:false,
+                        }
+                    }
+                }
+            },
+            {
                 name:"默认",
                 description:"默认的设置",
                 setting:{
@@ -1936,9 +2047,10 @@ document.addEventListener('alpine:init', () => {
             }
 
             if(this.status?.split('/').includes('lynchVote')){
-                if(publicVoteVerify(this ,'LynchVote', {voterIndex:this.myIndex, targetIndex, previousTargetIndex:this.myLynchVoteTargetIndex}))
-                    buttons.push(lynchVoteButton)
-                else if(targetIndex === this.myLynchVoteTargetIndex)
+                if(publicVoteVerify(this ,'LynchVote', {voterIndex:this.myIndex, targetIndex, previousTargetIndex:this.myLynchVoteTargetIndex})){
+                    if(this.tempDeadPlayerList.includes(player) === false)
+                        buttons.push(lynchVoteButton)
+                }else if(targetIndex === this.myLynchVoteTargetIndex)
                     buttons.push(lynchVoteCancelButton)
             }
 
@@ -2192,6 +2304,14 @@ const frontendData = {
         {
             name: "Protective",
             nameTranslate:'保护',
+        },
+        {
+            name: "Government",
+            nameTranslate:'政府',
+        },
+        {
+            name: "Investigative",
+            nameTranslate:'调查',
         },
     ],
     factions:[
@@ -2525,10 +2645,9 @@ const frontendData = {
         {
             name:"Lookout",
             nameTranslate:"监视者",
-            descriptionTranslate:"",
-            abilityDescriptionTranslate:"",
+            descriptionTranslate:"一个鹰眼般的监视者，潜伏在屋外以获得信息。",
+            abilityDescriptionTranslate:"这个角色有每晚观察一人被谁访问的能力",
             abilityDetails:["每晚观察一人，并获知有谁访问了他/她。"],
-            featureDetails:[""]
         },
         {
             name:"AuxiliaryOfficer",
@@ -2567,8 +2686,8 @@ const frontendData = {
         {
             name:"BusDriver",
             nameTranslate:"巴士司机",
-            descriptionTranslate:"",
-            abilityDescriptionTranslate:"",
+            descriptionTranslate:"一个不满的，拥有运输执照的司机。",
+            abilityDescriptionTranslate:"这个角色有在夜晚交换两个玩家的能力，当晚二人所受的主动能力效果将互相调换。",
             abilityDetails:["在夜晚改变两个人的位置，当晚两个人所受的主动能力效果将互相调换。"],
             featureDetails:["你能够将自己作为目标。",
                             "当你互换杀手与受害者时，你会中断杀手的所有攻击，并对杀手造成一次攻击。"]
@@ -2585,24 +2704,24 @@ const frontendData = {
         {
             name:"Bodyguard",
             nameTranslate:"保镖",
-            descriptionTranslate:"",
-            abilityDescriptionTranslate:"",
+            descriptionTranslate:"一个依靠秘密保护他人为生的退伍老兵。",
+            abilityDescriptionTranslate:"这个角色有每晚保护一个玩家的能力，如果有人攻击受保护的玩家，你和攻击者二人将会死亡，而不是你的目标。",
             abilityDetails:["每晚保护一人，使其免受一次死亡。"],
             featureDetails:["如果你的目标受到攻击，你将会反击攻击者，同时你也会被攻击。"]
         },
         {
             name:"Veteran",
             nameTranslate:"退伍军人",
-            descriptionTranslate:"",
-            abilityDescriptionTranslate:"",
+            descriptionTranslate:"一个偏执的退伍上将，会射杀任何一个打扰他的人。",
+            abilityDescriptionTranslate:"这个角色有自动杀死所有夜间来访者的能力。",
             abilityDetails:["在夜间进行警戒，自动杀死那晚所有访问你的人。"],
             featureDetails:["当你使用警戒时，你会获得一晚的夜间无敌。"]
         },
         {
             name:"Mayor",
             nameTranslate:"市长",
-            descriptionTranslate:"",
-            abilityDescriptionTranslate:"",
+            descriptionTranslate:"城镇的统治者。",
+            abilityDescriptionTranslate:"这个角色有在白天揭示自己的角色获得投票加成的能力。",
             abilityDetails:["你可以在白天揭示你自己的身份。"],
             featureDetails:["如果你启用了你的能力，你在白天投下的票等同于 3 人",
                 "如果你被沉默，你将无法启用你的能力"
@@ -2611,8 +2730,8 @@ const frontendData = {
         {
             name:"Marshall",
             nameTranslate:"执法长",
-            descriptionTranslate:"",
-            abilityDescriptionTranslate:"",
+            descriptionTranslate:"城镇民兵团的领袖。",
+            abilityDescriptionTranslate:"这个角色有对自身的角色进行揭示，从而在同一百天内进行多次处刑的能力。",
             abilityDetails:["你可以在白天揭示你自己的身份。"],
             featureDetails:["如果你启用了你的能力，城镇可以在白天处决 3 人",
                 "如果你被沉默，你将无法启用你的能力",

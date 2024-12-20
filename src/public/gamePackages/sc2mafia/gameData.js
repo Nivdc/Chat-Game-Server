@@ -119,6 +119,7 @@ export const originalGameData = {
             includeRoleNames: [
                 "Vigilante",
                 "Bodyguard",
+                "Veteran",
 
                 "Mafioso",
                 "Godfather",
@@ -131,7 +132,25 @@ export const originalGameData = {
             includeRoleNames: [
                 "Doctor",
                 "Escort",
-                "Bodyguard"
+                "Bodyguard",
+                "BusDriver"
+            ]
+        },
+        {
+            name: "Government",
+            includeRoleNames: [
+                "Citizen",
+                "Crier",
+                "Marshall",
+                "Mayor"
+            ]
+        },
+        {
+            name: "Investigative",
+            includeRoleNames: [
+                "Detective",
+                "Lookout",
+                "Sheriff",
             ]
         },
         {

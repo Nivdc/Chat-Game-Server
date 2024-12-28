@@ -345,6 +345,7 @@ class Game extends EffectBase{
         this.gameDirectorInit()
 
         this.dayCount = 1
+        this.recentlyDeadPlayers = []
 
         await this.newGameStage("animation/begin", 0.1)
         this.begin()
@@ -717,7 +718,6 @@ class Game extends EffectBase{
     async dayCycle(){
         this.playerList.forEach((p) => p.resetCommonProperties())
         this.dayOver = false
-        this.recentlyDeadPlayers = []
 
         this.teamSet.forEach(t => t.checkTeamHasActionExecutor())
 
@@ -1461,6 +1461,8 @@ function shuffleArray(array) {
         const j = Math.floor(Math.random() * (i + 1));
         [array[i], array[j]] = [array[j], array[i]];
     }
+
+    return array
 }
 
 function isValidIndex(index, arrayLength) {
